@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jared Clicker - Admin</title>
+  <link rel="icon" type="image/png" href="jared-coin.png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Press+Start+2P&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Fredoka One', cursive;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #ffd700;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 24px;
+      margin-bottom: 8px;
+      text-shadow: 2px 2px 0 #b8860b;
+    }
+
+    .subtitle {
+      color: #aaa;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+
+    /* Login form */
+    #loginSection {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
+    }
+
+    #loginSection label {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    #loginSection input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #ffd700;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.6);
+      color: #ffd700;
+      font-family: 'Fredoka One', cursive;
+      font-size: 16px;
+      outline: none;
+      margin-bottom: 16px;
+    }
+
+    #loginSection input:focus {
+      border-color: #fff;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    }
+
+    button {
+      padding: 12px 32px;
+      border: 2px solid #ffd700;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #b8860b, #daa520);
+      color: #1a1a2e;
+      font-family: 'Fredoka One', cursive;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #daa520, #ffd700);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .error {
+      color: #ff6b6b;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    /* Dashboard */
+    #dashboardSection {
+      display: none;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .stats-bar .count {
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    .refresh-btn {
+      padding: 8px 20px;
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      background: rgba(255, 215, 0, 0.1);
+      padding: 14px 16px;
+      text-align: left;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: #ffd700;
+      border-bottom: 2px solid #ffd700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    tbody td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+      font-size: 15px;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 215, 0, 0.05);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .rank-cell {
+      color: #888;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      width: 50px;
+    }
+
+    .name-cell {
+      color: #ffd700;
+    }
+
+    .score-cell {
+      color: #4ade80;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .date-cell {
+      color: #888;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .action-cell {
+      text-align: center;
+      width: 80px;
+    }
+
+    .delete-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      background: linear-gradient(135deg, #8b0000, #cc0000);
+      border-color: #ff6b6b;
+      color: #fff;
+    }
+
+    .delete-btn:hover {
+      background: linear-gradient(135deg, #cc0000, #ff4444);
+      box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+      font-size: 14px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #ffd700;
+      font-size: 14px;
+    }
+
+    .back-link {
+      margin-top: 24px;
+      display: inline-block;
+      color: #aaa;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover {
+      color: #ffd700;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Admin Dashboard</h1>
+  <p class="subtitle">Jared Clicker Leaderboard Management</p>
+
+  <!-- Login -->
+  <div id="loginSection">
+    <label for="passwordInput">Enter admin password</label>
+    <input type="password" id="passwordInput" placeholder="Password" autocomplete="off">
+    <br>
+    <button id="loginBtn">Login</button>
+    <div class="error" id="loginError"></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboardSection">
+    <div class="stats-bar">
+      <span class="count" id="entryCount"></span>
+      <button class="refresh-btn" id="refreshBtn">Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th style="text-align:right">Score</th>
+            <th style="text-align:right">Date</th>
+            <th style="text-align:center">Action</th>
+          </tr>
+        </thead>
+        <tbody id="scoreTableBody">
+        </tbody>
+      </table>
+    </div>
+    <!-- Photo Management -->
+    <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Random Photos</h2>
+    <p style="color: #aaa; font-size: 13px; margin-bottom: 16px;">These photos pop up randomly while playing.</p>
+
+    <div style="margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      <input type="file" id="photoFileInput" accept="image/*" style="color: #aaa; font-size: 13px; flex: 1;">
+      <button id="uploadPhotoBtn" style="padding: 10px 20px; font-size: 14px;">Upload Photo</button>
+    </div>
+    <div id="uploadStatus" style="color: #4ade80; font-size: 13px; margin-bottom: 12px;"></div>
+
+    <div id="photoGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;"></div>
+
+    <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Danger Zone</h2>
+    <button id="resetScoresBtn" class="delete-btn" style="padding: 12px 24px; font-size: 14px; margin-top: 12px;">Reset All Scores</button>
+    <div id="resetStatus" style="margin-top: 8px; font-size: 13px;"></div>
+
+    <a href="/" class="back-link">&larr; Back to game</a>
+  </div>
+
+<script>
+  var API_BASE = 'https://jaredclicker-live.justin-5b6.workers.dev';
+  var adminPassword = '';
+
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('refreshBtn').addEventListener('click', loadScores);
+  document.getElementById('passwordInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  function clearTbody() {
+    var tbody = document.getElementById('scoreTableBody');
+    while (tbody.firstChild) {
+      tbody.removeChild(tbody.firstChild);
+    }
+    return tbody;
+  }
+
+  function showTbodyMessage(text, className) {
+    var tbody = clearTbody();
+    var tr = document.createElement('tr');
+    var td = document.createElement('td');
+    td.setAttribute('colspan', '5');
+    td.className = className;
+    td.textContent = text;
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  function doLogin() {
+    var pw = document.getElementById('passwordInput').value.trim();
+    if (!pw) {
+      document.getElementById('loginError').textContent = 'Please enter a password.';
+      return;
+    }
+    adminPassword = pw;
+    document.getElementById('loginError').textContent = '';
+
+    fetch(API_BASE + '/admin/leaderboard', {
+      headers: { 'Authorization': 'Bearer ' + adminPassword }
+    })
+    .then(function(res) {
+      if (res.status === 401) {
+        throw new Error('Invalid password');
+      }
+      if (!res.ok) throw new Error('Server error');
+      return res.json();
+    })
+    .then(function(data) {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('dashboardSection').style.display = 'block';
+      renderScores(data);
+      loadPhotos();
+    })
+    .catch(function(err) {
+      adminPassword = '';
+      document.getElementById('loginError').textContent = err.message;
+    });
+  }
+
+  function loadScores() {
+    showTbodyMessage('Loading...', 'loading');
+
+    fetch(API_BASE + '/admin/leaderboard', {
+      headers: { 'Authorization': 'Bearer ' + adminPassword }
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed to load');
+      return res.json();
+    })
+    .then(function(data) {
+      renderScores(data);
+    })
+    .catch(function(err) {
+      showTbodyMessage(err.message, 'error');
+    });
+  }
+
+  function formatNumber(n) {
+    if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  function formatDate(ts) {
+    if (!ts) return '-';
+    var d = new Date(ts);
+    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  }
+
+  function renderScores(scores) {
+    var tbody = clearTbody();
+    var countEl = document.getElementById('entryCount');
+    countEl.textContent = scores.length + ' entries';
+
+    if (!scores || scores.length === 0) {
+      showTbodyMessage('No leaderboard entries.', 'empty-state');
+      return;
+    }
+
+    for (var i = 0; i < scores.length; i++) {
+      var row = document.createElement('tr');
+
+      var rankTd = document.createElement('td');
+      rankTd.className = 'rank-cell';
+      rankTd.textContent = '#' + (i + 1);
+      row.appendChild(rankTd);
+
+      var nameTd = document.createElement('td');
+      nameTd.className = 'name-cell';
+      nameTd.textContent = scores[i].name;
+      row.appendChild(nameTd);
+
+      var scoreTd = document.createElement('td');
+      scoreTd.className = 'score-cell';
+      scoreTd.textContent = formatNumber(scores[i].score);
+      scoreTd.title = scores[i].score.toLocaleString();
+      row.appendChild(scoreTd);
+
+      var dateTd = document.createElement('td');
+      dateTd.className = 'date-cell';
+      dateTd.textContent = formatDate(scores[i].date);
+      row.appendChild(dateTd);
+
+      var actionTd = document.createElement('td');
+      actionTd.className = 'action-cell';
+      var btn = document.createElement('button');
+      btn.className = 'delete-btn';
+      btn.textContent = 'Delete';
+      btn.setAttribute('data-name', scores[i].name);
+      btn.addEventListener('click', function() {
+        var name = this.getAttribute('data-name');
+        deleteScore(name);
+      });
+      actionTd.appendChild(btn);
+      row.appendChild(actionTd);
+
+      tbody.appendChild(row);
+    }
+  }
+
+  function deleteScore(name) {
+    if (!confirm('Delete "' + name + '" from the leaderboard?')) return;
+
+    fetch(API_BASE + '/admin/delete-score', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + adminPassword,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name: name })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed to delete');
+      return res.json();
+    })
+    .then(function() {
+      loadScores();
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+    });
+  }
+
+  // Show loading state on init
+  showTbodyMessage('Enter password to view leaderboard.', 'empty-state');
+
+  document.getElementById('resetScoresBtn').addEventListener('click', function() {
+    if (!confirm('RESET ALL SCORES? This cannot be undone. Chat, photos, credits, and raised amount will NOT be affected.')) return;
+    if (!confirm('Are you REALLY sure? Everyone goes back to 0 coins.')) return;
+    var statusEl = document.getElementById('resetStatus');
+    statusEl.textContent = 'Resetting...';
+    statusEl.style.color = '#ffd700';
+    fetch(API_BASE + '/admin/reset-scores', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + adminPassword },
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    })
+    .then(function() {
+      statusEl.textContent = 'All scores have been reset!';
+      statusEl.style.color = '#4ade80';
+      loadScores();
+    })
+    .catch(function(err) {
+      statusEl.textContent = 'Error: ' + err.message;
+      statusEl.style.color = '#ff6b6b';
+    });
+  });
+
+  // ===== PHOTO MANAGEMENT =====
+  document.getElementById('uploadPhotoBtn').addEventListener('click', function() {
+    var fileInput = document.getElementById('photoFileInput');
+    var file = fileInput.files[0];
+    if (!file) { alert('Select a photo first.'); return; }
+
+    var statusEl = document.getElementById('uploadStatus');
+    statusEl.textContent = 'Uploading...';
+
+    var formData = new FormData();
+    formData.append('photo', file);
+
+    fetch(API_BASE + '/admin/upload-photo', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + adminPassword },
+      body: formData,
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Upload failed');
+      return res.json();
+    })
+    .then(function(data) {
+      statusEl.textContent = 'Uploaded!';
+      fileInput.value = '';
+      loadPhotos();
+      setTimeout(function() { statusEl.textContent = ''; }, 3000);
+    })
+    .catch(function(err) {
+      statusEl.textContent = 'Error: ' + err.message;
+      statusEl.style.color = '#ff6b6b';
+    });
+  });
+
+  function loadPhotos() {
+    var grid = document.getElementById('photoGrid');
+    grid.textContent = '';
+
+    fetch(API_BASE + '/photos')
+    .then(function(res) { return res.json(); })
+    .then(function(photos) {
+      if (photos.length === 0) {
+        grid.textContent = 'No photos uploaded yet.';
+        grid.style.color = '#888';
+        grid.style.textAlign = 'center';
+        grid.style.padding = '20px';
+        return;
+      }
+      grid.style.color = '';
+      grid.style.textAlign = '';
+      grid.style.padding = '';
+
+      for (var i = 0; i < photos.length; i++) {
+        (function(photo) {
+          var card = document.createElement('div');
+          card.style.cssText = 'position:relative;background:rgba(0,0,0,0.4);border:1px solid #555;border-radius:10px;overflow:hidden;';
+
+          var img = document.createElement('img');
+          img.src = API_BASE + photo.url;
+          img.style.cssText = 'width:100%;height:120px;object-fit:cover;display:block;';
+          card.appendChild(img);
+
+          var info = document.createElement('div');
+          info.style.cssText = 'padding:6px 8px;font-size:11px;color:#aaa;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+          info.textContent = photo.key;
+          card.appendChild(info);
+
+          // Display name input
+          var nameWrap = document.createElement('div');
+          nameWrap.style.cssText = 'padding:4px 8px 8px;';
+
+          var nameInput = document.createElement('input');
+          nameInput.type = 'text';
+          nameInput.maxLength = 30;
+          nameInput.placeholder = 'Luke';
+          nameInput.value = photo.displayName || '';
+          nameInput.style.cssText = 'width:100%;padding:4px 6px;border:1px solid #555;border-radius:4px;background:rgba(0,0,0,0.5);color:#ffd700;font-family:Fredoka One,cursive;font-size:12px;outline:none;';
+
+          var savedMsg = document.createElement('span');
+          savedMsg.style.cssText = 'font-size:10px;color:#4ade80;margin-left:4px;display:none;';
+          savedMsg.textContent = 'Saved!';
+
+          function savePhotoName() {
+            var val = nameInput.value.trim();
+            fetch(API_BASE + '/admin/set-photo-name', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + adminPassword,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ key: photo.key, displayName: val }),
+            })
+            .then(function(res) {
+              if (!res.ok) throw new Error('Save failed');
+              savedMsg.style.display = 'inline';
+              setTimeout(function() { savedMsg.style.display = 'none'; }, 2000);
+            })
+            .catch(function(err) { alert('Error saving name: ' + err.message); });
+          }
+
+          nameInput.addEventListener('blur', savePhotoName);
+          nameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              nameInput.blur();
+            }
+          });
+
+          nameWrap.appendChild(nameInput);
+          nameWrap.appendChild(savedMsg);
+          card.appendChild(nameWrap);
+
+          var delBtn = document.createElement('button');
+          delBtn.className = 'delete-btn';
+          delBtn.textContent = 'X';
+          delBtn.style.cssText = 'position:absolute;top:4px;right:4px;padding:4px 8px;font-size:10px;border-radius:6px;';
+          delBtn.addEventListener('click', function() {
+            if (!confirm('Delete this photo?')) return;
+            fetch(API_BASE + '/admin/delete-photo', {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + adminPassword,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ key: photo.key }),
+            })
+            .then(function(res) {
+              if (!res.ok) throw new Error('Delete failed');
+              loadPhotos();
+            })
+            .catch(function(err) { alert('Error: ' + err.message); });
+          });
+          card.appendChild(delBtn);
+
+          grid.appendChild(card);
+        })(photos[i]);
+      }
+    })
+    .catch(function() {
+      grid.textContent = 'Failed to load photos.';
+      grid.style.color = '#ff6b6b';
+    });
+  }
+</script>
+
+</body>
+</html>

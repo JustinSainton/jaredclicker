@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jared Clicker - Click the Coin!</title>
   <link rel="icon" type="image/png" href="jared-coin.png">
+  <script src="https://js.stripe.com/v3/"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Press+Start+2P&display=swap');
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     body {
       font-family: 'Fredoka One', cursive;
@@ -17,6 +18,11 @@
       min-height: 100vh;
       overflow-x: hidden;
       user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -ms-touch-action: manipulation;
     }
 
     /* Coin counter - top right */
@@ -35,10 +41,12 @@
       box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
     }
 
+    .cc-left, .cc-right { display: none; }
+    .cc-center { display: flex; align-items: center; gap: 12px; }
+
     .coin-counter img {
       width: 40px;
       height: 40px;
-      border-radius: 50%;
     }
 
     .coin-counter .count {
@@ -58,6 +66,7 @@
     .header {
       text-align: center;
       padding: 20px 20px 0;
+      position: relative;
     }
 
     .header h1 {
@@ -70,6 +79,18 @@
       font-size: 16px;
       color: #daa520;
       margin-top: 4px;
+    }
+
+    /* Total raised display */
+    .total-raised {
+      font-size: 11px;
+      color: #4ade80;
+      font-family: 'Press Start 2P', monospace;
+      text-shadow: 1px 1px 0 #065f46;
+    }
+
+    @media (max-width: 900px) {
+      /* total-raised is inside cc-right on mobile */
     }
 
     /* Main layout */
@@ -103,6 +124,8 @@
       position: relative;
       transition: transform 0.1s;
       filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.6));
+      touch-action: manipulation;
+      -webkit-touch-callout: none;
     }
 
     .coin-button:hover {
@@ -119,6 +142,18 @@
       height: 100%;
       object-fit: contain;
       pointer-events: none;
+      border-radius: 50%;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+    }
+
+    .coin-button:focus {
+      outline: none;
+    }
+
+    .coin-button::selection,
+    .coin-button img::selection {
+      background: transparent;
     }
 
     .click-info {
@@ -294,6 +329,84 @@
       font-family: 'Press Start 2P', monospace;
     }
 
+    /* Inline name entry under coin */
+    .inline-name {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      max-width: 320px;
+      width: 100%;
+    }
+
+    .inline-name input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid #ffd700;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.6);
+      color: #ffd700;
+      font-family: 'Fredoka One', cursive;
+      font-size: 15px;
+      outline: none;
+      text-align: center;
+    }
+
+    .inline-name input::placeholder {
+      color: #b8860b;
+      font-size: 13px;
+    }
+
+    .inline-name input:focus {
+      border-color: #ffd700;
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+    }
+
+    .inline-name button {
+      padding: 10px 18px;
+      border: 2px solid #ffd700;
+      border-radius: 10px;
+      background: rgba(255, 215, 0, 0.2);
+      color: #ffd700;
+      font-family: 'Fredoka One', cursive;
+      font-size: 15px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .inline-name button:hover {
+      background: rgba(255, 215, 0, 0.4);
+    }
+
+    .inline-name.saved input {
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+
+    .inline-name.saved button {
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+
+    .hide-luke-overlay-btn {
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      border: 2px solid #a855f7;
+      border-radius: 12px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 1s both;
+    }
+
+    .hide-luke-overlay-btn:hover {
+      background: linear-gradient(135deg, #6d28d9, #9333ea);
+      box-shadow: 0 0 30px rgba(168, 85, 247, 0.7);
+      transform: scale(1.05);
+    }
+
     .photo-overlay .dismiss {
       font-size: 14px;
       color: #888;
@@ -337,6 +450,7 @@
       text-align: center;
       transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+      max-width: 90vw;
     }
 
     .achievement-toast.show {
@@ -354,6 +468,25 @@
       font-size: 22px;
       color: #ffd700;
       margin-top: 4px;
+    }
+
+    @media (max-width: 900px) {
+      .achievement-toast {
+        bottom: auto;
+        top: 60px;
+        transform: translateX(-50%) translateY(-100px);
+        padding: 10px 20px;
+      }
+      .achievement-toast.show {
+        transform: translateX(-50%) translateY(0);
+      }
+      .achievement-toast .ach-name {
+        font-size: 16px;
+      }
+      .achievement-toast .ach-title {
+        font-size: 10px;
+        letter-spacing: 2px;
+      }
     }
 
     /* Coin rain animation */
@@ -377,8 +510,29 @@
       .shop, .stats { min-width: unset; width: 90vw; max-width: 420px; }
       .coin-button { width: 220px; height: 220px; }
       .header h1 { font-size: 32px; }
-      .coin-counter { top: 10px; right: 10px; padding: 8px 16px; }
+      .header { padding-top: 70px; }
+      .coin-counter {
+        top: 0; left: 0; right: 0;
+        border-radius: 0;
+        border-top: none; border-left: none; border-right: none;
+        justify-content: space-between;
+        padding: 8px 12px;
+        gap: 8px;
+      }
+      .cc-left, .cc-right { display: flex; align-items: center; min-width: 60px; }
+      .cc-left { justify-content: flex-start; }
+      .cc-right {
+        justify-content: flex-end;
+        font-size: 10px;
+        color: #4ade80;
+        font-family: 'Press Start 2P', monospace;
+        text-shadow: 1px 1px 0 #065f46;
+        text-align: right;
+        line-height: 1.3;
+      }
+      .cc-center { flex: 1; justify-content: center; }
       .coin-counter .count { font-size: 18px; }
+      .coin-counter img { width: 32px; height: 32px; }
     }
 
     /* Scrollbar */
@@ -405,23 +559,957 @@
       width: 0%;
     }
 
-    .smelly-label {
-      text-align: center;
-      font-size: 12px;
-      color: #daa520;
-      margin-top: 4px;
+    .upgrade-type-badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'Press Start 2P', monospace;
+      margin-left: 8px;
+      vertical-align: middle;
     }
+
+    .upgrade-type-badge.click-type {
+      background: rgba(255, 215, 0, 0.2);
+      color: #ffd700;
+      border: 1px solid #ffd700;
+    }
+
+    .upgrade-type-badge.auto-type {
+      background: rgba(74, 222, 128, 0.2);
+      color: #4ade80;
+      border: 1px solid #4ade80;
+    }
+
+    /* Live visitors */
+    .live-visitors {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(0,0,0,0.7);
+      border: 2px solid #4ade80;
+      border-radius: 12px;
+      padding: 10px 16px;
+      z-index: 100;
+      font-size: 13px;
+      color: #4ade80;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 15px rgba(74, 222, 128, 0.2);
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .live-countries {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
+    @media (max-width: 900px) {
+      .live-visitors {
+        bottom: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+    }
+
+    /* Hide Luke button */
+    .hide-luke-btn {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      border: 2px solid #a855f7;
+      border-radius: 12px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.2s;
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+    }
+
+    .hide-luke-btn:hover {
+      background: linear-gradient(135deg, #6d28d9, #9333ea);
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .hide-luke-btn .hide-luke-sub {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    /* Leaderboard */
+    .leaderboard {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      padding: 24px;
+      min-width: 280px;
+      max-width: 350px;
+      margin-top: 20px;
+      margin-bottom: 16px;
+    }
+
+    .leaderboard h2 {
+      text-align: center;
+      font-size: 24px;
+      margin-bottom: 12px;
+      text-shadow: 2px 2px 0 #b8860b;
+    }
+
+    .lb-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+      font-size: 13px;
+    }
+
+    .lb-rank {
+      color: #ffd700;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      min-width: 28px;
+    }
+
+    .lb-name {
+      color: #daa520;
+      flex: 1;
+      margin: 0 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .lb-score {
+      color: #ffd700;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+    }
+
+    .lb-submit {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .lb-submit input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid #555;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.5);
+      color: #ffd700;
+      font-family: 'Fredoka One', cursive;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .lb-submit input:focus {
+      border-color: #ffd700;
+    }
+
+    .lb-submit button {
+      padding: 8px 16px;
+      border: 2px solid #ffd700;
+      border-radius: 8px;
+      background: rgba(255, 215, 0, 0.2);
+      color: #ffd700;
+      font-family: 'Fredoka One', cursive;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .lb-submit button:hover {
+      background: rgba(255, 215, 0, 0.4);
+    }
+
+    .lb-row-tappable {
+      cursor: pointer;
+      transition: background 0.15s;
+      border-radius: 6px;
+      padding: 6px 4px;
+    }
+
+    .lb-row-tappable:hover, .lb-row-tappable:active {
+      background: rgba(255, 215, 0, 0.1);
+    }
+
+    .lb-detail-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 400;
+      justify-content: center;
+      align-items: flex-start;
+      overflow-y: auto;
+      padding: 20px 0;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .lb-detail-overlay.active {
+      display: flex;
+    }
+
+    .lb-detail {
+      background: linear-gradient(135deg, #2a2a4a, #1e1e3a);
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin: auto;
+      max-width: 340px;
+      width: 90vw;
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.4);
+      animation: popIn 0.3s ease-out;
+    }
+
+    .lb-detail-name {
+      font-size: 22px;
+      color: #ffd700;
+      margin-bottom: 2px;
+      text-shadow: 2px 2px 0 #b8860b;
+    }
+
+    .lb-detail-level {
+      font-size: 14px;
+      color: #4ade80;
+      font-style: italic;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    .lb-detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.08);
+    }
+
+    .lb-detail-row:last-of-type {
+      border-bottom: none;
+    }
+
+    .lb-detail-label {
+      color: #daa520;
+    }
+
+    .lb-detail-val {
+      color: #ffd700;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+    }
+
+    .lb-detail-close {
+      display: block;
+      margin-top: 16px;
+      width: 100%;
+      padding: 10px;
+      background: rgba(255, 215, 0, 0.15);
+      border: 1px solid #ffd700;
+      border-radius: 8px;
+      color: #ffd700;
+      font-family: 'Fredoka One', cursive;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .lb-detail-close:hover {
+      background: rgba(255, 215, 0, 0.3);
+    }
+
+    /* Stripe payment modal */
+    .payment-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 600;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .payment-modal.active { display: flex; }
+
+    .payment-card {
+      background: linear-gradient(135deg, #1e1e3a, #2a2a4a);
+      border: 2px solid #a855f7;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90vw;
+      text-align: center;
+      box-shadow: 0 0 40px rgba(168, 85, 247, 0.4);
+    }
+
+    .payment-card h3 {
+      color: #a855f7;
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .payment-card .price {
+      color: #ffd700;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 18px;
+      margin-bottom: 16px;
+    }
+
+    .payment-card .payment-desc {
+      color: #aaa;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    #payment-element {
+      min-height: 100px;
+      margin-bottom: 16px;
+    }
+
+    .pay-btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pay-btn:hover { background: linear-gradient(135deg, #6d28d9, #9333ea); }
+    .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .payment-close {
+      margin-top: 12px;
+      color: #888;
+      font-size: 13px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: 'Fredoka One', cursive;
+    }
+
+    .payment-status {
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    /* Sabotage notification overlay */
+    .sabotage-notify-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(80, 0, 0, 0.85);
+      z-index: 550;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 20px;
+      animation: fadeIn 0.3s;
+    }
+
+    .sabotage-notify-overlay.active {
+      display: flex;
+    }
+
+    .sabotage-notify-text {
+      font-size: 28px;
+      color: #ff4444;
+      text-shadow: 2px 2px 0 #990000, 0 0 30px rgba(255, 68, 68, 0.6);
+      text-align: center;
+      padding: 0 20px;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .sabotage-notify-sub {
+      font-size: 18px;
+      color: #ff8888;
+      text-align: center;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s both;
+    }
+
+    .sabotage-notify-dismiss {
+      font-size: 14px;
+      color: #cc6666;
+      margin-top: 10px;
+      cursor: pointer;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.4s both;
+    }
+
+    /* Red tint on coin when sabotaged */
+    .coin-button.sabotaged {
+      filter: drop-shadow(0 0 30px rgba(255, 0, 0, 0.8)) hue-rotate(-30deg) saturate(1.5);
+    }
+
+    .coin-button.sabotaged:hover {
+      filter: drop-shadow(0 0 50px rgba(255, 0, 0, 0.9)) hue-rotate(-30deg) saturate(1.5);
+    }
+
+    /* Sabotage banner */
+    .sabotage-banner {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #7f1d1d, #991b1b);
+      border: 2px solid #ef4444;
+      border-radius: 12px;
+      padding: 8px 20px;
+      z-index: 150;
+      text-align: center;
+      color: #ff8888;
+      font-size: 13px;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+      animation: pulse 2s infinite;
+      white-space: nowrap;
+    }
+
+    .sabotage-banner.active {
+      display: block;
+    }
+
+    @media (max-width: 900px) {
+      .sabotage-banner {
+        top: 48px;
+        font-size: 11px;
+        padding: 6px 14px;
+        max-width: 95vw;
+        white-space: normal;
+        text-align: center;
+      }
+    }
+
+    /* SLOWED badge on leaderboard */
+    .lb-slowed-badge {
+      display: inline-block;
+      font-size: 8px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      border: 1px solid #ef4444;
+      font-family: 'Press Start 2P', monospace;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* Sabotage button in player detail */
+    .sabotage-btn {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      padding: 12px;
+      background: linear-gradient(135deg, #991b1b, #dc2626);
+      border: 2px solid #ef4444;
+      border-radius: 10px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: 15px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    }
+
+    .sabotage-btn:hover {
+      background: linear-gradient(135deg, #b91c1c, #ef4444);
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .sabotage-btn .sabotage-btn-sub {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    /* Chat panel */
+    .chat-panel {
+      position: fixed;
+      bottom: 60px;
+      left: 16px;
+      z-index: 100;
+    }
+
+    .chat-toggle {
+      background: rgba(0,0,0,0.8);
+      border: 2px solid #ffd700;
+      border-radius: 20px;
+      padding: 8px 16px;
+      color: #ffd700;
+      font-family: 'Fredoka One', cursive;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+      position: relative;
+    }
+
+    .chat-toggle:hover {
+      background: rgba(255, 215, 0, 0.15);
+    }
+
+    .chat-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #ef4444;
+      color: white;
+      border-radius: 50%;
+      min-width: 18px;
+      height: 18px;
+      font-size: 11px;
+      font-family: 'Press Start 2P', monospace;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+    }
+
+    .chat-badge.hidden {
+      display: none;
+    }
+
+    /* Chat toast notification */
+    .chat-toast {
+      position: fixed;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: rgba(0,0,0,0.9);
+      border: 2px solid #ffd700;
+      border-radius: 10px;
+      padding: 8px 16px;
+      z-index: 250;
+      max-width: 90vw;
+      font-family: 'Fredoka One', cursive;
+      font-size: 13px;
+      color: #ddd;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .chat-toast .chat-toast-name {
+      color: #ffd700;
+      font-weight: bold;
+    }
+
+    .chat-toast .chat-toast-system {
+      color: #4ade80;
+      font-weight: bold;
+    }
+
+    .chat-box {
+      display: none;
+      width: 300px;
+      background: rgba(0,0,0,0.92);
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      overflow: hidden;
+      flex-direction: column;
+      margin-bottom: 8px;
+    }
+
+    .chat-box.active {
+      display: flex;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      max-height: 200px;
+      min-height: 80px;
+      font-size: 12px;
+      color: #ddd;
+      font-family: 'Fredoka One', cursive;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background: #ffd700; border-radius: 2px; }
+
+    .chat-msg {
+      margin-bottom: 3px;
+      word-wrap: break-word;
+      line-height: 1.3;
+    }
+
+    .chat-msg-name {
+      color: #ffd700;
+      font-weight: bold;
+    }
+
+    .chat-msg-system .chat-msg-name {
+      color: #4ade80;
+    }
+
+    .chat-msg-time {
+      color: #555;
+      font-size: 9px;
+      margin-left: 4px;
+    }
+
+    .chat-input-area {
+      display: flex;
+      border-top: 1px solid rgba(255, 215, 0, 0.2);
+      padding: 6px;
+      gap: 4px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #444;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.6);
+      color: #ffd700;
+      font-family: 'Fredoka One', cursive;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .chat-input::placeholder { color: #555; }
+    .chat-input:focus { border-color: #ffd700; }
+
+    .chat-send {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #ffd700;
+      color: #1a1a2e;
+      font-family: 'Fredoka One', cursive;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .chat-send:hover { background: #ffed4a; }
+
+    @media (max-width: 900px) {
+      .chat-panel {
+        position: fixed;
+        bottom: auto;
+        top: 52px;
+        left: 0;
+        right: 0;
+        transform: none;
+        z-index: 99;
+      }
+      body.has-banner .chat-panel {
+        top: 88px;
+      }
+      .chat-toggle {
+        display: none; /* Hidden on mobile - button is in coin counter bar */
+      }
+      .chat-box {
+        width: 100%;
+        max-height: 200px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+      .chat-messages {
+        max-height: 140px;
+      }
+    }
+    /* Donation banner */
+    .donation-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: linear-gradient(90deg, #7c3aed, #a855f7);
+      color: white;
+      text-align: center;
+      padding: 10px 44px;
+      font-size: 13px;
+      z-index: 1000;
+      text-align: center;
+      line-height: 1.4;
+      font-family: 'Fredoka One', cursive;
+    }
+
+    .donation-banner .close-banner {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      font-family: sans-serif;
+      opacity: 0.8;
+    }
+
+    .donation-banner .close-banner:hover { opacity: 1; }
+
+    body.has-banner .coin-counter { top: 40px; }
+    body.has-banner .header { padding-top: 60px; }
+
+    @media (max-width: 900px) {
+      body.has-banner .coin-counter { top: 36px; }
+      body.has-banner .header { padding-top: 106px; }
+    }
+
+    /* Campaign section */
+    .campaigns-section {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #34d399;
+      border-radius: 16px;
+      padding: 20px;
+      min-width: 280px;
+      margin-bottom: 100px;
+      max-width: 350px;
+      margin-top: 12px;
+    }
+
+    .campaigns-section h2 {
+      text-align: center;
+      font-size: 20px;
+      margin-bottom: 12px;
+      color: #34d399;
+      text-shadow: 2px 2px 0 #064e3b;
+    }
+
+    .campaign-card {
+      background: linear-gradient(135deg, #064e3b, #065f46);
+      border: 1px solid #34d399;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .campaign-card.completed {
+      opacity: 0.7;
+      border-color: #4ade80;
+    }
+
+    .campaign-target {
+      font-size: 15px;
+      color: #34d399;
+      margin-bottom: 4px;
+    }
+
+    .campaign-pct {
+      font-size: 11px;
+      color: #a7f3d0;
+      margin-bottom: 8px;
+    }
+
+    .campaign-progress-bar {
+      width: 100%;
+      height: 16px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid #34d399;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .campaign-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #34d399, #ffd700);
+      border-radius: 7px;
+      transition: width 0.3s;
+    }
+
+    .campaign-progress-text {
+      font-size: 10px;
+      font-family: 'Press Start 2P', monospace;
+      color: #ffd700;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    .campaign-contributors {
+      font-size: 11px;
+      color: #a7f3d0;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .campaign-chip-btn {
+      width: 100%;
+      padding: 8px;
+      background: linear-gradient(135deg, #047857, #059669);
+      border: 2px solid #34d399;
+      border-radius: 8px;
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .campaign-chip-btn:hover {
+      background: linear-gradient(135deg, #059669, #10b981);
+      box-shadow: 0 0 15px rgba(52, 211, 153, 0.4);
+    }
+
+    .campaign-chip-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .campaign-completed-badge {
+      text-align: center;
+      color: #4ade80;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      padding: 6px;
+    }
+
+    .campaign-empty {
+      text-align: center;
+      color: #666;
+      font-size: 13px;
+      padding: 12px 0;
+    }
+
+    /* Campaign contribution amount picker */
+    .campaign-amount-picker {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .campaign-amount-btn {
+      padding: 6px 12px;
+      background: rgba(52, 211, 153, 0.2);
+      border: 1px solid #34d399;
+      border-radius: 6px;
+      color: #34d399;
+      font-family: 'Fredoka One', cursive;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .campaign-amount-btn:hover {
+      background: rgba(52, 211, 153, 0.4);
+    }
+
+    .campaign-amount-btn.selected {
+      background: #34d399;
+      color: #064e3b;
+    }
+
+    /* Account modal */
+    .account-modal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      z-index: 2000; align-items: center; justify-content: center;
+    }
+    .account-modal.active { display: flex; }
+    .account-card {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      border: 2px solid #ffd700; border-radius: 20px; padding: 28px 24px;
+      width: min(380px, 92vw); max-height: 90vh; overflow-y: auto;
+      position: relative;
+    }
+    .account-card h3 { color: #ffd700; font-size: 1.3em; margin-bottom: 16px; text-align: center; }
+    .account-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .account-tab {
+      flex: 1; padding: 8px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 10px; color: #ffd700; cursor: pointer; font-family: 'Fredoka One', cursive;
+      font-size: 0.95em; text-align: center;
+    }
+    .account-tab.active { background: #ffd700; color: #1a1a2e; }
+    .account-panel { display: none; }
+    .account-panel.active { display: block; }
+    .account-input {
+      width: 100%; padding: 12px 14px; border-radius: 10px; border: 1.5px solid rgba(255,215,0,0.4);
+      background: rgba(255,255,255,0.07); color: #fff; font-family: 'Fredoka One', cursive;
+      font-size: 1em; margin-bottom: 10px; box-sizing: border-box;
+    }
+    .account-input::placeholder { color: rgba(255,255,255,0.4); }
+    .account-input:focus { outline: none; border-color: #ffd700; }
+    .account-btn {
+      width: 100%; padding: 13px; background: #ffd700; color: #1a1a2e; border: none;
+      border-radius: 12px; font-family: 'Fredoka One', cursive; font-size: 1.1em;
+      cursor: pointer; margin-top: 4px;
+    }
+    .account-btn:active { opacity: 0.85; }
+    .account-btn.danger { background: #ef4444; color: #fff; margin-top: 12px; }
+    .account-btn.secondary { background: rgba(255,215,0,0.15); color: #ffd700; border: 1px solid rgba(255,215,0,0.4); }
+    .account-error { color: #f87171; font-size: 0.9em; margin-top: 6px; text-align: center; min-height: 20px; }
+    .account-success { color: #34d399; font-size: 0.95em; margin-top: 6px; text-align: center; }
+    .account-info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,215,0,0.15); color: #fff; font-size: 0.95em; }
+    .account-info-row span:first-child { color: rgba(255,215,0,0.7); }
+    .account-close-btn {
+      position: absolute; top: 12px; right: 16px; background: none; border: none;
+      color: rgba(255,215,0,0.6); font-size: 1.4em; cursor: pointer; line-height: 1;
+    }
+    .lb-account-btn {
+      display: block; width: 100%; margin-top: 10px; padding: 10px;
+      background: rgba(255,215,0,0.1); border: 1.5px dashed rgba(255,215,0,0.4);
+      border-radius: 10px; color: #ffd700; font-family: 'Fredoka One', cursive;
+      font-size: 0.9em; cursor: pointer; text-align: center;
+    }
+    .lb-account-btn.logged-in { background: rgba(52,211,153,0.15); border-color: #34d399; color: #34d399; }
   </style>
 </head>
-<body>
+<body class="has-banner">
 
-  <!-- Coin Counter -->
-  <div class="coin-counter">
-    <img src="jared-coin.png" alt="coin">
-    <div>
-      <div class="count" id="coinCount">0</div>
-      <div class="per-sec" id="perSec">0 per sec</div>
+  <!-- Donation Banner -->
+  <div class="donation-banner" id="donationBanner">
+    All proceeds go to the&nbsp;<a href="https://rockpoint.churchcenter.com/giving/to/building?open-in-church-center-modal=true" target="_blank" rel="noopener" style="color:white;text-decoration:underline;">RockPoint Church building fund</a>.
+    <button class="close-banner" id="closeBanner">&times;</button>
+  </div>
+
+  <!-- Coin Counter Bar -->
+  <div class="coin-counter" id="coinCounterBar">
+    <div class="cc-left" id="ccChatSlot"></div>
+    <div class="cc-center">
+      <img src="jared-coin.png" alt="coin">
+      <div>
+        <div class="count" id="coinCount">0</div>
+        <div class="per-sec" id="perSec">0 per sec</div>
+      </div>
     </div>
+    <div class="cc-right" id="totalRaised"></div>
   </div>
 
   <!-- Header -->
@@ -453,17 +1541,20 @@
         <span class="stat-value" id="statClicks">0</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Jared Sightings</span>
+        <span class="stat-label">Luke Sightings</span>
         <span class="stat-value" id="statSightings">0</span>
       </div>
       <div class="stat-row">
-        <span class="stat-label">Smelly Level</span>
-        <span class="stat-value" id="statSmelly">Mildly Funky</span>
+        <span class="stat-label">Sabotage Credits</span>
+        <span class="stat-value" id="statCredits">0</span>
       </div>
-      <div class="smelly-meter">
-        <div class="smelly-meter-fill" id="smellyFill"></div>
+      <div style="margin-top: 12px; text-align: center;">
+        <div class="stat-label" style="margin-bottom: 4px;">Smelly Level</div>
+        <div class="stat-value" id="statSmelly" style="font-size: 13px; display: block; margin-bottom: 8px;">Mildly Funky</div>
+        <div class="smelly-meter">
+          <div class="smelly-meter-fill" id="smellyFill"></div>
+        </div>
       </div>
-      <div class="smelly-label" id="smellyLabel">Mildly Funky</div>
     </div>
 
     <!-- Click Area -->
@@ -472,21 +1563,152 @@
         <img src="jared-coin.png" alt="Jared Coin">
       </button>
       <div class="click-info" id="clickInfo">Click the coin! (+1 per click)</div>
+      <!-- Inline name entry under the coin -->
+      <div class="inline-name" id="inlineNameArea">
+        <input type="text" id="inlineNameInput" placeholder="Enter your name for the leaderboard" maxlength="20">
+        <button id="inlineNameBtn">Save</button>
+      </div>
     </div>
 
     <!-- Upgrade Shop -->
     <div class="shop" id="shop">
       <h2>Upgrades</h2>
       <div id="upgradeList"></div>
+      <h2 style="margin-top: 20px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Power-Ups</h2>
+      <button class="hide-luke-btn" id="buyCreditsBtn" style="background: linear-gradient(135deg, #991b1b, #dc2626); border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);">
+        5 Sabotage Credits
+        <div class="hide-luke-sub">$3.99 - slow down your rivals (15 min each)</div>
+      </button>
+      <button class="hide-luke-btn" id="hideLukeBtn">
+        Hide Luke for 1 Hour
+        <div class="hide-luke-sub">$1.99 - no more surprise selfies</div>
+      </button>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="leaderboard" id="leaderboardPanel">
+      <h2>Leaderboard</h2>
+      <div class="lb-submit">
+        <input type="text" id="lbNameInput" placeholder="Your name..." maxlength="20">
+        <button id="lbSubmitBtn">Submit</button>
+      </div>
+      <button class="lb-account-btn" id="lbAccountBtn">🔐 Save progress across devices</button>
+      <div id="leaderboardList" style="margin-top: 12px;"></div>
+    </div>
+
+    <!-- Campaigns Section -->
+    <div class="campaigns-section" id="campaignsSection" style="display:none;">
+      <h2>Active Campaigns</h2>
+      <div id="campaignsList"></div>
     </div>
   </div>
 
   <!-- Random Photo Popup -->
   <div class="photo-overlay" id="photoOverlay">
-    <div class="photo-text" id="photoText">JARED APPEARED!</div>
-    <img src="random.png" alt="Jared">
+    <div class="photo-text" id="photoText">LUKE APPEARED!</div>
+    <img id="photoImage" src="random.png" alt="Luke">
     <div class="photo-bonus" id="photoBonus">+50 bonus coins!</div>
-    <div class="dismiss">click anywhere to dismiss</div>
+    <button class="hide-luke-overlay-btn" id="hideLukeOverlayBtn">Hide Luke for 1 Hour - $1.99</button>
+    <div class="dismiss" id="dismissText">admire Jared for a moment...</div>
+  </div>
+
+  <!-- Player Detail Overlay -->
+  <div class="lb-detail-overlay" id="playerDetailOverlay">
+    <div class="lb-detail" id="playerDetailCard"></div>
+  </div>
+
+  <!-- Account Modal -->
+  <div class="account-modal" id="accountModal">
+    <div class="account-card">
+      <button class="account-close-btn" id="accountCloseBtn">✕</button>
+      <h3>💾 Save Your Progress</h3>
+
+      <!-- Logged-in view -->
+      <div class="account-panel active" id="accountPanelLoggedIn" style="display:none;">
+        <div id="accountInfoRows"></div>
+        <button class="account-btn secondary" id="accountMergeToggleBtn" style="margin-top:14px;">Merge Duplicate Account</button>
+        <div id="accountMergeSection" style="display:none; margin-top:12px;">
+          <input class="account-input" id="accountMergeNameInput" placeholder="Duplicate account name..." maxlength="20">
+          <button class="account-btn secondary" id="accountMergeSubmitBtn">Merge (keeps highest score)</button>
+          <div class="account-error" id="accountMergeError"></div>
+          <div class="account-success" id="accountMergeSuccess"></div>
+        </div>
+        <button class="account-btn danger" id="accountLogoutBtn">Log Out This Device</button>
+      </div>
+
+      <!-- Logged-out view with tabs -->
+      <div id="accountPanelAuth">
+        <div class="account-tabs">
+          <div class="account-tab active" id="tabRegister" onclick="switchAccountTab('register')">Create Account</div>
+          <div class="account-tab" id="tabLogin" onclick="switchAccountTab('login')">Log In</div>
+        </div>
+
+        <div class="account-panel active" id="accountPanelRegister">
+          <input class="account-input" id="registerNameInput" placeholder="Display name (e.g. Jack 2Easy)" maxlength="20">
+          <input class="account-input" id="registerPinInput" type="password" placeholder="PIN (4+ digits)" maxlength="20">
+          <input class="account-input" id="registerPinConfirmInput" type="password" placeholder="Confirm PIN" maxlength="20">
+          <button class="account-btn" id="registerSubmitBtn">Create Account</button>
+          <div class="account-error" id="registerError"></div>
+        </div>
+
+        <div class="account-panel" id="accountPanelLogin">
+          <input class="account-input" id="loginNameInput" placeholder="Display name" maxlength="20">
+          <input class="account-input" id="loginPinInput" type="password" placeholder="PIN" maxlength="20">
+          <button class="account-btn" id="loginSubmitBtn">Log In</button>
+          <div class="account-error" id="loginError"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div class="payment-modal" id="paymentModal">
+    <div class="payment-card">
+      <h3>Hide Luke for 1 Hour</h3>
+      <div class="price">$1.99</div>
+      <div class="payment-desc">No more surprise selfies. Peace and quiet. For one whole hour.</div>
+      <div id="payment-element"></div>
+      <button class="pay-btn" id="payBtn" disabled>Pay $1.99</button>
+      <div class="payment-status" id="paymentStatus"></div>
+      <button class="payment-close" id="paymentClose">cancel</button>
+    </div>
+  </div>
+
+  <!-- Chat Panel -->
+  <div class="chat-panel" id="chatPanel">
+    <div class="chat-box" id="chatBox">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-area">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." maxlength="200">
+        <button class="chat-send" id="chatSend">Send</button>
+      </div>
+    </div>
+    <button class="chat-toggle" id="chatToggle">Chat<span class="chat-badge hidden" id="chatBadge"></span></button>
+  </div>
+
+  <!-- Live Visitors -->
+  <div class="live-visitors" id="liveVisitors">
+    <div class="live-dot"></div>
+    <div style="flex:1;min-width:0;">
+      <div id="liveCount" style="cursor:pointer;">connecting...</div>
+      <div class="live-countries" id="liveCountries"></div>
+    </div>
+    <button id="liveToggleBtn" style="background:none;border:none;color:#4ade80;cursor:pointer;padding:0 0 0 8px;opacity:0.7;display:flex;align-items:center;"><svg id="liveCaretSvg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+  </div>
+
+  <!-- Sabotage Notification Overlay -->
+  <div class="sabotage-notify-overlay" id="sabotageNotifyOverlay">
+    <div class="sabotage-notify-text" id="sabotageNotifyText">You've been sabotaged!</div>
+    <div class="sabotage-notify-sub" id="sabotageNotifySub">Half speed for 15 minutes!</div>
+    <div class="sabotage-notify-dismiss" id="sabotageNotifyDismiss">tap to dismiss</div>
+  </div>
+
+  <!-- Sabotage Banner (persistent while active) -->
+  <div class="sabotage-banner" id="sabotageBanner"></div>
+
+  <!-- Chat Toast -->
+  <div class="chat-toast" id="chatToast">
+    <span class="chat-toast-name" id="chatToastName"></span><span id="chatToastMsg"></span>
   </div>
 
   <!-- Achievement Toast -->
@@ -496,6 +1718,131 @@
   </div>
 
   <script>
+    // ===== AUDIO SYSTEM =====
+    var soundCoin = new Audio('coin.mp3');
+    var soundFart = new Audio('fart.wav');
+    var soundUpgrade = new Audio('upgrade.wav');
+    var soundAchievement = new Audio('achievement.wav');
+    soundCoin.preload = 'auto';
+    soundFart.preload = 'auto';
+    soundUpgrade.preload = 'auto';
+    soundAchievement.preload = 'auto';
+
+    // Audio pool to avoid cloneNode memory leaks
+    var audioPools = {};
+    function playSound(audio) {
+      try {
+        var src = audio.src;
+        if (!audioPools[src]) {
+          audioPools[src] = [];
+          for (var i = 0; i < 4; i++) {
+            var a = new Audio(src);
+            a.preload = 'auto';
+            audioPools[src].push(a);
+          }
+        }
+        var pool = audioPools[src];
+        for (var j = 0; j < pool.length; j++) {
+          if (pool[j].paused || pool[j].ended) {
+            pool[j].currentTime = 0;
+            pool[j].play();
+            return;
+          }
+        }
+        // All busy - reuse the first one
+        pool[0].currentTime = 0;
+        pool[0].play();
+      } catch(e) {}
+    }
+
+    function playCoinSound() { playSound(soundCoin); }
+    function playFartSound() { playSound(soundFart); }
+    function playUpgradeSound() { playSound(soundUpgrade); }
+    function playAchievementSound() { playSound(soundAchievement); }
+
+    // ===== HAPTICS =====
+    var hapticLabel = null;
+    var hasVibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+
+    function initHaptics() {
+      hapticLabel = document.createElement('label');
+      hapticLabel.setAttribute('for', 'haptic-trigger');
+      hapticLabel.style.cssText = 'position:fixed;top:-200px;left:-200px;opacity:0;pointer-events:none;';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.setAttribute('switch', '');
+      cb.id = 'haptic-trigger';
+      cb.style.cssText = 'position:fixed;top:-200px;left:-200px;opacity:0;pointer-events:none;';
+      hapticLabel.appendChild(cb);
+      document.body.appendChild(hapticLabel);
+    }
+
+    function triggerHaptic() {
+      try { if (hapticLabel) hapticLabel.click(); } catch(e) {}
+      try { if (hasVibrate) navigator.vibrate(15); } catch(e) {}
+    }
+
+    // iOS haptic burst using independent timeouts (not cancellable by other haptics)
+    function iosBurst(count, interval) {
+      for (var i = 0; i < count; i++) {
+        (function(idx) {
+          setTimeout(function() {
+            try { if (hapticLabel) hapticLabel.click(); } catch(e) {}
+          }, idx * interval);
+        })(i);
+      }
+    }
+
+    function hapticLight() {
+      iosBurst(6, 12);
+      if (hasVibrate) navigator.vibrate([20, 10, 20]);
+    }
+    function hapticMedium() {
+      iosBurst(8, 12);
+      if (hasVibrate) navigator.vibrate([25, 10, 25, 10, 25]);
+    }
+    function hapticHeavy() {
+      iosBurst(12, 15);
+      if (hasVibrate) navigator.vibrate([40, 15, 40, 15, 40, 15, 40]);
+    }
+    function hapticSuccess() {
+      iosBurst(8, 18);
+      if (hasVibrate) navigator.vibrate([30, 20, 30, 20, 50]);
+    }
+    function hapticFart() {
+      iosBurst(15, 20);
+      if (hasVibrate) navigator.vibrate([60, 20, 40, 15, 80, 20, 60, 15, 100]);
+    }
+    function hapticTypewriter() {
+      triggerHaptic();
+    }
+    function hapticSabotage() {
+      iosBurst(20, 25);
+      if (hasVibrate) navigator.vibrate([80, 30, 50, 20, 80, 30, 50, 20, 120, 30, 80]);
+    }
+
+    initHaptics();
+
+    // ===== DONATION BANNER =====
+    if (localStorage.getItem('jcBannerDismissed')) {
+      document.getElementById('donationBanner').style.display = 'none';
+      document.body.classList.remove('has-banner');
+    }
+    document.getElementById('closeBanner').addEventListener('click', function() {
+      document.getElementById('donationBanner').style.display = 'none';
+      document.body.classList.remove('has-banner');
+      localStorage.setItem('jcBannerDismissed', '1');
+    });
+
+    // ===== PREVENT iOS ZOOM =====
+    document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+    document.addEventListener('gesturechange', function(e) { e.preventDefault(); });
+    document.addEventListener('gestureend', function(e) { e.preventDefault(); });
+
+    // ===== LUKE HIDDEN STATE =====
+    var lukeHiddenUntil = parseInt(localStorage.getItem('jcLukeHiddenUntil') || '0', 10);
+    var lukeHidden = lukeHiddenUntil > Date.now();
+
     // ===== GAME STATE =====
     let state = {
       coins: 0,
@@ -512,126 +1859,49 @@
 
     // ===== UPGRADES =====
     const upgrades = [
-      {
-        id: 'deodorant',
-        name: "Jared's Deodorant",
-        emoji: '\u{1F9F4}',
-        desc: 'Masks the smell. +1 coin per click.',
-        baseCost: 15,
-        scaling: 1.15,
-        effect: function() { state.coinsPerClick += 1; },
-        type: 'click',
-      },
-      {
-        id: 'noseplug',
-        name: 'Nose Plugs',
-        emoji: '\u{1F443}',
-        desc: 'For your protection. +2 coins per click.',
-        baseCost: 100,
-        scaling: 1.15,
-        effect: function() { state.coinsPerClick += 2; },
-        type: 'click',
-      },
-      {
-        id: 'intern',
-        name: 'Clicking Intern',
-        emoji: '\u{1F468}\u200D\u{1F4BC}',
-        desc: 'Clicks for you. +1 coin per second.',
-        baseCost: 50,
-        scaling: 1.15,
-        effect: function() { state.coinsPerSecond += 1; },
-        type: 'auto',
-      },
-      {
-        id: 'sweatshirt',
-        name: "Jared's Sweatshirt",
-        emoji: '\u{1F455}',
-        desc: 'Smells like victory. +5 coins per second.',
-        baseCost: 300,
-        scaling: 1.15,
-        effect: function() { state.coinsPerSecond += 5; },
-        type: 'auto',
-      },
-      {
-        id: 'mirror',
-        name: 'Selfie Mirror',
-        emoji: '\u{1FA9E}',
-        desc: 'Jared admires himself. +5 coins per click.',
-        baseCost: 500,
-        scaling: 1.2,
-        effect: function() { state.coinsPerClick += 5; },
-        type: 'click',
-      },
-      {
-        id: 'hairgel',
-        name: 'Hair Growth Formula',
-        emoji: '\u{1F487}',
-        desc: 'Luscious locks. +20 coins per second.',
-        baseCost: 1500,
-        scaling: 1.15,
-        effect: function() { state.coinsPerSecond += 20; },
-        type: 'auto',
-      },
-      {
-        id: 'gym',
-        name: 'Gym Membership',
-        emoji: '\u{1F4AA}',
-        desc: 'Gets swole. +15 coins per click.',
-        baseCost: 3000,
-        scaling: 1.2,
-        effect: function() { state.coinsPerClick += 15; },
-        type: 'click',
-      },
-      {
-        id: 'cologne',
-        name: 'Eau de Jared',
-        emoji: '\u2728',
-        desc: 'Weaponized fragrance. +100 coins per second.',
-        baseCost: 10000,
-        scaling: 1.15,
-        effect: function() { state.coinsPerSecond += 100; },
-        type: 'auto',
-      },
-      {
-        id: 'clone',
-        name: 'Jared Clone Army',
-        emoji: '\u{1F9EC}',
-        desc: 'More Jareds = more smell. +50 coins per click.',
-        baseCost: 25000,
-        scaling: 1.2,
-        effect: function() { state.coinsPerClick += 50; },
-        type: 'click',
-      },
-      {
-        id: 'timemachine',
-        name: 'Smell Time Machine',
-        emoji: '\u23F0',
-        desc: 'Harvests stink across timelines. +500 coins per second.',
-        baseCost: 100000,
-        scaling: 1.15,
-        effect: function() { state.coinsPerSecond += 500; },
-        type: 'auto',
-      },
-      {
-        id: 'blackhole',
-        name: 'Stink Singularity',
-        emoji: '\u{1F573}\uFE0F',
-        desc: 'A black hole of funk. +200 coins per click.',
-        baseCost: 500000,
-        scaling: 1.2,
-        effect: function() { state.coinsPerClick += 200; },
-        type: 'click',
-      },
-      {
-        id: 'universe',
-        name: 'Smelly Multiverse',
-        emoji: '\u{1F30C}',
-        desc: 'Infinite Jareds, infinite stench. +5000 coins per second.',
-        baseCost: 5000000,
-        scaling: 1.15,
-        effect: function() { state.coinsPerSecond += 5000; },
-        type: 'auto',
-      },
+      // Tier 1: Early game (15-100)
+      { id: 'deodorant', name: "Jared's Deodorant", emoji: '\u{1F9F4}', desc: 'Masks the smell. +1 coin per click.', baseCost: 15, scaling: 1.15, effect: function() { state.coinsPerClick += 1; }, type: 'click' },
+      { id: 'intern', name: 'Clicking Intern', emoji: '\u{1F468}\u200D\u{1F4BC}', desc: 'Clicks for you. +1 coin per second.', baseCost: 50, scaling: 1.15, effect: function() { state.coinsPerSecond += 1; }, type: 'auto' },
+      { id: 'noseplug', name: 'Nose Plugs', emoji: '\u{1F443}', desc: 'For your protection. +2 coins per click.', baseCost: 100, scaling: 1.15, effect: function() { state.coinsPerClick += 2; }, type: 'click' },
+
+      // Tier 2: Getting going (200-500)
+      { id: 'febreze', name: 'Industrial Febreze', emoji: '\u{1F4A8}', desc: 'Spray and pray. +3 coins per second.', baseCost: 200, scaling: 1.15, effect: function() { state.coinsPerSecond += 3; }, type: 'auto' },
+      { id: 'sweatshirt', name: "Jared's Sweatshirt", emoji: '\u{1F455}', desc: 'Smells like victory. +5 coins per second.', baseCost: 300, scaling: 1.15, effect: function() { state.coinsPerSecond += 5; }, type: 'auto' },
+      { id: 'mirror', name: 'Selfie Mirror', emoji: '\u{1FA9E}', desc: 'Jared admires himself. +5 coins per click.', baseCost: 500, scaling: 1.2, effect: function() { state.coinsPerClick += 5; }, type: 'click' },
+
+      // Tier 3: Mid game (750-3000)
+      { id: 'laundry', name: 'Unwashed Laundry Pile', emoji: '\u{1F9FA}', desc: 'Passive stink generator. +10 coins per second.', baseCost: 750, scaling: 1.15, effect: function() { state.coinsPerSecond += 10; }, type: 'auto' },
+      { id: 'hairgel', name: 'Hair Growth Formula', emoji: '\u{1F487}', desc: 'Luscious locks. +20 coins per second.', baseCost: 1500, scaling: 1.15, effect: function() { state.coinsPerSecond += 20; }, type: 'auto' },
+      { id: 'gym', name: 'Gym Membership', emoji: '\u{1F4AA}', desc: 'Gets swole. +15 coins per click.', baseCost: 3000, scaling: 1.2, effect: function() { state.coinsPerClick += 15; }, type: 'click' },
+
+      // Tier 4: Ramp up (5000-25000)
+      { id: 'podcast', name: 'Stink Podcast', emoji: '\u{1F3A4}', desc: 'Spreading the word. +50 coins per second.', baseCost: 5000, scaling: 1.15, effect: function() { state.coinsPerSecond += 50; }, type: 'auto' },
+      { id: 'cologne', name: 'Eau de Jared', emoji: '\u2728', desc: 'Weaponized fragrance. +100 coins per second.', baseCost: 10000, scaling: 1.15, effect: function() { state.coinsPerSecond += 100; }, type: 'auto' },
+      { id: 'clone', name: 'Jared Clone Army', emoji: '\u{1F9EC}', desc: 'More Jareds = more smell. +50 coins per click.', baseCost: 25000, scaling: 1.2, effect: function() { state.coinsPerClick += 50; }, type: 'click' },
+
+      // Tier 5: Big money (50K-500K)
+      { id: 'factory', name: 'Stink Factory', emoji: '\u{1F3ED}', desc: 'Mass-produced funk. +250 coins per second.', baseCost: 50000, scaling: 1.15, effect: function() { state.coinsPerSecond += 250; }, type: 'auto' },
+      { id: 'timemachine', name: 'Smell Time Machine', emoji: '\u23F0', desc: 'Harvests stink across timelines. +500 coins per second.', baseCost: 100000, scaling: 1.15, effect: function() { state.coinsPerSecond += 500; }, type: 'auto' },
+      { id: 'goldennose', name: 'Golden Nose', emoji: '\u{1F451}', desc: 'The Midas touch of smell. +100 coins per click.', baseCost: 250000, scaling: 1.2, effect: function() { state.coinsPerClick += 100; }, type: 'click' },
+      { id: 'blackhole', name: 'Stink Singularity', emoji: '\u{1F573}\uFE0F', desc: 'A black hole of funk. +200 coins per click.', baseCost: 500000, scaling: 1.2, effect: function() { state.coinsPerClick += 200; }, type: 'click' },
+
+      // Tier 6: Millions (1M-5M)
+      { id: 'satellite', name: 'Stink Satellite', emoji: '\u{1F6F0}\uFE0F', desc: 'Orbital odor delivery. +2,000 coins per second.', baseCost: 1000000, scaling: 1.15, effect: function() { state.coinsPerSecond += 2000; }, type: 'auto' },
+      { id: 'universe', name: 'Smelly Multiverse', emoji: '\u{1F30C}', desc: 'Infinite Jareds, infinite stench. +5,000 coins per second.', baseCost: 5000000, scaling: 1.15, effect: function() { state.coinsPerSecond += 5000; }, type: 'auto' },
+
+      // Tier 7: Tens of millions (10M-100M)
+      { id: 'stinkworm', name: 'Stink Worm Virus', emoji: '\u{1F41B}', desc: 'Infects every device with odor. +500 coins per click.', baseCost: 10000000, scaling: 1.2, effect: function() { state.coinsPerClick += 500; }, type: 'click' },
+      { id: 'quantumfunk', name: 'Quantum Funk Reactor', emoji: '\u{269B}\uFE0F', desc: 'Fuses stink atoms. +1,000 coins per click.', baseCost: 25000000, scaling: 1.2, effect: function() { state.coinsPerClick += 1000; }, type: 'click' },
+      { id: 'dyson', name: 'Dyson Stink Sphere', emoji: '\u{2600}\uFE0F', desc: 'Harnesses a star for stink power. +25,000 coins per second.', baseCost: 50000000, scaling: 1.15, effect: function() { state.coinsPerSecond += 25000; }, type: 'auto' },
+      { id: 'stinknet', name: 'StinkNet AI', emoji: '\u{1F916}', desc: 'Self-aware smell. +50,000 coins per second.', baseCost: 100000000, scaling: 1.15, effect: function() { state.coinsPerSecond += 50000; }, type: 'auto' },
+
+      // Tier 8: Endgame (500M-10B)
+      { id: 'dimension', name: 'Stink Dimension Rift', emoji: '\u{1F300}', desc: 'Pulls funk from other realities. +5,000 per click, +100,000 per second.', baseCost: 500000000, scaling: 1.2, effect: function() { state.coinsPerClick += 5000; state.coinsPerSecond += 100000; }, type: 'auto' },
+      { id: 'bigbang', name: 'The Big Stink', emoji: '\u{1F4A5}', desc: 'Creates a new universe of pure odor. +10,000 per click, +500,000 per second.', baseCost: 1000000000, scaling: 1.2, effect: function() { state.coinsPerClick += 10000; state.coinsPerSecond += 500000; }, type: 'auto' },
+      { id: 'godofstink', name: 'Stink Overlord Supreme', emoji: '\u{1F480}', desc: 'Ultimate stink domination. +50,000 per click, +2,000,000 per second.', baseCost: 10000000000, scaling: 1.25, effect: function() { state.coinsPerClick += 50000; state.coinsPerSecond += 2000000; }, type: 'auto' },
+      { id: 'stinkmatrix', name: 'The Stink Matrix', emoji: '\u{1F7E2}', desc: 'Reality is stink. +200,000 per click.', baseCost: 50000000000, scaling: 1.25, effect: function() { state.coinsPerClick += 200000; }, type: 'click' },
+      { id: 'funkforge', name: 'Eternal Funk Forge', emoji: '\u{1F525}', desc: 'Forges pure concentrated funk. +10,000,000 per second.', baseCost: 200000000000, scaling: 1.2, effect: function() { state.coinsPerSecond += 10000000; }, type: 'auto' },
+      { id: 'omegastink', name: 'OMEGA STINK', emoji: '\u{1F4A2}', desc: 'The final form. +1,000,000 per click, +50,000,000 per second.', baseCost: 1000000000000, scaling: 1.3, effect: function() { state.coinsPerClick += 1000000; state.coinsPerSecond += 50000000; }, type: 'auto' },
     ];
 
     // ===== ACHIEVEMENTS =====
@@ -659,8 +1929,22 @@
       { threshold: 50000, name: 'Geneva Convention Violation' },
       { threshold: 200000, name: 'Weapons-Grade Stench' },
       { threshold: 1000000, name: 'Cosmic Funk Entity' },
+      { threshold: 5000000, name: 'Interstellar Stink Cloud' },
       { threshold: 10000000, name: 'Smell Singularity' },
-      { threshold: 100000000, name: 'TRANSCENDENT STINK GOD' },
+      { threshold: 50000000, name: 'Galactic Funk Nebula' },
+      { threshold: 100000000, name: 'ULTIMATE STINK OVERLORD' },
+      { threshold: 500000000, name: 'Stink Dimension Breaker' },
+      { threshold: 1000000000, name: 'Eternal Funk Emperor' },
+      { threshold: 5000000000, name: 'The Stink Beyond Stink' },
+      { threshold: 10000000000, name: 'Incomprehensible Odor' },
+      { threshold: 50000000000, name: 'The Nose Destroyer' },
+      { threshold: 100000000000, name: 'MAXIMUM STINK ACHIEVED' },
+      { threshold: 500000000000, name: 'Stink Infinity' },
+      { threshold: 1000000000000, name: 'The Unstoppable Funk' },
+      { threshold: 5000000000000, name: 'Odor of Legend' },
+      { threshold: 10000000000000, name: 'Stink So Strong It Has Mass' },
+      { threshold: 50000000000000, name: 'Rewriting the Laws of Stink' },
+      { threshold: 100000000000000, name: 'BEYOND ALL KNOWN STINK' },
     ];
 
     // ===== HELPERS =====
@@ -711,16 +1995,21 @@
     var achNameEl = document.getElementById('achName');
 
     // ===== CLICK HANDLER =====
-    coinBtn.addEventListener('click', function(e) {
-      var earned = state.coinsPerClick;
+    function handleCoinClick(x, y) {
+      var mult = (typeof sabotageMultiplier !== 'undefined' ? sabotageMultiplier : 1);
+      var earned = Math.floor(state.coinsPerClick * mult);
+      if (mult > 0 && earned < 1) earned = 1;
+      if (mult === 0) earned = 0;
       state.coins += earned;
       state.totalCoins += earned;
       state.totalClicks++;
       state.clicksSinceLastEvent++;
 
-      spawnFloatNumber(e.clientX, e.clientY, '+' + formatNumber(earned));
+      spawnFloatNumber(x, y, '+' + formatNumber(earned));
+      playCoinSound();
+      hapticLight();
 
-      if (Math.random() < 0.3) spawnParticle(e.clientX, e.clientY);
+      if (Math.random() < 0.3) spawnParticle(x, y);
 
       if (state.clicksSinceLastEvent >= state.nextEventAt) {
         triggerRandomPhoto();
@@ -729,34 +2018,97 @@
       checkAchievements();
       updateUI();
       saveGame();
+    }
+
+    // Use touchstart for instant response on mobile (no 300ms delay)
+    var coinTouched = false;
+    coinBtn.addEventListener('touchstart', function(e) {
+      e.preventDefault(); // prevents zoom and ghost click
+      coinTouched = true;
+      var touch = e.touches[0];
+      handleCoinClick(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    // Fallback click for desktop
+    coinBtn.addEventListener('click', function(e) {
+      if (coinTouched) { coinTouched = false; return; } // skip if already handled by touch
+      handleCoinClick(e.clientX, e.clientY);
     });
 
     // ===== RANDOM PHOTO EVENT =====
-    var photoMessages = [
-      "JARED APPEARED!",
-      "OH NO, IT'S JARED!",
-      "JARED IS WATCHING YOU!",
-      "A WILD JARED APPEARS!",
-      "JARED SELFIE TIME!",
-      "YOU FOUND JARED!",
-      "JARED SMELLS YOU CLICKING!",
-      "SURPRISE JARED!",
-      "JARED WANTS ATTENTION!",
-      "*sniff sniff* JARED!",
-    ];
-
     function triggerRandomPhoto() {
       state.clicksSinceLastEvent = 0;
       state.nextEventAt = randomBetween(12, 25);
       state.sightings++;
 
-      var bonus = Math.floor(state.coinsPerClick * 10 + state.coinsPerSecond * 5) + 50;
+      var mult = (typeof sabotageMultiplier !== 'undefined' ? sabotageMultiplier : 1);
+      var bonus = Math.floor((state.coinsPerClick * 10 + state.coinsPerSecond * 5) * mult) + 50;
       state.coins += bonus;
       state.totalCoins += bonus;
 
-      photoText.textContent = photoMessages[Math.floor(Math.random() * photoMessages.length)];
+      if (lukeHidden) {
+        // Still get the bonus - show floating text and coin rain, but no overlay
+        spawnFloatNumber(
+          window.innerWidth / 2,
+          window.innerHeight / 2,
+          '+' + formatNumber(bonus) + ' bonus!'
+        );
+        playCoinSound();
+        hapticSuccess();
+        for (var k = 0; k < 8; k++) {
+          (function(idx) {
+            setTimeout(function() { spawnCoinRain(); }, idx * 80);
+          })(k);
+        }
+        updateUI();
+        return;
+      }
+
+      var photo = randomPhotoUrls.length > 0
+        ? randomPhotoUrls[Math.floor(Math.random() * randomPhotoUrls.length)]
+        : 'random.png';
+      var photoDisplayName = photoNameMap[photo] || 'Luke';
+      var photoNameUpper = photoDisplayName.toUpperCase();
+      document.getElementById('photoImage').src = photo;
+      var dynamicPhotoMessages = [
+        photoNameUpper + " APPEARED!",
+        "OH NO, IT'S " + photoNameUpper + "!",
+        photoNameUpper + " IS WATCHING YOU!",
+        "A WILD " + photoNameUpper + " APPEARS!",
+        photoNameUpper + " SELFIE TIME!",
+        "YOU FOUND " + photoNameUpper + "!",
+        photoNameUpper + " SMELLS YOU CLICKING!",
+        "SURPRISE " + photoNameUpper + "!",
+        photoNameUpper + " WANTS ATTENTION!",
+        "*sniff sniff* " + photoNameUpper + "!",
+      ];
+      photoText.textContent = dynamicPhotoMessages[Math.floor(Math.random() * dynamicPhotoMessages.length)];
       photoBonus.textContent = '+' + formatNumber(bonus) + ' bonus coins!';
+      photoCanDismiss = false;
+      var dismissEl = document.getElementById('dismissText');
+      var admireMessages = [
+        'admire ' + photoDisplayName + ' for a moment...',
+        'bask in his glory...',
+        'take it all in...',
+        'you can\'t look away...',
+        'this is peak performance...',
+        'let the stink wash over you...',
+        'he\'s beautiful, isn\'t he...',
+        'mirror selfie energy...',
+        'drink it in...',
+        photoDisplayName + ' demands your attention...',
+        'breathe deep...',
+        'soak in the vibes...',
+      ];
+      var admireMsg = admireMessages[Math.floor(Math.random() * admireMessages.length)];
+      typewriterText(dismissEl, admireMsg, 50);
+      playFartSound();
+      hapticFart();
       photoOverlay.classList.add('active');
+      setTimeout(function() {
+        photoCanDismiss = true;
+        typewriterText(dismissEl, 'click anywhere to dismiss', 40);
+      }, 2000);
 
       for (var i = 0; i < 15; i++) {
         (function(idx) {
@@ -767,22 +2119,51 @@
       updateUI();
     }
 
+    var photoCanDismiss = false;
     photoOverlay.addEventListener('click', function() {
-      photoOverlay.classList.remove('active');
+      if (photoCanDismiss) {
+        photoOverlay.classList.remove('active');
+        hapticMedium();
+      }
     });
 
+    // ===== TYPEWRITER =====
+    var typewriterTimer = null;
+    function typewriterText(el, text, speed) {
+      if (typewriterTimer) clearInterval(typewriterTimer);
+      el.textContent = '';
+      var i = 0;
+      typewriterTimer = setInterval(function() {
+        if (i < text.length) {
+          el.textContent += text.charAt(i);
+          hapticTypewriter();
+          i++;
+        } else {
+          clearInterval(typewriterTimer);
+          typewriterTimer = null;
+        }
+      }, speed);
+    }
+
     // ===== EFFECTS =====
+    // Capped DOM element pools to prevent accumulation
+    var activeFloats = 0;
+    var MAX_FLOATS = 15;
     function spawnFloatNumber(x, y, text) {
+      if (activeFloats >= MAX_FLOATS) return;
+      activeFloats++;
       var el = document.createElement('div');
       el.className = 'float-number';
       el.textContent = text;
       el.style.left = (x - 30) + 'px';
       el.style.top = (y - 20) + 'px';
       document.body.appendChild(el);
-      setTimeout(function() { el.remove(); }, 1000);
+      setTimeout(function() { el.remove(); activeFloats--; }, 1000);
     }
 
     function spawnParticle(x, y) {
+      if (activeFloats >= MAX_FLOATS) return;
+      activeFloats++;
       var emojis = ['\u{1F4B0}', '\u{1FA99}', '\u2728', '\u{1F4AB}', '\u{1F922}', '\u{1F4A8}', '\u{1F443}'];
       var el = document.createElement('div');
       el.className = 'particle';
@@ -792,17 +2173,21 @@
       el.style.setProperty('--tx', (Math.random() * 200 - 100) + 'px');
       el.style.setProperty('--ty', (Math.random() * -200 - 50) + 'px');
       document.body.appendChild(el);
-      setTimeout(function() { el.remove(); }, 1500);
+      setTimeout(function() { el.remove(); activeFloats--; }, 1500);
     }
 
+    var activeRain = 0;
+    var MAX_RAIN = 10;
     function spawnCoinRain() {
+      if (activeRain >= MAX_RAIN) return;
+      activeRain++;
       var el = document.createElement('img');
       el.src = 'jared-coin.png';
       el.className = 'coin-rain';
       el.style.left = Math.random() * window.innerWidth + 'px';
       el.style.animationDuration = (2 + Math.random() * 3) + 's';
       document.body.appendChild(el);
-      setTimeout(function() { el.remove(); }, 5000);
+      setTimeout(function() { el.remove(); activeRain--; }, 5000);
     }
 
     // ===== ACHIEVEMENTS =====
@@ -815,6 +2200,8 @@
         if (!state.achievements.has(ach.id) && ach.check()) {
           state.achievements.add(ach.id);
           achievementQueue.push(ach.name);
+          playAchievementSound();
+          hapticHeavy();
           processAchievementQueue();
         }
       }
@@ -847,7 +2234,12 @@
 
       var nameDiv = document.createElement('div');
       nameDiv.className = 'upgrade-name';
-      nameDiv.textContent = upgrade.emoji + ' ' + upgrade.name;
+      var nameText = document.createTextNode(upgrade.emoji + ' ' + upgrade.name + ' ');
+      nameDiv.appendChild(nameText);
+      var badge = document.createElement('span');
+      badge.className = 'upgrade-type-badge ' + (upgrade.type === 'auto' ? 'auto-type' : 'click-type');
+      badge.textContent = upgrade.type === 'auto' ? 'AUTO' : 'CLICK';
+      nameDiv.appendChild(badge);
       btn.appendChild(nameDiv);
 
       var descDiv = document.createElement('div');
@@ -871,7 +2263,19 @@
       return btn;
     }
 
+    var lastUpgradeHash = '';
     function renderUpgrades() {
+      // Only rebuild if affordability changed
+      var hash = '';
+      for (var i = 0; i < upgrades.length; i++) {
+        var cost = getUpgradeCost(upgrades[i]);
+        var affordable = state.coins >= cost ? '1' : '0';
+        var owned = state.upgrades[upgrades[i].id] || 0;
+        hash += affordable + owned + ',';
+      }
+      if (hash === lastUpgradeHash) return;
+      lastUpgradeHash = hash;
+
       upgradeListEl.textContent = '';
       for (var i = 0; i < upgrades.length; i++) {
         upgradeListEl.appendChild(createUpgradeButton(upgrades[i]));
@@ -885,6 +2289,8 @@
       state.coins -= cost;
       state.upgrades[upgrade.id] = (state.upgrades[upgrade.id] || 0) + 1;
       upgrade.effect();
+      playUpgradeSound();
+      hapticSuccess();
 
       checkAchievements();
       updateUI();
@@ -892,20 +2298,24 @@
     }
 
     // ===== UPDATE UI =====
-    function updateUI() {
+    // Fast update: counters only (called 10x/sec by auto-income)
+    function updateCounters() {
       coinCountEl.textContent = formatNumber(state.coins);
       perSecEl.textContent = formatNumber(state.coinsPerSecond) + ' per sec';
-      clickInfo.textContent = 'Click the coin! (+' + formatNumber(state.coinsPerClick) + ' per click)';
-
       document.getElementById('statTotal').textContent = formatNumber(state.totalCoins);
-      document.getElementById('statPerClick').textContent = formatNumber(state.coinsPerClick);
       document.getElementById('statPerSec').textContent = formatNumber(state.coinsPerSecond);
+    }
+
+    // Full update: everything including shop rebuild (called on clicks/purchases)
+    function updateUI() {
+      updateCounters();
+      clickInfo.textContent = 'Click the coin! (+' + formatNumber(state.coinsPerClick) + ' per click)';
+      document.getElementById('statPerClick').textContent = formatNumber(state.coinsPerClick);
       document.getElementById('statClicks').textContent = formatNumber(state.totalClicks);
       document.getElementById('statSightings').textContent = state.sightings;
 
       var smellyLevel = getSmellyLevel();
       document.getElementById('statSmelly').textContent = smellyLevel.name;
-      document.getElementById('smellyLabel').textContent = smellyLevel.name;
       document.getElementById('smellyFill').style.width = getSmellyProgress() + '%';
 
       renderUpgrades();
@@ -914,11 +2324,20 @@
     // ===== AUTO INCOME =====
     setInterval(function() {
       if (state.coinsPerSecond > 0) {
-        state.coins += state.coinsPerSecond / 10;
-        state.totalCoins += state.coinsPerSecond / 10;
-        updateUI();
+        var mult = (typeof sabotageMultiplier !== 'undefined' ? sabotageMultiplier : 1);
+        var income = (state.coinsPerSecond * mult) / 10;
+        state.coins += income;
+        state.totalCoins += income;
+        updateCounters();
       }
     }, 100);
+
+    // Refresh shop affordability every second (not 10x/sec)
+    setInterval(function() {
+      if (state.coinsPerSecond > 0) {
+        renderUpgrades();
+      }
+    }, 1000);
 
     // Auto-save every 30 seconds
     setInterval(function() { saveGame(); }, 30000);
@@ -970,6 +2389,36 @@
       }
     }
 
+    // ===== LOAD RANDOM PHOTOS FROM R2 =====
+    var randomPhotoUrls = ['random.png', 'random2.png']; // fallbacks
+    var photoNameMap = {}; // url -> displayName
+    fetch('https://jaredclicker-live.justin-5b6.workers.dev/photos')
+      .then(function(r) { return r.json(); })
+      .then(function(photos) {
+        if (photos && photos.length > 0) {
+          randomPhotoUrls = photos.map(function(p) {
+            var fullUrl = 'https://jaredclicker-live.justin-5b6.workers.dev' + p.url;
+            photoNameMap[fullUrl] = p.displayName || 'Luke';
+            return fullUrl;
+          });
+        }
+      })
+      .catch(function() {}); // silently use fallbacks
+
+    // ===== AUTO-REFRESH ON NEW VERSION =====
+    var CURRENT_VERSION = '24';
+    setInterval(function() {
+      fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.version && data.version !== CURRENT_VERSION) {
+            saveGame();
+            window.location.reload();
+          }
+        })
+        .catch(function() {});
+    }, 30000);
+
     // ===== INIT =====
     loadGame();
     updateUI();
@@ -980,6 +2429,2202 @@
         spawnCoinRain();
       }
     }, 2000);
+
+    // ===== DEVICE FINGERPRINT =====
+    var deviceId = localStorage.getItem('jcDeviceId');
+    if (!deviceId) {
+      var raw = navigator.userAgent + screen.width + screen.height + navigator.language;
+      var hash = 0;
+      for (var ci = 0; ci < raw.length; ci++) {
+        var ch = raw.charCodeAt(ci);
+        hash = ((hash << 5) - hash) + ch;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      deviceId = 'dev_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+      localStorage.setItem('jcDeviceId', deviceId);
+    }
+
+    // ===== PLAYER NAME =====
+    var playerName = localStorage.getItem('jcPlayerName') || '';
+    var lbNameInput = document.getElementById('lbNameInput');
+    if (playerName) lbNameInput.value = playerName;
+
+    // ===== CHAT (early init so WebSocket can use addChatMessage) =====
+    var chatMessagesEl = document.getElementById('chatMessages');
+    var chatMsgCount = 0;
+
+    function addChatMessage(name, message, timestamp) {
+      if (!chatMessagesEl) return;
+      if (chatMsgCount >= 50) {
+        var first = chatMessagesEl.firstChild;
+        if (first) chatMessagesEl.removeChild(first);
+        chatMsgCount--;
+      }
+      var msgDiv = document.createElement('div');
+      msgDiv.className = 'chat-msg' + (name === 'SYSTEM' ? ' chat-msg-system' : '');
+
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'chat-msg-name';
+      nameSpan.textContent = name + ': ';
+      msgDiv.appendChild(nameSpan);
+
+      var textNode = document.createTextNode(message);
+      msgDiv.appendChild(textNode);
+
+      if (timestamp) {
+        var d = new Date(timestamp);
+        var h = d.getHours();
+        var m = d.getMinutes();
+        var timeStr = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+        var timeSpan = document.createElement('span');
+        timeSpan.className = 'chat-msg-time';
+        timeSpan.textContent = timeStr;
+        msgDiv.appendChild(timeSpan);
+      }
+
+      chatMessagesEl.appendChild(msgDiv);
+      chatMsgCount++;
+      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    }
+
+    // ===== ACCOUNT SYSTEM =====
+    var authToken = localStorage.getItem('jcAuthToken') || null;
+    var accountDisplayName = localStorage.getItem('jcAccountName') || null;
+
+    function updateAccountBtn() {
+      var btn = document.getElementById('lbAccountBtn');
+      if (!btn) return;
+      if (authToken && accountDisplayName) {
+        btn.textContent = '✓ Logged in as ' + accountDisplayName;
+        btn.className = 'lb-account-btn logged-in';
+      } else {
+        btn.textContent = '🔐 Save progress across devices';
+        btn.className = 'lb-account-btn';
+      }
+    }
+
+    function openAccountModal() {
+      var modal = document.getElementById('accountModal');
+      modal.classList.add('active');
+      if (authToken && accountDisplayName) {
+        showAccountLoggedIn();
+      } else {
+        showAccountAuth();
+        // Pre-fill name from current playerName
+        var regInput = document.getElementById('registerNameInput');
+        var logInput = document.getElementById('loginNameInput');
+        if (playerName) { regInput.value = playerName; logInput.value = playerName; }
+      }
+    }
+
+    function closeAccountModal() {
+      document.getElementById('accountModal').classList.remove('active');
+    }
+
+    function showAccountLoggedIn() {
+      document.getElementById('accountPanelLoggedIn').style.display = 'block';
+      document.getElementById('accountPanelAuth').style.display = 'none';
+      var rows = document.getElementById('accountInfoRows');
+      rows.innerHTML = '<div class="account-info-row"><span>Account</span><span>' + accountDisplayName + '</span></div>';
+    }
+
+    function showAccountAuth() {
+      document.getElementById('accountPanelLoggedIn').style.display = 'none';
+      document.getElementById('accountPanelAuth').style.display = 'block';
+    }
+
+    function switchAccountTab(tab) {
+      document.getElementById('tabRegister').className = 'account-tab' + (tab === 'register' ? ' active' : '');
+      document.getElementById('tabLogin').className = 'account-tab' + (tab === 'login' ? ' active' : '');
+      document.getElementById('accountPanelRegister').className = 'account-panel' + (tab === 'register' ? ' active' : '');
+      document.getElementById('accountPanelLogin').className = 'account-panel' + (tab === 'login' ? ' active' : '');
+    }
+
+    function onAccountSuccess(token, displayName, serverScore) {
+      authToken = token;
+      accountDisplayName = displayName;
+      localStorage.setItem('jcAuthToken', token);
+      localStorage.setItem('jcAccountName', displayName);
+      // Sync display name as player name
+      playerName = displayName;
+      localStorage.setItem('jcPlayerName', playerName);
+      document.getElementById('lbNameInput').value = playerName;
+      // Sync score: take server score if higher than local
+      if (typeof serverScore === 'number' && serverScore > state.totalCoins) {
+        state.totalCoins = serverScore;
+        state.coins = Math.max(state.coins, 0);
+        saveGame();
+        updateDisplay();
+      }
+      updateAccountBtn();
+      showAccountLoggedIn();
+    }
+
+    document.getElementById('lbAccountBtn').addEventListener('click', openAccountModal);
+    document.getElementById('accountCloseBtn').addEventListener('click', closeAccountModal);
+    document.getElementById('accountModal').addEventListener('click', function(e) {
+      if (e.target === this) closeAccountModal();
+    });
+
+    document.getElementById('registerSubmitBtn').addEventListener('click', function() {
+      var name = document.getElementById('registerNameInput').value.trim();
+      var pin = document.getElementById('registerPinInput').value.trim();
+      var pinConfirm = document.getElementById('registerPinConfirmInput').value.trim();
+      var errEl = document.getElementById('registerError');
+      errEl.textContent = '';
+      if (!name) { errEl.textContent = 'Enter a display name.'; return; }
+      if (pin.length < 4) { errEl.textContent = 'PIN must be at least 4 characters.'; return; }
+      if (pin !== pinConfirm) { errEl.textContent = 'PINs do not match.'; return; }
+      fetch(apiBase + '/account/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, pin: pin }),
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.error) { errEl.textContent = data.error; return; }
+        onAccountSuccess(data.token, data.displayName, data.score);
+      }).catch(function() { errEl.textContent = 'Network error. Try again.'; });
+    });
+
+    document.getElementById('loginSubmitBtn').addEventListener('click', function() {
+      var name = document.getElementById('loginNameInput').value.trim();
+      var pin = document.getElementById('loginPinInput').value.trim();
+      var errEl = document.getElementById('loginError');
+      errEl.textContent = '';
+      if (!name || !pin) { errEl.textContent = 'Enter your name and PIN.'; return; }
+      fetch(apiBase + '/account/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, pin: pin }),
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.error) { errEl.textContent = data.error; return; }
+        onAccountSuccess(data.token, data.displayName, data.score);
+      }).catch(function() { errEl.textContent = 'Network error. Try again.'; });
+    });
+
+    document.getElementById('accountLogoutBtn').addEventListener('click', function() {
+      if (authToken) {
+        fetch(apiBase + '/account/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: authToken }),
+        }).catch(function() {});
+      }
+      authToken = null;
+      accountDisplayName = null;
+      localStorage.removeItem('jcAuthToken');
+      localStorage.removeItem('jcAccountName');
+      updateAccountBtn();
+      showAccountAuth();
+    });
+
+    document.getElementById('accountMergeToggleBtn').addEventListener('click', function() {
+      var sec = document.getElementById('accountMergeSection');
+      sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.getElementById('accountMergeSubmitBtn').addEventListener('click', function() {
+      var mergeName = document.getElementById('accountMergeNameInput').value.trim();
+      var errEl = document.getElementById('accountMergeError');
+      var sucEl = document.getElementById('accountMergeSuccess');
+      errEl.textContent = ''; sucEl.textContent = '';
+      if (!mergeName) { errEl.textContent = 'Enter the duplicate account name.'; return; }
+      fetch(apiBase + '/account/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: authToken, mergeFromName: mergeName }),
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.error) { errEl.textContent = data.error; return; }
+        sucEl.textContent = 'Merged! Score is now ' + formatNumber(data.newScore) + ' coins.';
+        state.totalCoins = Math.max(state.totalCoins, data.newScore);
+        saveGame(); updateDisplay();
+      }).catch(function() { errEl.textContent = 'Network error. Try again.'; });
+    });
+
+    updateAccountBtn();
+
+    // ===== LIVE VISITORS =====
+    var liveCountEl = document.getElementById('liveCount');
+    var liveCountriesEl = document.getElementById('liveCountries');
+    var apiBase = 'https://jaredclicker-live.justin-5b6.workers.dev';
+    var wsUrl = 'wss://jaredclicker-live.justin-5b6.workers.dev/ws';
+    var liveWs = null;
+    var wsReconnectDelay = 1000;
+    var wsHeartbeatId = null;
+
+    function countryFlag(code) {
+      if (!code || code === '??' || code.length !== 2) return '';
+      var base = 0x1F1E6;
+      return String.fromCodePoint(base + code.charCodeAt(0) - 65) +
+             String.fromCodePoint(base + code.charCodeAt(1) - 65);
+    }
+
+    function sendPlayerName() {
+      if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+        liveWs.send(JSON.stringify({ type: 'setIdentity', name: playerName || '', deviceId: deviceId }));
+      }
+    }
+
+    function sendScoreUpdate() {
+      if (liveWs && liveWs.readyState === WebSocket.OPEN && playerName) {
+        liveWs.send(JSON.stringify({
+          type: 'scoreUpdate',
+          name: playerName,
+          score: Math.floor(state.totalCoins),
+          smellyLevel: getSmellyLevel().name,
+          totalClicks: state.totalClicks,
+          sightings: state.sightings,
+          coinsPerClick: state.coinsPerClick,
+          coinsPerSecond: state.coinsPerSecond,
+          authToken: authToken || undefined,
+        }));
+      }
+    }
+
+    function connectLiveWs() {
+      try {
+        liveWs = new WebSocket(wsUrl);
+      } catch (e) {
+        liveCountEl.textContent = 'offline';
+        return;
+      }
+
+      liveWs.onopen = function() {
+        wsReconnectDelay = 1000;
+        sendPlayerName();
+        if (wsHeartbeatId) clearInterval(wsHeartbeatId);
+        wsHeartbeatId = setInterval(function() {
+          if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+            liveWs.send('ping');
+          }
+        }, 30000);
+      };
+
+      var pendingChatMessages = [];
+      var livePlayersExpanded = false;
+      var lastLiveData = null;
+
+      function renderLivePlayers(data, expanded) {
+        var players = data.players || [];
+
+        liveCountriesEl.textContent = '';
+
+        // Every connection now has a name (real or "Anonymous Sniffer #N")
+        var maxVisible = expanded ? players.length : Math.min(players.length, 6);
+        var lines = [];
+        for (var i = 0; i < maxVisible; i++) {
+          var p = players[i];
+          var flag = countryFlag(p.country);
+          var city = p.city ? ' (' + p.city + ')' : '';
+          lines.push(flag + ' ' + p.name + city);
+        }
+
+        var textNode = document.createTextNode(lines.join('  '));
+        liveCountriesEl.appendChild(textNode);
+
+        // Expand/collapse toggle
+        var hiddenCount = players.length - 6;
+        if (!expanded && hiddenCount > 0) {
+          var moreLink = document.createElement('a');
+          moreLink.textContent = '  + ' + hiddenCount + ' more';
+          moreLink.href = '#';
+          moreLink.style.color = '#4ade80';
+          moreLink.style.textDecoration = 'underline';
+          moreLink.style.cursor = 'pointer';
+          moreLink.style.fontSize = '11px';
+          moreLink.onclick = function(evt) {
+            evt.preventDefault();
+            livePlayersExpanded = true;
+            if (lastLiveData) renderLivePlayers(lastLiveData, true);
+          };
+          liveCountriesEl.appendChild(moreLink);
+        } else if (expanded && players.length > 6) {
+          var lessLink = document.createElement('a');
+          lessLink.textContent = '  \u25B2 show less';
+          lessLink.href = '#';
+          lessLink.style.color = '#4ade80';
+          lessLink.style.textDecoration = 'underline';
+          lessLink.style.cursor = 'pointer';
+          lessLink.style.fontSize = '11px';
+          lessLink.onclick = function(evt) {
+            evt.preventDefault();
+            livePlayersExpanded = false;
+            if (lastLiveData) renderLivePlayers(lastLiveData, false);
+          };
+          liveCountriesEl.appendChild(lessLink);
+        }
+      }
+
+      liveWs.onmessage = function(e) {
+        try {
+          var data = JSON.parse(e.data);
+
+          // Handle chat messages
+          if (data.type === 'chat') {
+            addChatMessage(data.name, data.message, data.timestamp);
+            if (!chatVisible) {
+              unreadChatCount++;
+              updateChatBadge();
+              showChatToast(data.name, data.message);
+            }
+            return;
+          }
+
+          if (data.type === 'totalRaised') {
+            if (typeof data.totalRaisedCents === 'number') {
+              var el = document.getElementById('totalRaised');
+              if (el) el.textContent = '$' + (data.totalRaisedCents / 100).toFixed(2) + ' raised';
+            }
+            return;
+          }
+
+          if (data.type === 'scoreCorrection') {
+            if (playerName && data.targetName && data.targetName.toLowerCase() === playerName.toLowerCase()) {
+              state.totalCoins = data.newScore;
+              state.coins = Math.min(state.coins, data.newScore);
+              saveGame();
+              updateDisplay();
+            }
+            return;
+          }
+
+          if (data.type === 'coinCutEvent') {
+            var isMyCoins = playerName && data.targetName.toLowerCase() === playerName.toLowerCase();
+            if (isMyCoins) {
+              sabotageNotifyText.textContent = data.attackerName + ' cut your coins by ' + data.percentage + '%!';
+              sabotageNotifySub.textContent = 'You lost ' + formatNumber(data.removed) + ' coins!';
+            } else {
+              sabotageNotifyText.textContent = data.attackerName + ' cut ' + data.targetName + '\'s coins by ' + data.percentage + '%!';
+              sabotageNotifySub.textContent = data.targetName + ' lost ' + formatNumber(data.removed) + ' coins!';
+            }
+            sabotageNotifyOverlay.classList.add('active');
+            hapticSabotage();
+            playFartSound();
+            setTimeout(function() {
+              sabotageNotifyOverlay.classList.remove('active');
+            }, 5000);
+            return;
+          }
+
+          if (data.type === 'chatHistory') {
+            if (data.messages) {
+              for (var ci = 0; ci < data.messages.length; ci++) {
+                var cm = data.messages[ci];
+                addChatMessage(cm.name, cm.message, cm.timestamp);
+              }
+            }
+            return;
+          }
+
+          var count = data.count || 0;
+          liveCountEl.textContent = count + (count === 1 ? ' person clicking' : ' people clicking');
+
+          lastLiveData = data;
+          renderLivePlayers(data, livePlayersExpanded);
+
+          // Real-time leaderboard
+          if (data.leaderboard) {
+            renderLeaderboard(data.leaderboard);
+          }
+
+          // Update credits from broadcast
+          if (data.credits && playerName) {
+            myCredits = data.credits[playerName.toLowerCase()] || 0;
+            document.getElementById('statCredits').textContent = myCredits;
+          }
+
+          // Process sabotages
+          if (data.sabotages && typeof processSabotages === 'function') {
+            processSabotages(data.sabotages);
+          }
+
+          // Process campaigns
+          if (data.campaigns && typeof renderCampaigns === 'function') {
+            activeCampaigns = data.campaigns;
+            renderCampaigns();
+          }
+        } catch (err) {}
+      };
+
+      liveWs.onclose = function() {
+        liveCountEl.textContent = 'reconnecting...';
+        setTimeout(connectLiveWs, wsReconnectDelay);
+        wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000);
+      };
+
+      liveWs.onerror = function() {
+        if (liveWs) liveWs.close();
+      };
+    }
+
+    connectLiveWs();
+
+    // Toggle live visitors between compact (count only) and expanded (with names)
+    var liveCompact = localStorage.getItem('jcLiveCompact') === '1';
+    var liveToggleBtn = document.getElementById('liveToggleBtn');
+    var liveCaretSvg = document.getElementById('liveCaretSvg');
+    function applyLiveCompact() {
+      liveCountriesEl.style.display = liveCompact ? 'none' : '';
+      if (liveCaretSvg) liveCaretSvg.style.transform = liveCompact ? 'rotate(-90deg)' : 'rotate(0deg)';
+    }
+    applyLiveCompact();
+    liveToggleBtn.addEventListener('click', function() {
+      liveCompact = !liveCompact;
+      localStorage.setItem('jcLiveCompact', liveCompact ? '1' : '0');
+      applyLiveCompact();
+    });
+    document.getElementById('liveCount').addEventListener('click', function() {
+      liveCompact = !liveCompact;
+      localStorage.setItem('jcLiveCompact', liveCompact ? '1' : '0');
+      applyLiveCompact();
+    });
+
+    // ===== LEADERBOARD =====
+    var leaderboardListEl = document.getElementById('leaderboardList');
+
+    // Player detail overlay - persists until explicitly closed
+    var detailOverlay = document.getElementById('playerDetailOverlay');
+    var detailCard = document.getElementById('playerDetailCard');
+    var selectedPlayerName = null;
+
+    function showPlayerDetail(entry) {
+      selectedPlayerName = entry.name.toLowerCase();
+      renderPlayerDetail(entry);
+      detailOverlay.classList.add('active');
+      hapticMedium();
+    }
+
+    function renderPlayerDetail(entry) {
+      var s = entry.stats || {};
+      detailCard.textContent = '';
+
+      var nameD = document.createElement('div');
+      nameD.className = 'lb-detail-name';
+      nameD.textContent = entry.name;
+      detailCard.appendChild(nameD);
+
+      var levelD = document.createElement('div');
+      levelD.className = 'lb-detail-level';
+      levelD.textContent = s.smellyLevel || 'Unknown';
+      detailCard.appendChild(levelD);
+
+      var statsData = [
+        ['Total Coins', formatNumber(entry.score)],
+        ['Per Click', formatNumber(s.coinsPerClick || 0)],
+        ['Per Second', formatNumber(s.coinsPerSecond || 0)],
+        ['Total Clicks', formatNumber(s.totalClicks || 0)],
+        ['Luke Sightings', formatNumber(s.sightings || 0)],
+      ];
+
+      for (var i = 0; i < statsData.length; i++) {
+        var row = document.createElement('div');
+        row.className = 'lb-detail-row';
+
+        var label = document.createElement('span');
+        label.className = 'lb-detail-label';
+        label.textContent = statsData[i][0];
+        row.appendChild(label);
+
+        var val = document.createElement('span');
+        val.className = 'lb-detail-val';
+        val.textContent = statsData[i][1];
+        row.appendChild(val);
+
+        detailCard.appendChild(row);
+      }
+
+      // Sabotage buttons (don't show for own profile, require name to be set)
+      var isOwnProfile = playerName && entry.name.toLowerCase() === playerName.toLowerCase();
+      if (!isOwnProfile && playerName) {
+        // Use credit (if available)
+        if (myCredits > 0) {
+          var sabBtn = document.createElement('button');
+          sabBtn.className = 'sabotage-btn';
+          var sabText = document.createTextNode('Slow them down (' + myCredits + ' credit' + (myCredits !== 1 ? 's' : '') + ' left)');
+          sabBtn.appendChild(sabText);
+          var sabSub = document.createElement('div');
+          sabSub.className = 'sabotage-btn-sub';
+          sabSub.textContent = '1 credit - half speed for 15 min';
+          sabBtn.appendChild(sabSub);
+          sabBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            useCreditToSabotage(entry.name);
+          });
+          detailCard.appendChild(sabBtn);
+        }
+
+        // Single sabotage $0.99
+        var singleBtn = document.createElement('button');
+        singleBtn.className = 'sabotage-btn';
+        singleBtn.style.background = 'linear-gradient(135deg, #991b1b, #dc2626)';
+        var singleText = document.createTextNode('Sabotage - $0.99');
+        singleBtn.appendChild(singleText);
+        var singleSub = document.createElement('div');
+        singleSub.className = 'sabotage-btn-sub';
+        singleSub.textContent = 'Half speed for 15 minutes';
+        singleBtn.appendChild(singleSub);
+        singleBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openSingleSabotagePayment(entry.name);
+        });
+        detailCard.appendChild(singleBtn);
+
+        // FREEZE with duration slider
+        var freezePresets = [
+          { min: 2, label: '2 min', price: 200 },
+          { min: 5, label: '5 min', price: 300 },
+          { min: 10, label: '10 min', price: 500 },
+          { min: 15, label: '15 min', price: 700 },
+          { min: 30, label: '30 min', price: 1000 },
+          { min: 60, label: '1 hr', price: 1500 },
+          { min: 120, label: '2 hr', price: 2500 },
+          { min: 180, label: '3 hr', price: 3500 },
+          { min: 240, label: '4 hr', price: 4500 },
+          { min: 360, label: '6 hr', price: 6000 },
+        ];
+        var freezeBox = document.createElement('div');
+        freezeBox.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1e40af);border:2px solid #60a5fa;border-radius:12px;padding:14px;margin-top:8px;';
+
+        var freezeTitle = document.createElement('div');
+        freezeTitle.style.cssText = 'color:#60a5fa;font-size:16px;margin-bottom:8px;';
+        freezeTitle.textContent = 'FREEZE: Stop all coins';
+        freezeBox.appendChild(freezeTitle);
+
+        var freezeSliderRow = document.createElement('div');
+        freezeSliderRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
+        var freezeSlider = document.createElement('input');
+        freezeSlider.type = 'range';
+        freezeSlider.min = '0';
+        freezeSlider.max = '9';
+        freezeSlider.value = '0';
+        freezeSlider.step = '1';
+        freezeSlider.style.cssText = 'flex:1;accent-color:#60a5fa;';
+        freezeSliderRow.appendChild(freezeSlider);
+        var freezeTimeLabel = document.createElement('span');
+        freezeTimeLabel.style.cssText = 'color:#fff;font-family:Press Start 2P,monospace;font-size:10px;min-width:55px;text-align:right;';
+        freezeTimeLabel.textContent = freezePresets[0].label;
+        freezeSliderRow.appendChild(freezeTimeLabel);
+        freezeBox.appendChild(freezeSliderRow);
+
+        var freezePriceLabel = document.createElement('div');
+        freezePriceLabel.style.cssText = 'color:#ffd700;font-family:Press Start 2P,monospace;font-size:13px;margin-top:6px;text-align:center;';
+        freezePriceLabel.textContent = '$' + (freezePresets[0].price / 100);
+        freezeBox.appendChild(freezePriceLabel);
+
+        freezeSlider.addEventListener('input', function() {
+          var idx = parseInt(freezeSlider.value);
+          var preset = freezePresets[idx];
+          freezeTimeLabel.textContent = preset.label;
+          freezePriceLabel.textContent = '$' + (preset.price / 100);
+        });
+
+        var freezeGoBtn = document.createElement('button');
+        freezeGoBtn.style.cssText = 'width:100%;margin-top:8px;padding:10px;background:#2563eb;border:2px solid #60a5fa;border-radius:8px;color:white;font-family:Fredoka One,cursive;font-size:15px;cursor:pointer;';
+        freezeGoBtn.textContent = 'Freeze ' + entry.name;
+        freezeGoBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx = parseInt(freezeSlider.value);
+          openFreezePayment(entry.name, freezePresets[idx].min);
+        });
+        freezeBox.appendChild(freezeGoBtn);
+        detailCard.appendChild(freezeBox);
+
+        // COIN CUT section
+        var coinCutPercentages = [1,5,10,15,20,25,30,35,40];
+        var coinCutBox = document.createElement('div');
+        coinCutBox.style.cssText = 'background:linear-gradient(135deg,#064e3b,#059669);border:2px solid #34d399;border-radius:12px;padding:14px;margin-top:8px;';
+
+        var coinCutTitle = document.createElement('div');
+        coinCutTitle.style.cssText = 'color:#34d399;font-size:16px;margin-bottom:8px;';
+        coinCutTitle.textContent = 'COIN CUT: Remove their coins';
+        coinCutBox.appendChild(coinCutTitle);
+
+        var coinCutSliderRow = document.createElement('div');
+        coinCutSliderRow.style.cssText = 'display:flex;align-items:center;gap:8px;';
+        var coinCutSlider = document.createElement('input');
+        coinCutSlider.type = 'range';
+        coinCutSlider.min = '0';
+        coinCutSlider.max = '8';
+        coinCutSlider.value = '0';
+        coinCutSlider.step = '1';
+        coinCutSlider.style.cssText = 'flex:1;accent-color:#34d399;';
+        coinCutSliderRow.appendChild(coinCutSlider);
+        var coinCutPctLabel = document.createElement('span');
+        coinCutPctLabel.style.cssText = 'color:#fff;font-family:Press Start 2P,monospace;font-size:10px;min-width:40px;text-align:right;';
+        coinCutPctLabel.textContent = coinCutPercentages[0] + '%';
+        coinCutSliderRow.appendChild(coinCutPctLabel);
+        coinCutBox.appendChild(coinCutSliderRow);
+
+        var coinCutDescLabel = document.createElement('div');
+        coinCutDescLabel.style.cssText = 'color:#a7f3d0;font-size:12px;margin-top:6px;text-align:center;';
+        var initPct = coinCutPercentages[0];
+        var initRemoved = Math.floor(entry.score * (initPct / 100));
+        coinCutDescLabel.textContent = 'Cut ' + initPct + '% of ' + entry.name + '\'s coins';
+        coinCutBox.appendChild(coinCutDescLabel);
+
+        var coinCutRemoveLabel = document.createElement('div');
+        coinCutRemoveLabel.style.cssText = 'color:#ffd700;font-size:11px;margin-top:2px;text-align:center;font-family:Press Start 2P,monospace;';
+        coinCutRemoveLabel.textContent = 'Remove ' + formatNumber(initRemoved) + ' coins';
+        coinCutBox.appendChild(coinCutRemoveLabel);
+
+        var coinCutPriceLabel = document.createElement('div');
+        coinCutPriceLabel.style.cssText = 'color:#ffd700;font-family:Press Start 2P,monospace;font-size:13px;margin-top:6px;text-align:center;';
+        var initDollars = Math.max(Math.ceil(initPct / 10), Math.min(50, Math.floor(Math.log10(Math.max(entry.score, 10)) * (initPct / 100) * 3.5)));
+        coinCutPriceLabel.textContent = '$' + initDollars;
+        coinCutBox.appendChild(coinCutPriceLabel);
+
+        coinCutSlider.addEventListener('input', function() {
+          var idx = parseInt(coinCutSlider.value);
+          var pct = coinCutPercentages[idx];
+          var removed = Math.floor(entry.score * (pct / 100));
+          var dollars = Math.max(Math.ceil(pct / 10), Math.min(50, Math.floor(Math.log10(Math.max(entry.score, 10)) * (pct / 100) * 3.5)));
+          coinCutPctLabel.textContent = pct + '%';
+          coinCutDescLabel.textContent = 'Cut ' + pct + '% of ' + entry.name + '\'s coins';
+          coinCutRemoveLabel.textContent = 'Remove ' + formatNumber(removed) + ' coins';
+          coinCutPriceLabel.textContent = '$' + dollars;
+          coinCutGoBtn.textContent = 'Cut ' + entry.name + '\'s Coins - $' + dollars;
+        });
+
+        var coinCutGoBtn = document.createElement('button');
+        coinCutGoBtn.style.cssText = 'width:100%;margin-top:8px;padding:10px;background:#047857;border:2px solid #34d399;border-radius:8px;color:white;font-family:Fredoka One,cursive;font-size:15px;cursor:pointer;';
+        coinCutGoBtn.textContent = 'Cut ' + entry.name + '\'s Coins - $' + initDollars;
+        coinCutGoBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx = parseInt(coinCutSlider.value);
+          var pct = coinCutPercentages[idx];
+          openCoinCutPayment(entry.name, pct, entry.score);
+        });
+        coinCutBox.appendChild(coinCutGoBtn);
+
+        // "Start Campaign" button - secondary option for expensive cuts
+        var campaignHint = document.createElement('div');
+        campaignHint.style.cssText = 'color:#a7f3d0;font-size:11px;margin-top:8px;text-align:center;font-style:italic;';
+        campaignHint.textContent = "Can't afford it alone? Start a campaign and let others chip in!";
+        coinCutBox.appendChild(campaignHint);
+
+        var startCampaignBtn = document.createElement('button');
+        startCampaignBtn.style.cssText = 'width:100%;margin-top:6px;padding:8px;background:linear-gradient(135deg,#064e3b,#047857);border:2px solid #a7f3d0;border-radius:8px;color:#a7f3d0;font-family:Fredoka One,cursive;font-size:13px;cursor:pointer;';
+        startCampaignBtn.textContent = 'Start Campaign';
+        startCampaignBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var idx = parseInt(coinCutSlider.value);
+          var pct = coinCutPercentages[idx];
+          startCoinCutCampaign(entry.name, pct, entry.score);
+        });
+        coinCutBox.appendChild(startCampaignBtn);
+
+        detailCard.appendChild(coinCutBox);
+
+        // NUKE $20
+        var dayBtn = document.createElement('button');
+        dayBtn.className = 'sabotage-btn';
+        dayBtn.style.background = 'linear-gradient(135deg, #7c0000, #b91c1c)';
+        dayBtn.style.borderColor = '#ef4444';
+        var dayText = document.createTextNode('NUKE: Slow for 24 hours');
+        dayBtn.appendChild(dayText);
+        var daySub = document.createElement('div');
+        daySub.className = 'sabotage-btn-sub';
+        daySub.textContent = '$20.00 - half speed ALL DAY';
+        dayBtn.appendChild(daySub);
+        dayBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openDaySabotagePayment(entry.name);
+        });
+        detailCard.appendChild(dayBtn);
+
+        // Buy 5 credits (show if no credits)
+        if (myCredits <= 0) {
+          var buyBtn = document.createElement('button');
+          buyBtn.className = 'sabotage-btn';
+          buyBtn.style.background = 'linear-gradient(135deg, #4a1942, #7c3aed)';
+          buyBtn.style.borderColor = '#a855f7';
+          buyBtn.style.boxShadow = '0 0 15px rgba(168, 85, 247, 0.3)';
+          var buyText = document.createTextNode('Buy 5 sabotage credits - $3.99');
+          buyBtn.appendChild(buyText);
+          var buySub = document.createElement('div');
+          buySub.className = 'sabotage-btn-sub';
+          buySub.textContent = 'Use credits to slow players down';
+          buyBtn.appendChild(buySub);
+          buyBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            hidePlayerDetail();
+            openCreditsPayment();
+          });
+          detailCard.appendChild(buyBtn);
+        }
+      }
+
+      var closeBtn = document.createElement('button');
+      closeBtn.className = 'lb-detail-close';
+      closeBtn.textContent = 'Close';
+      closeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        hidePlayerDetail();
+      });
+      detailCard.appendChild(closeBtn);
+    }
+
+    function hidePlayerDetail() {
+      selectedPlayerName = null;
+      detailOverlay.classList.remove('active');
+      hapticLight();
+    }
+
+    // Close on overlay background click (not card click)
+    detailOverlay.addEventListener('click', function(e) {
+      if (e.target === detailOverlay) hidePlayerDetail();
+    });
+
+    var lastLeaderboardData = [];
+
+    function renderLeaderboard(scores) {
+      lastLeaderboardData = scores || [];
+      leaderboardListEl.textContent = '';
+      if (!scores || scores.length === 0) {
+        var empty = document.createElement('div');
+        empty.style.textAlign = 'center';
+        empty.style.color = '#888';
+        empty.style.fontSize = '13px';
+        empty.style.padding = '16px 0';
+        empty.textContent = 'No scores yet. Be the first!';
+        leaderboardListEl.appendChild(empty);
+        return;
+      }
+      var sabotagedNames = (typeof getSabotagedNames === 'function') ? getSabotagedNames() : {};
+      for (var i = 0; i < Math.min(scores.length, 20); i++) {
+        (function(entry, rank) {
+          var row = document.createElement('div');
+          row.className = 'lb-row lb-row-tappable';
+
+          var rankEl = document.createElement('span');
+          rankEl.className = 'lb-rank';
+          rankEl.textContent = '#' + rank;
+          row.appendChild(rankEl);
+
+          var nameEl = document.createElement('span');
+          nameEl.className = 'lb-name';
+          nameEl.textContent = entry.name;
+          if (playerName && entry.name.toLowerCase() === playerName.toLowerCase()) {
+            nameEl.style.color = '#4ade80';
+          }
+          // Add SLOWED/FROZEN badge if sabotaged (with stack count)
+          var stacks = sabotagedNames[entry.name.toLowerCase()];
+          if (stacks) {
+            var slowBadge = document.createElement('span');
+            slowBadge.className = 'lb-slowed-badge';
+            if (stacks === -1) {
+              slowBadge.textContent = 'FROZEN';
+              slowBadge.style.background = 'rgba(59, 130, 246, 0.3)';
+              slowBadge.style.color = '#60a5fa';
+              slowBadge.style.borderColor = '#60a5fa';
+            } else {
+              slowBadge.textContent = stacks >= 3 ? 'SLOWED x3' : stacks === 2 ? 'SLOWED x2' : 'SLOWED';
+            }
+            nameEl.appendChild(slowBadge);
+          }
+          row.appendChild(nameEl);
+
+          var scoreEl = document.createElement('span');
+          scoreEl.className = 'lb-score';
+          scoreEl.textContent = formatNumber(entry.score);
+          row.appendChild(scoreEl);
+
+          row.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showPlayerDetail(entry);
+          });
+
+          leaderboardListEl.appendChild(row);
+        })(scores[i], i + 1);
+      }
+
+      // Don't rebuild detail card on WS updates - it resets sliders/scroll
+      // Stats update when user closes and reopens
+      if (false && selectedPlayerName) {
+        for (var j = 0; j < scores.length; j++) {
+          if (scores[j].name.toLowerCase() === selectedPlayerName) {
+            renderPlayerDetail(scores[j]);
+            break;
+          }
+        }
+      }
+    }
+
+    // Send score updates every 5 seconds via WebSocket
+    setInterval(function() {
+      sendScoreUpdate();
+    }, 5000);
+
+    // Submit score (shared logic)
+    var inlineNameInput = document.getElementById('inlineNameInput');
+    var inlineNameArea = document.getElementById('inlineNameArea');
+
+    // Sync inputs
+    if (playerName) {
+      inlineNameInput.value = playerName;
+      inlineNameArea.classList.add('saved');
+    }
+
+    function submitScore(nameValue) {
+      var name = nameValue.trim();
+      if (!name) return;
+      playerName = name;
+      localStorage.setItem('jcPlayerName', playerName);
+
+      // Sync both inputs
+      lbNameInput.value = playerName;
+      inlineNameInput.value = playerName;
+      inlineNameArea.classList.add('saved');
+
+      // Send identity update (triggers rename in worker if name changed)
+      sendPlayerName();
+      // Send name + score over WebSocket (real-time update)
+      sendScoreUpdate();
+      hapticSuccess();
+    }
+
+    document.getElementById('lbSubmitBtn').addEventListener('click', function() {
+      submitScore(lbNameInput.value);
+    });
+
+    document.getElementById('inlineNameBtn').addEventListener('click', function() {
+      submitScore(inlineNameInput.value);
+    });
+
+    // Submit on Enter key for both inputs
+    inlineNameInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') submitScore(inlineNameInput.value);
+    });
+    lbNameInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') submitScore(lbNameInput.value);
+    });
+
+    // Score updates happen via WebSocket every 5 seconds (see above)
+
+    // ===== HIDE LUKE (Stripe) =====
+
+    var stripe = Stripe('pk_live_51Q3pGoDG6JrQ4B8daIc8yMPdoLWczz9WeFIaWPj4btghvmG7f47HUyn5eP1cIV7mtXpJuJ1TtkEMeUfRwZ09jXLL00OL2v1mpM');
+    var stripeElements = null;
+    var paymentElement = null;
+    var paymentModal = document.getElementById('paymentModal');
+    var payBtn = document.getElementById('payBtn');
+    var paymentStatus = document.getElementById('paymentStatus');
+
+    var paymentCloseBtn = document.getElementById('paymentClose');
+    function openPaymentModal() {
+      if (lukeHidden) return;
+      paymentCloseBtn.textContent = 'nevermind, I love Luke';
+      paymentStatus.textContent = 'Loading...';
+      paymentStatus.style.color = '#aaa';
+      payBtn.disabled = true;
+      paymentModal.classList.add('active');
+
+      fetch(apiBase + '/create-payment-intent', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            paymentStatus.textContent = data.error;
+            paymentStatus.style.color = '#ef4444';
+            return;
+          }
+          stripeElements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: {
+              theme: 'night',
+              variables: {
+                colorPrimary: '#a855f7',
+                colorBackground: '#1e1e3a',
+                colorText: '#ffffff',
+                borderRadius: '8px',
+              },
+            },
+          });
+          paymentElement = stripeElements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          });
+          paymentElement.mount('#payment-element');
+          paymentElement.on('ready', function() {
+            payBtn.disabled = false;
+            paymentStatus.textContent = '';
+          });
+        })
+        .catch(function(err) {
+          paymentStatus.textContent = 'Failed to load payment. Try again.';
+          paymentStatus.style.color = '#ef4444';
+        });
+    }
+
+    document.getElementById('hideLukeBtn').addEventListener('click', openPaymentModal);
+
+    document.getElementById('buyCreditsBtn').addEventListener('click', function() {
+      if (!playerName) {
+        inlineNameInput.focus();
+        return;
+      }
+      openCreditsPayment();
+    });
+
+    document.getElementById('hideLukeOverlayBtn').addEventListener('click', function(e) {
+      e.stopPropagation(); // Don't dismiss the photo overlay
+      photoOverlay.classList.remove('active');
+      openPaymentModal();
+    });
+
+    payBtn.addEventListener('click', function() {
+      payBtn.disabled = true;
+      payBtn.textContent = 'Processing...';
+
+      stripe.confirmPayment({
+        elements: stripeElements,
+        confirmParams: {
+          return_url: window.location.href,
+        },
+        redirect: 'if_required',
+      }).then(function(result) {
+        if (result.error) {
+          paymentStatus.textContent = result.error.message;
+          paymentStatus.style.color = '#ef4444';
+          payBtn.disabled = false;
+          payBtn.textContent = 'Pay $1.99';
+        } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+          // Success! Hide Luke for 1 hour
+          lukeHidden = true;
+          lukeHiddenUntil = Date.now() + 60 * 60 * 1000;
+          localStorage.setItem('jcLukeHiddenUntil', String(lukeHiddenUntil));
+          paymentStatus.textContent = 'Luke has been banished for 1 hour!';
+          paymentStatus.style.color = '#4ade80';
+          payBtn.textContent = 'Done!';
+          setTimeout(function() {
+            paymentModal.classList.remove('active');
+            document.getElementById('hideLukeBtn').textContent = 'Luke is hidden!';
+            document.getElementById('hideLukeBtn').disabled = true;
+          }, 2000);
+        }
+      });
+    });
+
+    document.getElementById('paymentClose').addEventListener('click', function() {
+      // If in sabotage mode, use sabotage close logic
+      if (typeof sabotageTargetName !== 'undefined' && sabotageTargetName) {
+        closeSabotagePayment();
+        return;
+      }
+      paymentModal.classList.remove('active');
+      if (paymentElement) {
+        paymentElement.unmount();
+        paymentElement = null;
+      }
+      payBtn.textContent = 'Pay $1.99';
+      payBtn.disabled = true;
+      paymentStatus.textContent = '';
+    });
+
+    // Check if Luke should be hidden on load
+    if (lukeHidden) {
+      document.getElementById('hideLukeBtn').textContent = 'Luke is hidden!';
+      document.getElementById('hideLukeBtn').disabled = true;
+      document.getElementById('hideLukeOverlayBtn').style.display = 'none';
+    }
+
+    // ===== SABOTAGE SYSTEM =====
+    var sabotageMultiplier = 1;
+    var myCredits = 0;
+    var activeSabotages = []; // from WS broadcast
+    var shownSabotageKeys = JSON.parse(localStorage.getItem('jcShownSabotageKeys') || '{}');
+    var sabotageNotifyOverlay = document.getElementById('sabotageNotifyOverlay');
+    var sabotageNotifyText = document.getElementById('sabotageNotifyText');
+    var sabotageNotifySub = document.getElementById('sabotageNotifySub');
+    var sabotageBanner = document.getElementById('sabotageBanner');
+
+    document.getElementById('sabotageNotifyDismiss').addEventListener('click', function() {
+      sabotageNotifyOverlay.classList.remove('active');
+    });
+    sabotageNotifyOverlay.addEventListener('click', function(e) {
+      if (e.target === sabotageNotifyOverlay) {
+        sabotageNotifyOverlay.classList.remove('active');
+      }
+    });
+
+    function processSabotages(sabotages) {
+      activeSabotages = sabotages || [];
+      var now = Date.now();
+      var isTargeted = false;
+
+      var myStacks = 0;
+      var myFrozen = false;
+      var myEarliestExpiry = Infinity;
+
+      for (var i = 0; i < activeSabotages.length; i++) {
+        var sab = activeSabotages[i];
+        if (sab.expiresAt <= now) continue;
+
+        // Count stacks on current player
+        if (playerName && sab.targetName.toLowerCase() === playerName.toLowerCase()) {
+          isTargeted = true;
+          myStacks++;
+          if (sab.freeze) myFrozen = true;
+          if (sab.expiresAt < myEarliestExpiry) myEarliestExpiry = sab.expiresAt;
+        }
+
+        // Notify ALL players about new sabotages
+        var sabKey = sab.attackerName + '_' + sab.targetName + '_' + sab.expiresAt;
+        if (!shownSabotageKeys[sabKey]) {
+          shownSabotageKeys[sabKey] = 1;
+          localStorage.setItem('jcShownSabotageKeys', JSON.stringify(shownSabotageKeys));
+          var isMe = playerName && sab.targetName.toLowerCase() === playerName.toLowerCase();
+          if (sab.freeze) {
+            var freezeRemainMs = sab.expiresAt - Date.now();
+            var freezeRemainMin = Math.ceil(freezeRemainMs / 60000);
+            var freezeDurLabel = freezeRemainMin >= 60 ? Math.round(freezeRemainMin / 60) + ' hour' + (freezeRemainMin >= 120 ? 's' : '') : freezeRemainMin + ' minutes';
+            if (isMe) {
+              sabotageNotifyText.textContent = sab.attackerName + ' FROZE you!';
+              sabotageNotifySub.textContent = 'Zero coins for ' + freezeDurLabel + '!';
+            } else {
+              sabotageNotifyText.textContent = sab.attackerName + ' FROZE ' + sab.targetName + '!';
+              sabotageNotifySub.textContent = 'Zero coins for ' + freezeDurLabel + '!';
+            }
+          } else {
+            var stackCount = 0;
+            for (var j = 0; j < activeSabotages.length; j++) {
+              if (activeSabotages[j].expiresAt > now && activeSabotages[j].targetName.toLowerCase() === sab.targetName.toLowerCase()) stackCount++;
+            }
+            var speedLabel = stackCount >= 3 ? '1/8 speed' : stackCount === 2 ? '1/4 speed' : 'half speed';
+            if (isMe) {
+              sabotageNotifyText.textContent = sab.attackerName + ' slowed you down!';
+              sabotageNotifySub.textContent = speedLabel + ' for 15 minutes!' + (stackCount > 1 ? ' (' + Math.min(stackCount, 3) + 'x stacked!)' : '');
+            } else {
+              sabotageNotifyText.textContent = sab.attackerName + ' slowed down ' + sab.targetName + '!';
+              sabotageNotifySub.textContent = speedLabel + ' for 15 minutes!';
+            }
+          }
+          sabotageNotifyOverlay.classList.add('active');
+          hapticSabotage();
+          playFartSound();
+          // Auto-dismiss after 5 seconds
+          setTimeout(function() {
+            sabotageNotifyOverlay.classList.remove('active');
+          }, 5000);
+        }
+      }
+
+      if (isTargeted) {
+        coinBtn.classList.add('sabotaged');
+        sabotageBanner.textContent = '';
+
+        // Timer countdown
+        var remainMs = myEarliestExpiry - now;
+        var remainMin = Math.floor(remainMs / 60000);
+        var remainSec = Math.floor((remainMs % 60000) / 1000);
+        var timerText = remainMin + ':' + (remainSec < 10 ? '0' : '') + remainSec;
+
+        if (myFrozen) {
+          sabotageMultiplier = 0;
+          var bannerText = document.createTextNode('FROZEN! 0 COINS - ' + timerText + ' ');
+          sabotageBanner.appendChild(bannerText);
+        } else {
+          // Cap stacks at 3: 1 = 0.5x, 2 = 0.25x, 3 = 0.125x
+          var effectiveStacks = Math.min(myStacks, 3);
+          sabotageMultiplier = Math.pow(0.5, effectiveStacks);
+          var speedText = effectiveStacks >= 3 ? '1/8 SPEED' : effectiveStacks === 2 ? '1/4 SPEED' : 'HALF SPEED';
+          var bannerText = document.createTextNode('SABOTAGED! ' + speedText + ' (' + effectiveStacks + 'x) - ' + timerText + ' ');
+          sabotageBanner.appendChild(bannerText);
+        }
+
+        var breakFreeBtn = document.createElement('button');
+        breakFreeBtn.textContent = 'Break Free - $0.99';
+        breakFreeBtn.style.cssText = 'background:#4ade80;color:#000;border:none;border-radius:6px;padding:4px 12px;font-family:Fredoka One,cursive;font-size:12px;cursor:pointer;margin-left:8px;';
+        breakFreeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          openUnsabotagePayment();
+        });
+        sabotageBanner.appendChild(breakFreeBtn);
+        sabotageBanner.classList.add('active');
+      } else {
+        sabotageMultiplier = 1;
+        coinBtn.classList.remove('sabotaged');
+        sabotageBanner.classList.remove('active');
+      }
+    }
+
+    // Refresh sabotage timer every 3 seconds (not every 1)
+    setInterval(function() {
+      if ((sabotageMultiplier < 1 || sabotageMultiplier === 0) && activeSabotages.length > 0) {
+        // Only update the timer text, don't rebuild the whole banner
+        var now = Date.now();
+        var earliest = Infinity;
+        var stacks = 0;
+        var frozen = false;
+        for (var i = 0; i < activeSabotages.length; i++) {
+          if (playerName && activeSabotages[i].targetName.toLowerCase() === playerName.toLowerCase() && activeSabotages[i].expiresAt > now) {
+            stacks++;
+            if (activeSabotages[i].freeze) frozen = true;
+            if (activeSabotages[i].expiresAt < earliest) earliest = activeSabotages[i].expiresAt;
+          }
+        }
+        if (stacks === 0) {
+          // Sabotage expired
+          sabotageMultiplier = 1;
+          coinBtn.classList.remove('sabotaged');
+          sabotageBanner.classList.remove('active');
+        } else {
+          var remainMs = earliest - now;
+          var remainMin = Math.floor(remainMs / 60000);
+          var remainSec = Math.floor((remainMs % 60000) / 1000);
+          // Update just the text node if banner has children
+          if (sabotageBanner.firstChild && sabotageBanner.firstChild.nodeType === 3) {
+            if (frozen) {
+              sabotageBanner.firstChild.textContent = 'FROZEN! 0 COINS - ' + remainMin + ':' + (remainSec < 10 ? '0' : '') + remainSec + ' ';
+            } else {
+              var effectiveStacks = Math.min(stacks, 3);
+              var speedText = effectiveStacks >= 3 ? '1/8 SPEED' : effectiveStacks === 2 ? '1/4 SPEED' : 'HALF SPEED';
+              sabotageBanner.firstChild.textContent = 'SABOTAGED! ' + speedText + ' (' + effectiveStacks + 'x) - ' + remainMin + ':' + (remainSec < 10 ? '0' : '') + remainSec + ' ';
+            }
+          }
+        }
+      }
+    }, 3000);
+
+    function getSabotagedNames() {
+      var names = {};
+      var frozenNames = {};
+      var now = Date.now();
+      for (var i = 0; i < activeSabotages.length; i++) {
+        if (activeSabotages[i].expiresAt > now) {
+          var key = activeSabotages[i].targetName.toLowerCase();
+          names[key] = (names[key] || 0) + 1;
+          if (activeSabotages[i].freeze) frozenNames[key] = true;
+        }
+      }
+      // Mark frozen names with a special value
+      for (var k in frozenNames) {
+        names[k] = -1; // -1 means frozen
+      }
+      return names;
+    }
+
+    // Sabotage payment flow
+    var sabotageTargetName = '';
+    var sabotageStripeElements = null;
+    var sabotagePaymentElement = null;
+
+    // Use a credit to sabotage someone (no Stripe needed)
+    function useCreditToSabotage(targetName) {
+      fetch(apiBase + '/sabotage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attackerName: playerName,
+          targetName: targetName,
+        }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            // Show error briefly in the detail card if still open
+            var errDiv = document.createElement('div');
+            errDiv.style.color = '#ef4444';
+            errDiv.style.textAlign = 'center';
+            errDiv.style.marginTop = '8px';
+            errDiv.style.fontSize = '14px';
+            errDiv.textContent = data.error;
+            detailCard.appendChild(errDiv);
+            return;
+          }
+          hapticSabotage();
+          hidePlayerDetail();
+        })
+        .catch(function() {
+          hidePlayerDetail();
+        });
+    }
+
+    // Credits payment flow
+    function openCreditsPayment() {
+      var payCard = paymentModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = '5 Sabotage Credits';
+      payCard.querySelector('.price').textContent = '$3.99';
+      payCard.querySelector('.payment-desc').textContent = 'Buy 5 credits to slow down other players. Each credit lets you halve someone\'s speed for 15 minutes.';
+      payBtn.textContent = 'Pay $3.99';
+      paymentStatus.textContent = 'Loading...';
+      paymentStatus.style.color = '#aaa';
+      payBtn.disabled = true;
+      paymentModal.classList.add('active');
+
+      if (paymentElement) {
+        paymentElement.unmount();
+        paymentElement = null;
+      }
+
+      fetch(apiBase + '/create-credits-intent', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            paymentStatus.textContent = data.error;
+            paymentStatus.style.color = '#ef4444';
+            return;
+          }
+          sabotageStripeElements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: {
+              theme: 'night',
+              variables: {
+                colorPrimary: '#ef4444',
+                colorBackground: '#1e1e3a',
+                colorText: '#ffffff',
+                borderRadius: '8px',
+              },
+            },
+          });
+          sabotagePaymentElement = sabotageStripeElements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          });
+          sabotagePaymentElement.mount('#payment-element');
+          sabotagePaymentElement.on('ready', function() {
+            payBtn.disabled = false;
+            paymentStatus.textContent = '';
+          });
+
+          payBtn.onclick = function() {
+            payBtn.disabled = true;
+            payBtn.textContent = 'Processing...';
+
+            stripe.confirmPayment({
+              elements: sabotageStripeElements,
+              confirmParams: { return_url: window.location.href },
+              redirect: 'if_required',
+            }).then(function(result) {
+              if (result.error) {
+                paymentStatus.textContent = result.error.message;
+                paymentStatus.style.color = '#ef4444';
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay $3.99';
+              } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                fetch(apiBase + '/buy-credits', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ playerName: playerName }),
+                }).then(function() {
+                  paymentStatus.textContent = '5 sabotage credits added!';
+                  paymentStatus.style.color = '#4ade80';
+                  payBtn.textContent = 'Done!';
+                  hapticSuccess();
+                  setTimeout(function() {
+                    closeSabotagePayment();
+                  }, 2000);
+                }).catch(function() {
+                  paymentStatus.textContent = 'Payment succeeded but credits failed to apply. Contact support.';
+                  paymentStatus.style.color = '#ef4444';
+                });
+              }
+            });
+          };
+        })
+        .catch(function() {
+          paymentStatus.textContent = 'Failed to load payment. Try again.';
+          paymentStatus.style.color = '#ef4444';
+        });
+    }
+
+    function openDaySabotagePayment(targetName) {
+      sabotageTargetName = targetName;
+      hidePlayerDetail();
+
+      var payCard = paymentModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = 'NUKE ' + targetName;
+      payCard.querySelector('.price').textContent = '$20.00';
+      payCard.querySelector('.payment-desc').textContent = 'Obliterate their progress. Half speed for an entire 24 hours. They will know it was you.';
+      payBtn.textContent = 'Pay $20.00';
+      paymentStatus.textContent = 'Loading...';
+      paymentStatus.style.color = '#aaa';
+      payBtn.disabled = true;
+      paymentModal.classList.add('active');
+
+      if (paymentElement) {
+        paymentElement.unmount();
+        paymentElement = null;
+      }
+
+      fetch(apiBase + '/create-day-sabotage-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetName: targetName }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            paymentStatus.textContent = data.error;
+            paymentStatus.style.color = '#ef4444';
+            return;
+          }
+          sabotageStripeElements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: {
+              theme: 'night',
+              variables: {
+                colorPrimary: '#ef4444',
+                colorBackground: '#1e1e3a',
+                colorText: '#ffffff',
+                borderRadius: '8px',
+              },
+            },
+          });
+          sabotagePaymentElement = sabotageStripeElements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          });
+          sabotagePaymentElement.mount('#payment-element');
+          sabotagePaymentElement.on('ready', function() {
+            payBtn.disabled = false;
+            paymentStatus.textContent = '';
+          });
+
+          payBtn.onclick = function() {
+            payBtn.disabled = true;
+            payBtn.textContent = 'Processing...';
+
+            stripe.confirmPayment({
+              elements: sabotageStripeElements,
+              confirmParams: { return_url: window.location.href },
+              redirect: 'if_required',
+            }).then(function(result) {
+              if (result.error) {
+                paymentStatus.textContent = result.error.message;
+                paymentStatus.style.color = '#ef4444';
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay $20.00';
+              } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                fetch(apiBase + '/sabotage', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    attackerName: playerName,
+                    targetName: sabotageTargetName,
+                    durationMs: 24 * 60 * 60 * 1000,
+                  }),
+                }).then(function() {
+                  paymentStatus.textContent = sabotageTargetName + ' has been NUKED for 24 hours!';
+                  paymentStatus.style.color = '#ef4444';
+                  payBtn.textContent = 'Done!';
+                  hapticSabotage();
+                  setTimeout(function() {
+                    closeSabotagePayment();
+                  }, 2000);
+                });
+              }
+            });
+          };
+        })
+        .catch(function() {
+          paymentStatus.textContent = 'Failed to load payment. Try again.';
+          paymentStatus.style.color = '#ef4444';
+        });
+    }
+
+    function openSingleSabotagePayment(targetName) {
+      sabotageTargetName = targetName;
+      hidePlayerDetail();
+
+      var payCard = paymentModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = 'Sabotage ' + targetName;
+      payCard.querySelector('.price').textContent = '$0.99';
+      payCard.querySelector('.payment-desc').textContent = 'Slow ' + targetName + ' to half speed for 15 minutes. They will know it was you.';
+      payBtn.textContent = 'Pay $0.99';
+      paymentStatus.textContent = 'Loading...';
+      paymentStatus.style.color = '#aaa';
+      payBtn.disabled = true;
+      paymentModal.classList.add('active');
+
+      if (paymentElement) {
+        paymentElement.unmount();
+        paymentElement = null;
+      }
+
+      fetch(apiBase + '/create-single-sabotage-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetName: targetName }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            paymentStatus.textContent = data.error;
+            paymentStatus.style.color = '#ef4444';
+            return;
+          }
+          sabotageStripeElements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: {
+              theme: 'night',
+              variables: {
+                colorPrimary: '#ef4444',
+                colorBackground: '#1e1e3a',
+                colorText: '#ffffff',
+                borderRadius: '8px',
+              },
+            },
+          });
+          sabotagePaymentElement = sabotageStripeElements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          });
+          sabotagePaymentElement.mount('#payment-element');
+          sabotagePaymentElement.on('ready', function() {
+            payBtn.disabled = false;
+            paymentStatus.textContent = '';
+          });
+
+          payBtn.onclick = function() {
+            payBtn.disabled = true;
+            payBtn.textContent = 'Processing...';
+
+            stripe.confirmPayment({
+              elements: sabotageStripeElements,
+              confirmParams: { return_url: window.location.href },
+              redirect: 'if_required',
+            }).then(function(result) {
+              if (result.error) {
+                paymentStatus.textContent = result.error.message;
+                paymentStatus.style.color = '#ef4444';
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay $0.99';
+              } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                fetch(apiBase + '/single-sabotage', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    attackerName: playerName,
+                    targetName: sabotageTargetName,
+                  }),
+                }).then(function() {
+                  paymentStatus.textContent = sabotageTargetName + ' has been sabotaged!';
+                  paymentStatus.style.color = '#ef4444';
+                  payBtn.textContent = 'Done!';
+                  hapticSabotage();
+                  setTimeout(function() {
+                    closeSabotagePayment();
+                  }, 2000);
+                });
+              }
+            });
+          };
+        })
+        .catch(function() {
+          paymentStatus.textContent = 'Failed to load payment. Try again.';
+          paymentStatus.style.color = '#ef4444';
+        });
+    }
+
+    function openFreezePayment(targetName, durationMin) {
+      durationMin = durationMin || 2;
+      var freezePriceMap = {2:200,5:300,10:500,15:700,30:1000,60:1500,120:2500,180:3500,240:4500,360:6000};
+      var cents = freezePriceMap[durationMin] || 200;
+      var priceStr = '$' + (cents / 100);
+      sabotageTargetName = targetName;
+      hidePlayerDetail();
+
+      var payCard = paymentModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = 'FREEZE ' + targetName;
+      payCard.querySelector('.price').textContent = priceStr;
+      var durLabel = durationMin >= 60 ? (durationMin / 60) + ' hour' + (durationMin > 60 ? 's' : '') : durationMin + ' minutes';
+      payCard.querySelector('.payment-desc').textContent = 'Completely stop ' + targetName + ' from earning ANY coins for ' + durLabel + '. They will know it was you.';
+      payBtn.textContent = 'Pay ' + priceStr;
+      paymentStatus.textContent = 'Loading...';
+      paymentStatus.style.color = '#aaa';
+      payBtn.disabled = true;
+      paymentModal.classList.add('active');
+
+      if (paymentElement) {
+        paymentElement.unmount();
+        paymentElement = null;
+      }
+
+      fetch(apiBase + '/create-freeze-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetName: targetName, durationMin: durationMin }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            paymentStatus.textContent = data.error;
+            paymentStatus.style.color = '#ef4444';
+            return;
+          }
+          sabotageStripeElements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: {
+              theme: 'night',
+              variables: {
+                colorPrimary: '#3b82f6',
+                colorBackground: '#1e1e3a',
+                colorText: '#ffffff',
+                borderRadius: '8px',
+              },
+            },
+          });
+          sabotagePaymentElement = sabotageStripeElements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          });
+          sabotagePaymentElement.mount('#payment-element');
+          sabotagePaymentElement.on('ready', function() {
+            payBtn.disabled = false;
+            paymentStatus.textContent = '';
+          });
+
+          payBtn.onclick = function() {
+            payBtn.disabled = true;
+            payBtn.textContent = 'Processing...';
+
+            stripe.confirmPayment({
+              elements: sabotageStripeElements,
+              confirmParams: { return_url: window.location.href },
+              redirect: 'if_required',
+            }).then(function(result) {
+              if (result.error) {
+                paymentStatus.textContent = result.error.message;
+                paymentStatus.style.color = '#ef4444';
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay ' + priceStr;
+              } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                fetch(apiBase + '/freeze', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    attackerName: playerName,
+                    targetName: sabotageTargetName,
+                    durationMin: durationMin,
+                  }),
+                }).then(function() {
+                  var frozenLabel = durationMin >= 60 ? (durationMin / 60) + ' hr' : durationMin + ' min';
+                  paymentStatus.textContent = sabotageTargetName + ' has been FROZEN for ' + frozenLabel + '!';
+                  paymentStatus.style.color = '#60a5fa';
+                  payBtn.textContent = 'Done!';
+                  hapticSabotage();
+                  setTimeout(function() {
+                    closeSabotagePayment();
+                  }, 2000);
+                });
+              }
+            });
+          };
+        })
+        .catch(function() {
+          paymentStatus.textContent = 'Failed to load payment. Try again.';
+          paymentStatus.style.color = '#ef4444';
+        });
+    }
+
+    function openCoinCutPayment(targetName, percentage, targetScore) {
+      sabotageTargetName = targetName;
+      hidePlayerDetail();
+
+      var dollars = Math.max(Math.ceil(percentage / 10), Math.min(50, Math.floor(Math.log10(Math.max(targetScore, 10)) * (percentage / 100) * 3.5)));
+      var priceStr = '$' + dollars;
+
+      var payCard = paymentModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = 'Coin Cut: ' + targetName;
+      payCard.querySelector('.price').textContent = priceStr;
+      var removed = Math.floor(targetScore * (percentage / 100));
+      payCard.querySelector('.payment-desc').textContent = 'Cut ' + percentage + '% of ' + targetName + '\'s coins. They will lose ' + formatNumber(removed) + ' coins permanently.';
+      payBtn.textContent = 'Pay ' + priceStr;
+      paymentStatus.textContent = 'Loading...';
+      paymentStatus.style.color = '#aaa';
+      payBtn.disabled = true;
+      paymentModal.classList.add('active');
+
+      if (paymentElement) {
+        paymentElement.unmount();
+        paymentElement = null;
+      }
+
+      fetch(apiBase + '/create-coincut-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetName: targetName, percentage: percentage, targetScore: targetScore }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            paymentStatus.textContent = data.error;
+            paymentStatus.style.color = '#ef4444';
+            return;
+          }
+          var actualPrice = '$' + (data.priceCents / 100);
+          payCard.querySelector('.price').textContent = actualPrice;
+          payBtn.textContent = 'Pay ' + actualPrice;
+          sabotageStripeElements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: {
+              theme: 'night',
+              variables: {
+                colorPrimary: '#34d399',
+                colorBackground: '#1e1e3a',
+                colorText: '#ffffff',
+                borderRadius: '8px',
+              },
+            },
+          });
+          sabotagePaymentElement = sabotageStripeElements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          });
+          sabotagePaymentElement.mount('#payment-element');
+          sabotagePaymentElement.on('ready', function() {
+            payBtn.disabled = false;
+            paymentStatus.textContent = '';
+          });
+
+          payBtn.onclick = function() {
+            payBtn.disabled = true;
+            payBtn.textContent = 'Processing...';
+
+            stripe.confirmPayment({
+              elements: sabotageStripeElements,
+              confirmParams: { return_url: window.location.href },
+              redirect: 'if_required',
+            }).then(function(result) {
+              if (result.error) {
+                paymentStatus.textContent = result.error.message;
+                paymentStatus.style.color = '#ef4444';
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay ' + actualPrice;
+              } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                fetch(apiBase + '/coincut', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    attackerName: playerName,
+                    targetName: sabotageTargetName,
+                    percentage: percentage,
+                  }),
+                }).then(function() {
+                  paymentStatus.textContent = 'Cut ' + percentage + '% of ' + sabotageTargetName + '\'s coins!';
+                  paymentStatus.style.color = '#34d399';
+                  payBtn.textContent = 'Done!';
+                  hapticSuccess();
+                  setTimeout(function() {
+                    closeSabotagePayment();
+                  }, 2000);
+                });
+              }
+            });
+          };
+        })
+        .catch(function() {
+          paymentStatus.textContent = 'Failed to load payment. Try again.';
+          paymentStatus.style.color = '#ef4444';
+        });
+    }
+
+    function closeSabotagePayment() {
+      paymentModal.classList.remove('active');
+      if (sabotagePaymentElement) {
+        sabotagePaymentElement.unmount();
+        sabotagePaymentElement = null;
+      }
+      sabotageStripeElements = null;
+      sabotageTargetName = '';
+      // Reset modal text back to Hide Luke defaults
+      var payCard = paymentModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = 'Hide Luke for 1 Hour';
+      payCard.querySelector('.price').textContent = '$1.99';
+      payCard.querySelector('.payment-desc').textContent = 'No more surprise selfies. Peace and quiet. For one whole hour.';
+      payBtn.textContent = 'Pay $1.99';
+      payBtn.onclick = null;
+      payBtn.disabled = true;
+      paymentStatus.textContent = '';
+    }
+
+    // ===== CHAT SYSTEM =====
+    var chatBox = document.getElementById('chatBox');
+    var chatMessages = document.getElementById('chatMessages');
+    var chatInput = document.getElementById('chatInput');
+    var chatSend = document.getElementById('chatSend');
+    var chatToggle = document.getElementById('chatToggle');
+    var chatBadge = document.getElementById('chatBadge');
+    var chatToastEl = document.getElementById('chatToast');
+    var chatToastNameEl = document.getElementById('chatToastName');
+    var chatToastMsgEl = document.getElementById('chatToastMsg');
+    var chatVisible = false;
+    var chatMsgCount = 0;
+    var unreadChatCount = 0;
+    var chatToastTimer = null;
+
+    function updateChatBadge() {
+      if (unreadChatCount > 0) {
+        chatBadge.textContent = unreadChatCount > 99 ? '99' : String(unreadChatCount);
+        chatBadge.classList.remove('hidden');
+      } else {
+        chatBadge.classList.add('hidden');
+      }
+    }
+
+    function showChatToast(name, message) {
+      var full = name + ': ' + message;
+      if (full.length > 50) full = full.slice(0, 47) + '...';
+      var isSystem = (name === 'SYSTEM');
+      chatToastNameEl.textContent = '';
+      chatToastMsgEl.textContent = '';
+      if (isSystem) {
+        chatToastNameEl.className = 'chat-toast-system';
+      } else {
+        chatToastNameEl.className = 'chat-toast-name';
+      }
+      chatToastNameEl.textContent = name + ': ';
+      chatToastMsgEl.textContent = message.length > (50 - name.length - 2) ? message.slice(0, 47 - name.length) + '...' : message;
+      chatToastEl.classList.add('show');
+      if (chatToastTimer) clearTimeout(chatToastTimer);
+      chatToastTimer = setTimeout(function() {
+        chatToastEl.classList.remove('show');
+        chatToastTimer = null;
+      }, 3000);
+    }
+
+    function toggleChat() {
+      chatVisible = !chatVisible;
+      if (chatVisible) {
+        chatBox.classList.add('active');
+        chatToggle.childNodes[0].textContent = 'Close';
+        if (mobileChatBtn) mobileChatBtn.textContent = 'Close';
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+        unreadChatCount = 0;
+        updateChatBadge();
+      } else {
+        chatBox.classList.remove('active');
+        chatToggle.childNodes[0].textContent = 'Chat';
+        if (mobileChatBtn) mobileChatBtn.textContent = 'Chat';
+      }
+    }
+
+    chatToggle.addEventListener('click', toggleChat);
+
+    // Mobile: add chat button inside coin counter bar
+    var mobileChatBtn = null;
+    var ccChatSlot = document.getElementById('ccChatSlot');
+    if (ccChatSlot && window.innerWidth <= 900) {
+      mobileChatBtn = document.createElement('button');
+      mobileChatBtn.textContent = 'Chat';
+      mobileChatBtn.style.cssText = 'background:rgba(0,0,0,0.5);border:2px solid #ffd700;border-radius:16px;padding:4px 12px;color:#ffd700;font-family:Fredoka One,cursive;font-size:12px;cursor:pointer;position:relative;';
+      mobileChatBtn.addEventListener('click', toggleChat);
+      ccChatSlot.appendChild(mobileChatBtn);
+    }
+
+    // addChatMessage is defined earlier (before WebSocket setup)
+
+    function sendChatMessage() {
+      var msg = chatInput.value.trim();
+      if (!msg || !playerName) return;
+      if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+        liveWs.send(JSON.stringify({ type: 'chat', message: msg }));
+        chatInput.value = '';
+      }
+    }
+
+    chatSend.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') sendChatMessage();
+    });
+
+    // ===== TOTAL RAISED =====
+    var totalRaisedEl = document.getElementById('totalRaised');
+    function fetchTotalRaised() {
+      fetch(apiBase + '/total-raised')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data && typeof data.totalRaisedCents === 'number') {
+            var dollars = (data.totalRaisedCents / 100).toFixed(2);
+            totalRaisedEl.textContent = '$' + dollars + ' raised';
+          }
+        })
+        .catch(function() {});
+    }
+    fetchTotalRaised();
+    setInterval(fetchTotalRaised, 60000);
+
+    // ===== UNSABOTAGE (break free) =====
+    function openUnsabotagePayment() {
+      var payCard = paymentModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = 'Break Free!';
+      payCard.querySelector('.price').textContent = '$0.99';
+      payCard.querySelector('.payment-desc').textContent = 'Remove the sabotage and get back to full speed immediately.';
+      payBtn.textContent = 'Pay $0.99';
+      paymentStatus.textContent = 'Loading...';
+      paymentStatus.style.color = '#aaa';
+      payBtn.disabled = true;
+      paymentModal.classList.add('active');
+
+      if (paymentElement) {
+        paymentElement.unmount();
+        paymentElement = null;
+      }
+
+      fetch(apiBase + '/create-unsabotage-intent', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            paymentStatus.textContent = data.error;
+            paymentStatus.style.color = '#ef4444';
+            return;
+          }
+          var unsabElements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: {
+              theme: 'night',
+              variables: {
+                colorPrimary: '#4ade80',
+                colorBackground: '#1e1e3a',
+                colorText: '#ffffff',
+                borderRadius: '8px',
+              },
+            },
+          });
+          var unsabPayEl = unsabElements.create('payment', {
+            wallets: { applePay: 'auto', googlePay: 'auto' },
+          });
+          unsabPayEl.mount('#payment-element');
+          unsabPayEl.on('ready', function() {
+            payBtn.disabled = false;
+            paymentStatus.textContent = '';
+          });
+
+          payBtn.onclick = function() {
+            payBtn.disabled = true;
+            payBtn.textContent = 'Processing...';
+
+            stripe.confirmPayment({
+              elements: unsabElements,
+              confirmParams: { return_url: window.location.href },
+              redirect: 'if_required',
+            }).then(function(result) {
+              if (result.error) {
+                paymentStatus.textContent = result.error.message;
+                paymentStatus.style.color = '#ef4444';
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay $0.99';
+              } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                fetch(apiBase + '/unsabotage', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ targetName: playerName }),
+                }).then(function() {
+                  paymentStatus.textContent = 'You broke free!';
+                  paymentStatus.style.color = '#4ade80';
+                  payBtn.textContent = 'Done!';
+                  hapticSuccess();
+                  setTimeout(function() {
+                    paymentModal.classList.remove('active');
+                    unsabPayEl.unmount();
+                    // Reset modal
+                    payCard.querySelector('h3').textContent = 'Hide Luke for 1 Hour';
+                    payCard.querySelector('.price').textContent = '$1.99';
+                    payCard.querySelector('.payment-desc').textContent = 'No more surprise selfies. Peace and quiet. For one whole hour.';
+                    payBtn.textContent = 'Pay $1.99';
+                    payBtn.onclick = null;
+                    payBtn.disabled = true;
+                    paymentStatus.textContent = '';
+                  }, 2000);
+                });
+              }
+            });
+          };
+        })
+        .catch(function() {
+          paymentStatus.textContent = 'Failed to load payment. Try again.';
+          paymentStatus.style.color = '#ef4444';
+        });
+    }
+    // ===== POOLED CAMPAIGNS =====
+    var activeCampaigns = [];
+    var campaignsSection = document.getElementById('campaignsSection');
+    var campaignsList = document.getElementById('campaignsList');
+
+    function startCoinCutCampaign(targetName, percentage, targetScore) {
+      if (!playerName) {
+        document.getElementById('inlineNameInput').focus();
+        return;
+      }
+      hidePlayerDetail();
+
+      fetch(apiBase + '/create-campaign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attackerName: playerName,
+          targetName: targetName,
+          percentage: percentage,
+          targetScore: targetScore,
+        }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            var errToast = document.createElement('div');
+            errToast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:16px 24px;color:#ef4444;font-family:Fredoka One,cursive;z-index:700;';
+            errToast.textContent = data.error;
+            document.body.appendChild(errToast);
+            setTimeout(function() { errToast.remove(); }, 3000);
+            return;
+          }
+          hapticSuccess();
+        })
+        .catch(function() {});
+    }
+
+    function renderCampaigns() {
+      campaignsList.textContent = '';
+
+      if (activeCampaigns.length === 0) {
+        campaignsSection.style.display = 'none';
+        return;
+      }
+
+      campaignsSection.style.display = '';
+
+      for (var i = 0; i < activeCampaigns.length; i++) {
+        (function(campaign) {
+          var card = document.createElement('div');
+          card.className = 'campaign-card' + (campaign.status === 'completed' ? ' completed' : '');
+
+          var target = document.createElement('div');
+          target.className = 'campaign-target';
+          target.textContent = 'Cut ' + campaign.targetName + "'s Coins";
+          card.appendChild(target);
+
+          var pctInfo = document.createElement('div');
+          pctInfo.className = 'campaign-pct';
+          // Use current score from leaderboard, not the score at campaign creation
+          var currentTargetScore = campaign.targetScore;
+          for (var li = 0; li < lastLeaderboardData.length; li++) {
+            if (lastLeaderboardData[li].name.toLowerCase() === campaign.targetName.toLowerCase()) {
+              currentTargetScore = lastLeaderboardData[li].score;
+              break;
+            }
+          }
+          var removed = Math.floor(currentTargetScore * (campaign.percentage / 100));
+          pctInfo.textContent = campaign.percentage + '% cut (' + formatNumber(removed) + ' coins from ' + formatNumber(currentTargetScore) + ')';
+          card.appendChild(pctInfo);
+
+          // Progress bar
+          var progressBar = document.createElement('div');
+          progressBar.className = 'campaign-progress-bar';
+          var progressFill = document.createElement('div');
+          progressFill.className = 'campaign-progress-fill';
+          var pct = Math.min(100, (campaign.contributedCents / campaign.totalPriceCents) * 100);
+          progressFill.style.width = pct + '%';
+          progressBar.appendChild(progressFill);
+          card.appendChild(progressBar);
+
+          var progressText = document.createElement('div');
+          progressText.className = 'campaign-progress-text';
+          progressText.textContent = '$' + (campaign.contributedCents / 100).toFixed(2) + ' / $' + (campaign.totalPriceCents / 100).toFixed(2);
+          card.appendChild(progressText);
+
+          // Contributors
+          if (campaign.contributors && campaign.contributors.length > 0) {
+            var contribDiv = document.createElement('div');
+            contribDiv.className = 'campaign-contributors';
+            var contribNames = [];
+            for (var j = 0; j < campaign.contributors.length; j++) {
+              contribNames.push(campaign.contributors[j].name + ' ($' + (campaign.contributors[j].cents / 100).toFixed(2) + ')');
+            }
+            contribDiv.textContent = 'Contributors: ' + contribNames.join(', ');
+            card.appendChild(contribDiv);
+          }
+
+          if (campaign.status === 'completed') {
+            var badge = document.createElement('div');
+            badge.className = 'campaign-completed-badge';
+            badge.textContent = 'COMPLETED!';
+            card.appendChild(badge);
+          } else {
+            // Chip In button
+            var chipBtn = document.createElement('button');
+            chipBtn.className = 'campaign-chip-btn';
+            var remainingCents = campaign.totalPriceCents - campaign.contributedCents;
+            var remainingDollars = Math.ceil(remainingCents / 100);
+            chipBtn.textContent = 'Chip In ($1 - $' + Math.min(remainingDollars, 10) + ')';
+            if (!playerName) {
+              chipBtn.disabled = true;
+              chipBtn.textContent = 'Set name to chip in';
+            }
+            chipBtn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              openCampaignContribution(campaign.id, remainingCents);
+            });
+            card.appendChild(chipBtn);
+
+            // Cancel button (only for creator)
+            var isCreator = playerName && campaign.creatorName && campaign.creatorName.toLowerCase() === playerName.toLowerCase();
+            if (isCreator) {
+              var cancelBtn = document.createElement('button');
+              cancelBtn.style.cssText = 'display:block;width:100%;margin-top:6px;padding:8px;background:none;border:1px solid #666;border-radius:8px;color:#888;font-family:Fredoka One,cursive;font-size:12px;cursor:pointer;';
+              cancelBtn.textContent = 'Cancel Campaign';
+              cancelBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (!confirm('Cancel this campaign?')) return;
+                fetch(apiBase + '/cancel-campaign', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ campaignId: campaign.id, requesterName: playerName }),
+                }).then(function(r) { return r.json(); }).catch(function() {});
+              });
+              card.appendChild(cancelBtn);
+            }
+          }
+
+          campaignsList.appendChild(card);
+        })(activeCampaigns[i]);
+      }
+    }
+
+    function openCampaignContribution(campaignId, maxCents) {
+      if (!playerName) {
+        document.getElementById('inlineNameInput').focus();
+        return;
+      }
+
+      var maxDollars = Math.min(Math.ceil(maxCents / 100), 50);
+      // Default to $1 or max if less
+      var selectedAmount = Math.min(1, maxDollars);
+
+      var payCard = paymentModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = 'Chip In';
+      payCard.querySelector('.price').textContent = '$' + selectedAmount;
+      payCard.querySelector('.payment-desc').textContent = 'Contribute to the campaign. Choose your amount below.';
+      payBtn.textContent = 'Pay $' + selectedAmount;
+      paymentStatus.textContent = '';
+      paymentStatus.style.color = '#aaa';
+      payBtn.disabled = true;
+      paymentModal.classList.add('active');
+
+      // Build amount picker
+      var descEl = payCard.querySelector('.payment-desc');
+      descEl.textContent = '';
+      var descText = document.createTextNode('Choose how much to chip in:');
+      descEl.appendChild(descText);
+
+      var pickerDiv = document.createElement('div');
+      pickerDiv.className = 'campaign-amount-picker';
+      pickerDiv.style.marginTop = '8px';
+
+      var amounts = [1, 2, 5, 10];
+      var btns = [];
+      for (var ai = 0; ai < amounts.length; ai++) {
+        (function(amt) {
+          if (amt > maxDollars) return;
+          var amtBtn = document.createElement('button');
+          amtBtn.className = 'campaign-amount-btn' + (amt === selectedAmount ? ' selected' : '');
+          amtBtn.textContent = '$' + amt;
+          amtBtn.addEventListener('click', function() {
+            selectedAmount = amt;
+            for (var bi = 0; bi < btns.length; bi++) {
+              btns[bi].className = 'campaign-amount-btn';
+            }
+            amtBtn.className = 'campaign-amount-btn selected';
+            payCard.querySelector('.price').textContent = '$' + amt;
+            payBtn.textContent = 'Pay $' + amt;
+          });
+          pickerDiv.appendChild(amtBtn);
+          btns.push(amtBtn);
+        })(amounts[ai]);
+      }
+      descEl.appendChild(pickerDiv);
+
+      if (paymentElement) {
+        paymentElement.unmount();
+        paymentElement = null;
+      }
+
+      paymentStatus.textContent = 'Select amount, then pay';
+      paymentStatus.style.color = '#aaa';
+
+      // We need to create the payment intent when they click Pay
+      // Because amount can change, we create it on pay click
+      payBtn.disabled = false;
+
+      payBtn.onclick = function() {
+        payBtn.disabled = true;
+        payBtn.textContent = 'Processing...';
+        paymentStatus.textContent = 'Creating payment...';
+
+        fetch(apiBase + '/create-campaign-contribution-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ campaignId: campaignId, amount: selectedAmount, maxAmount: maxDollars }),
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.error) {
+              paymentStatus.textContent = data.error;
+              paymentStatus.style.color = '#ef4444';
+              payBtn.disabled = false;
+              payBtn.textContent = 'Pay $' + selectedAmount;
+              return;
+            }
+            var contributionCents = data.priceCents;
+            sabotageStripeElements = stripe.elements({
+              clientSecret: data.clientSecret,
+              appearance: {
+                theme: 'night',
+                variables: {
+                  colorPrimary: '#34d399',
+                  colorBackground: '#1e1e3a',
+                  colorText: '#ffffff',
+                  borderRadius: '8px',
+                },
+              },
+            });
+            sabotagePaymentElement = sabotageStripeElements.create('payment', {
+              wallets: { applePay: 'auto', googlePay: 'auto' },
+            });
+            sabotagePaymentElement.mount('#payment-element');
+            sabotagePaymentElement.on('ready', function() {
+              payBtn.disabled = false;
+              payBtn.textContent = 'Pay $' + (contributionCents / 100);
+              paymentStatus.textContent = '';
+            });
+
+            payBtn.onclick = function() {
+              payBtn.disabled = true;
+              payBtn.textContent = 'Processing...';
+
+              stripe.confirmPayment({
+                elements: sabotageStripeElements,
+                confirmParams: { return_url: window.location.href },
+                redirect: 'if_required',
+              }).then(function(result) {
+                if (result.error) {
+                  paymentStatus.textContent = result.error.message;
+                  paymentStatus.style.color = '#ef4444';
+                  payBtn.disabled = false;
+                  payBtn.textContent = 'Pay $' + (contributionCents / 100);
+                } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                  fetch(apiBase + '/campaign-contribute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      campaignId: campaignId,
+                      contributorName: playerName,
+                      cents: contributionCents,
+                    }),
+                  }).then(function() {
+                    paymentStatus.textContent = 'Contribution added!';
+                    paymentStatus.style.color = '#4ade80';
+                    payBtn.textContent = 'Done!';
+                    hapticSuccess();
+                    setTimeout(function() {
+                      closeSabotagePayment();
+                    }, 2000);
+                  });
+                }
+              });
+            };
+          })
+          .catch(function() {
+            paymentStatus.textContent = 'Failed to create payment. Try again.';
+            paymentStatus.style.color = '#ef4444';
+            payBtn.disabled = false;
+            payBtn.textContent = 'Pay $' + selectedAmount;
+          });
+      };
+    }
+
   </script>
 </body>
 </html>

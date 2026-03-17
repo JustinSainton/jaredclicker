@@ -1,0 +1,22 @@
+name = "jaredclicker-live"
+main = "index.js"
+compatibility_date = "2024-12-01"
+account_id = "5b67e53a76209f3e02fae80cca835875"
+
+[durable_objects]
+bindings = [
+  { name = "LIVE_VISITORS", class_name = "LiveVisitors" },
+  { name = "LEADERBOARD", class_name = "Leaderboard" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["LiveVisitors"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["Leaderboard"]
+
+[[r2_buckets]]
+bucket_name = "jaredclicker-photos"
+binding = "PHOTOS"
