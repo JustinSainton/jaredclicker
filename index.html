@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jared Clicker - Click the Coin!</title>
+  <link rel="icon" type="image/png" href="jared-coin.png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Press+Start+2P&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Fredoka One', cursive;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #ffd700;
+      min-height: 100vh;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    /* Coin counter - top right */
+    .coin-counter {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.7);
+      border: 3px solid #ffd700;
+      border-radius: 16px;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 100;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    }
+
+    .coin-counter img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+
+    .coin-counter .count {
+      font-size: 28px;
+      font-family: 'Press Start 2P', monospace;
+      color: #ffd700;
+      text-shadow: 2px 2px 0 #b8860b;
+    }
+
+    .coin-counter .per-sec {
+      font-size: 12px;
+      color: #daa520;
+      font-family: 'Fredoka One', cursive;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 20px 20px 0;
+    }
+
+    .header h1 {
+      font-size: 48px;
+      text-shadow: 3px 3px 0 #b8860b, 0 0 30px rgba(255, 215, 0, 0.5);
+      letter-spacing: 2px;
+    }
+
+    .header .subtitle {
+      font-size: 16px;
+      color: #daa520;
+      margin-top: 4px;
+    }
+
+    /* Main layout */
+    .game-container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+    }
+
+    /* Click area */
+    .click-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      flex: 0 0 auto;
+    }
+
+    .coin-button {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: none;
+      position: relative;
+      transition: transform 0.1s;
+      filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.6));
+    }
+
+    .coin-button:hover {
+      transform: scale(1.05);
+      filter: drop-shadow(0 0 50px rgba(255, 215, 0, 0.8));
+    }
+
+    .coin-button:active {
+      transform: scale(0.95);
+    }
+
+    .coin-button img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .click-info {
+      font-size: 18px;
+      color: #daa520;
+    }
+
+    /* Floating numbers */
+    .float-number {
+      position: absolute;
+      pointer-events: none;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 24px;
+      color: #ffd700;
+      text-shadow: 2px 2px 0 #b8860b;
+      animation: floatUp 1s ease-out forwards;
+      z-index: 200;
+    }
+
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-120px) scale(1.5); }
+    }
+
+    /* Upgrade shop */
+    .shop {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      padding: 24px;
+      min-width: 350px;
+      max-width: 420px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .shop h2 {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 16px;
+      text-shadow: 2px 2px 0 #b8860b;
+    }
+
+    .upgrade-btn {
+      width: 100%;
+      background: linear-gradient(180deg, #2a2a4a 0%, #1a1a3a 100%);
+      border: 2px solid #555;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+      color: #eee;
+      font-family: 'Fredoka One', cursive;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upgrade-btn:hover:not(:disabled) {
+      border-color: #ffd700;
+      background: linear-gradient(180deg, #3a3a5a 0%, #2a2a4a 100%);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    }
+
+    .upgrade-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .upgrade-btn.affordable {
+      border-color: #ffd700;
+    }
+
+    .upgrade-name {
+      font-size: 18px;
+      color: #ffd700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .upgrade-desc {
+      font-size: 13px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    .upgrade-cost {
+      font-size: 14px;
+      color: #daa520;
+      margin-top: 8px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+    }
+
+    .upgrade-owned {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      background: rgba(255, 215, 0, 0.2);
+      border: 1px solid #ffd700;
+      border-radius: 8px;
+      padding: 2px 10px;
+      font-size: 14px;
+      color: #ffd700;
+    }
+
+    /* Stats panel */
+    .stats {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      padding: 24px;
+      min-width: 280px;
+      max-width: 350px;
+    }
+
+    .stats h2 {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 16px;
+      text-shadow: 2px 2px 0 #b8860b;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+      font-size: 14px;
+    }
+
+    .stat-label { color: #daa520; }
+    .stat-value { color: #ffd700; font-family: 'Press Start 2P', monospace; font-size: 11px; }
+
+    /* Random photo popup */
+    .photo-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 500;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 20px;
+      animation: fadeIn 0.3s;
+    }
+
+    .photo-overlay.active {
+      display: flex;
+    }
+
+    .photo-overlay img {
+      max-width: 90vw;
+      max-height: 60vh;
+      border-radius: 16px;
+      border: 4px solid #ffd700;
+      box-shadow: 0 0 60px rgba(255, 215, 0, 0.5);
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .photo-overlay .photo-text {
+      font-size: 32px;
+      text-shadow: 3px 3px 0 #b8860b;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .photo-overlay .photo-bonus {
+      font-size: 20px;
+      color: #4ade80;
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    .photo-overlay .dismiss {
+      font-size: 14px;
+      color: #888;
+      margin-top: 10px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+      to { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    /* Particle effects */
+    .particle {
+      position: fixed;
+      pointer-events: none;
+      font-size: 20px;
+      animation: particleFly 1.5s ease-out forwards;
+      z-index: 150;
+    }
+
+    @keyframes particleFly {
+      0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+      100% { opacity: 0; transform: translate(var(--tx), var(--ty)) rotate(720deg) scale(0); }
+    }
+
+    /* Achievements toast */
+    .achievement-toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: linear-gradient(135deg, #2a2a4a, #1a1a3a);
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      padding: 16px 32px;
+      z-index: 300;
+      text-align: center;
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+    }
+
+    .achievement-toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .achievement-toast .ach-title {
+      font-size: 12px;
+      color: #4ade80;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .achievement-toast .ach-name {
+      font-size: 22px;
+      color: #ffd700;
+      margin-top: 4px;
+    }
+
+    /* Coin rain animation */
+    .coin-rain {
+      position: fixed;
+      width: 40px;
+      height: 40px;
+      pointer-events: none;
+      z-index: 50;
+      animation: rain linear forwards;
+    }
+
+    @keyframes rain {
+      0% { transform: translateY(-60px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0.3; }
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .game-container { flex-direction: column; align-items: center; }
+      .shop, .stats { min-width: unset; width: 90vw; max-width: 420px; }
+      .coin-button { width: 220px; height: 220px; }
+      .header h1 { font-size: 32px; }
+      .coin-counter { top: 10px; right: 10px; padding: 8px 16px; }
+      .coin-counter .count { font-size: 18px; }
+    }
+
+    /* Scrollbar */
+    .shop::-webkit-scrollbar { width: 8px; }
+    .shop::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+    .shop::-webkit-scrollbar-thumb { background: #ffd700; border-radius: 4px; }
+
+    /* Smelly meter */
+    .smelly-meter {
+      width: 100%;
+      height: 20px;
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #ffd700;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .smelly-meter-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #ffd700, #ef4444);
+      border-radius: 8px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    .smelly-label {
+      text-align: center;
+      font-size: 12px;
+      color: #daa520;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Coin Counter -->
+  <div class="coin-counter">
+    <img src="jared-coin.png" alt="coin">
+    <div>
+      <div class="count" id="coinCount">0</div>
+      <div class="per-sec" id="perSec">0 per sec</div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>JARED CLICKER</h1>
+    <div class="subtitle">How smelly can you make Jared?</div>
+  </div>
+
+  <!-- Main Game -->
+  <div class="game-container">
+
+    <!-- Stats Panel -->
+    <div class="stats" id="statsPanel">
+      <h2>Stats</h2>
+      <div class="stat-row">
+        <span class="stat-label">Total Coins</span>
+        <span class="stat-value" id="statTotal">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Per Click</span>
+        <span class="stat-value" id="statPerClick">1</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Per Second</span>
+        <span class="stat-value" id="statPerSec">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Total Clicks</span>
+        <span class="stat-value" id="statClicks">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Jared Sightings</span>
+        <span class="stat-value" id="statSightings">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Smelly Level</span>
+        <span class="stat-value" id="statSmelly">Mildly Funky</span>
+      </div>
+      <div class="smelly-meter">
+        <div class="smelly-meter-fill" id="smellyFill"></div>
+      </div>
+      <div class="smelly-label" id="smellyLabel">Mildly Funky</div>
+    </div>
+
+    <!-- Click Area -->
+    <div class="click-area">
+      <button class="coin-button" id="coinBtn" aria-label="Click to collect coins">
+        <img src="jared-coin.png" alt="Jared Coin">
+      </button>
+      <div class="click-info" id="clickInfo">Click the coin! (+1 per click)</div>
+    </div>
+
+    <!-- Upgrade Shop -->
+    <div class="shop" id="shop">
+      <h2>Upgrades</h2>
+      <div id="upgradeList"></div>
+    </div>
+  </div>
+
+  <!-- Random Photo Popup -->
+  <div class="photo-overlay" id="photoOverlay">
+    <div class="photo-text" id="photoText">JARED APPEARED!</div>
+    <img src="random.png" alt="Jared">
+    <div class="photo-bonus" id="photoBonus">+50 bonus coins!</div>
+    <div class="dismiss">click anywhere to dismiss</div>
+  </div>
+
+  <!-- Achievement Toast -->
+  <div class="achievement-toast" id="achievementToast">
+    <div class="ach-title">ACHIEVEMENT UNLOCKED</div>
+    <div class="ach-name" id="achName"></div>
+  </div>
+
+  <script>
+    // ===== GAME STATE =====
+    let state = {
+      coins: 0,
+      totalCoins: 0,
+      totalClicks: 0,
+      coinsPerClick: 1,
+      coinsPerSecond: 0,
+      sightings: 0,
+      clicksSinceLastEvent: 0,
+      nextEventAt: randomBetween(12, 25),
+      upgrades: {},
+      achievements: new Set(),
+    };
+
+    // ===== UPGRADES =====
+    const upgrades = [
+      {
+        id: 'deodorant',
+        name: "Jared's Deodorant",
+        emoji: '\u{1F9F4}',
+        desc: 'Masks the smell. +1 coin per click.',
+        baseCost: 15,
+        scaling: 1.15,
+        effect: function() { state.coinsPerClick += 1; },
+        type: 'click',
+      },
+      {
+        id: 'noseplug',
+        name: 'Nose Plugs',
+        emoji: '\u{1F443}',
+        desc: 'For your protection. +2 coins per click.',
+        baseCost: 100,
+        scaling: 1.15,
+        effect: function() { state.coinsPerClick += 2; },
+        type: 'click',
+      },
+      {
+        id: 'intern',
+        name: 'Clicking Intern',
+        emoji: '\u{1F468}\u200D\u{1F4BC}',
+        desc: 'Clicks for you. +1 coin per second.',
+        baseCost: 50,
+        scaling: 1.15,
+        effect: function() { state.coinsPerSecond += 1; },
+        type: 'auto',
+      },
+      {
+        id: 'sweatshirt',
+        name: "Jared's Sweatshirt",
+        emoji: '\u{1F455}',
+        desc: 'Smells like victory. +5 coins per second.',
+        baseCost: 300,
+        scaling: 1.15,
+        effect: function() { state.coinsPerSecond += 5; },
+        type: 'auto',
+      },
+      {
+        id: 'mirror',
+        name: 'Selfie Mirror',
+        emoji: '\u{1FA9E}',
+        desc: 'Jared admires himself. +5 coins per click.',
+        baseCost: 500,
+        scaling: 1.2,
+        effect: function() { state.coinsPerClick += 5; },
+        type: 'click',
+      },
+      {
+        id: 'hairgel',
+        name: 'Hair Growth Formula',
+        emoji: '\u{1F487}',
+        desc: 'Luscious locks. +20 coins per second.',
+        baseCost: 1500,
+        scaling: 1.15,
+        effect: function() { state.coinsPerSecond += 20; },
+        type: 'auto',
+      },
+      {
+        id: 'gym',
+        name: 'Gym Membership',
+        emoji: '\u{1F4AA}',
+        desc: 'Gets swole. +15 coins per click.',
+        baseCost: 3000,
+        scaling: 1.2,
+        effect: function() { state.coinsPerClick += 15; },
+        type: 'click',
+      },
+      {
+        id: 'cologne',
+        name: 'Eau de Jared',
+        emoji: '\u2728',
+        desc: 'Weaponized fragrance. +100 coins per second.',
+        baseCost: 10000,
+        scaling: 1.15,
+        effect: function() { state.coinsPerSecond += 100; },
+        type: 'auto',
+      },
+      {
+        id: 'clone',
+        name: 'Jared Clone Army',
+        emoji: '\u{1F9EC}',
+        desc: 'More Jareds = more smell. +50 coins per click.',
+        baseCost: 25000,
+        scaling: 1.2,
+        effect: function() { state.coinsPerClick += 50; },
+        type: 'click',
+      },
+      {
+        id: 'timemachine',
+        name: 'Smell Time Machine',
+        emoji: '\u23F0',
+        desc: 'Harvests stink across timelines. +500 coins per second.',
+        baseCost: 100000,
+        scaling: 1.15,
+        effect: function() { state.coinsPerSecond += 500; },
+        type: 'auto',
+      },
+      {
+        id: 'blackhole',
+        name: 'Stink Singularity',
+        emoji: '\u{1F573}\uFE0F',
+        desc: 'A black hole of funk. +200 coins per click.',
+        baseCost: 500000,
+        scaling: 1.2,
+        effect: function() { state.coinsPerClick += 200; },
+        type: 'click',
+      },
+      {
+        id: 'universe',
+        name: 'Smelly Multiverse',
+        emoji: '\u{1F30C}',
+        desc: 'Infinite Jareds, infinite stench. +5000 coins per second.',
+        baseCost: 5000000,
+        scaling: 1.15,
+        effect: function() { state.coinsPerSecond += 5000; },
+        type: 'auto',
+      },
+    ];
+
+    // ===== ACHIEVEMENTS =====
+    const achievements = [
+      { id: 'first_click', name: 'First Whiff', check: function() { return state.totalClicks >= 1; } },
+      { id: 'clicks_100', name: 'Dedicated Sniffer (100 clicks)', check: function() { return state.totalClicks >= 100; } },
+      { id: 'clicks_1000', name: 'Click Addict (1,000 clicks)', check: function() { return state.totalClicks >= 1000; } },
+      { id: 'coins_100', name: 'Pocket Change (100 coins)', check: function() { return state.totalCoins >= 100; } },
+      { id: 'coins_1000', name: 'Smelly Rich (1,000 coins)', check: function() { return state.totalCoins >= 1000; } },
+      { id: 'coins_10000', name: 'Stink Tycoon (10,000 coins)', check: function() { return state.totalCoins >= 10000; } },
+      { id: 'coins_100000', name: 'Funk Baron (100,000 coins)', check: function() { return state.totalCoins >= 100000; } },
+      { id: 'coins_1000000', name: 'Odor Overlord (1M coins)', check: function() { return state.totalCoins >= 1000000; } },
+      { id: 'first_sighting', name: 'Jared Spotted!', check: function() { return state.sightings >= 1; } },
+      { id: 'sightings_10', name: 'Jared Stalker (10 sightings)', check: function() { return state.sightings >= 10; } },
+      { id: 'first_upgrade', name: 'First Purchase', check: function() { return Object.keys(state.upgrades).length > 0; } },
+    ];
+
+    // ===== SMELLY LEVELS =====
+    const smellyLevels = [
+      { threshold: 0, name: 'Mildly Funky' },
+      { threshold: 100, name: 'Noticeable Odor' },
+      { threshold: 500, name: 'Gym Sock Status' },
+      { threshold: 2000, name: 'Dumpster Adjacent' },
+      { threshold: 10000, name: 'Hazmat Required' },
+      { threshold: 50000, name: 'Geneva Convention Violation' },
+      { threshold: 200000, name: 'Weapons-Grade Stench' },
+      { threshold: 1000000, name: 'Cosmic Funk Entity' },
+      { threshold: 10000000, name: 'Smell Singularity' },
+      { threshold: 100000000, name: 'TRANSCENDENT STINK GOD' },
+    ];
+
+    // ===== HELPERS =====
+    function randomBetween(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function formatNumber(n) {
+      if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+      if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+      return Math.floor(n).toString();
+    }
+
+    function getUpgradeCost(upgrade) {
+      var owned = state.upgrades[upgrade.id] || 0;
+      return Math.floor(upgrade.baseCost * Math.pow(upgrade.scaling, owned));
+    }
+
+    function getSmellyLevel() {
+      var level = smellyLevels[0];
+      for (var i = 0; i < smellyLevels.length; i++) {
+        if (state.totalCoins >= smellyLevels[i].threshold) level = smellyLevels[i];
+      }
+      return level;
+    }
+
+    function getSmellyProgress() {
+      var currentLevel = getSmellyLevel();
+      var currentIdx = smellyLevels.indexOf(currentLevel);
+      if (currentIdx >= smellyLevels.length - 1) return 100;
+      var nextLevel = smellyLevels[currentIdx + 1];
+      var progress = (state.totalCoins - currentLevel.threshold) / (nextLevel.threshold - currentLevel.threshold);
+      return Math.min(100, Math.max(0, progress * 100));
+    }
+
+    // ===== DOM =====
+    var coinCountEl = document.getElementById('coinCount');
+    var perSecEl = document.getElementById('perSec');
+    var coinBtn = document.getElementById('coinBtn');
+    var upgradeListEl = document.getElementById('upgradeList');
+    var photoOverlay = document.getElementById('photoOverlay');
+    var photoText = document.getElementById('photoText');
+    var photoBonus = document.getElementById('photoBonus');
+    var clickInfo = document.getElementById('clickInfo');
+    var achievementToast = document.getElementById('achievementToast');
+    var achNameEl = document.getElementById('achName');
+
+    // ===== CLICK HANDLER =====
+    coinBtn.addEventListener('click', function(e) {
+      var earned = state.coinsPerClick;
+      state.coins += earned;
+      state.totalCoins += earned;
+      state.totalClicks++;
+      state.clicksSinceLastEvent++;
+
+      spawnFloatNumber(e.clientX, e.clientY, '+' + formatNumber(earned));
+
+      if (Math.random() < 0.3) spawnParticle(e.clientX, e.clientY);
+
+      if (state.clicksSinceLastEvent >= state.nextEventAt) {
+        triggerRandomPhoto();
+      }
+
+      checkAchievements();
+      updateUI();
+      saveGame();
+    });
+
+    // ===== RANDOM PHOTO EVENT =====
+    var photoMessages = [
+      "JARED APPEARED!",
+      "OH NO, IT'S JARED!",
+      "JARED IS WATCHING YOU!",
+      "A WILD JARED APPEARS!",
+      "JARED SELFIE TIME!",
+      "YOU FOUND JARED!",
+      "JARED SMELLS YOU CLICKING!",
+      "SURPRISE JARED!",
+      "JARED WANTS ATTENTION!",
+      "*sniff sniff* JARED!",
+    ];
+
+    function triggerRandomPhoto() {
+      state.clicksSinceLastEvent = 0;
+      state.nextEventAt = randomBetween(12, 25);
+      state.sightings++;
+
+      var bonus = Math.floor(state.coinsPerClick * 10 + state.coinsPerSecond * 5) + 50;
+      state.coins += bonus;
+      state.totalCoins += bonus;
+
+      photoText.textContent = photoMessages[Math.floor(Math.random() * photoMessages.length)];
+      photoBonus.textContent = '+' + formatNumber(bonus) + ' bonus coins!';
+      photoOverlay.classList.add('active');
+
+      for (var i = 0; i < 15; i++) {
+        (function(idx) {
+          setTimeout(function() { spawnCoinRain(); }, idx * 100);
+        })(i);
+      }
+
+      updateUI();
+    }
+
+    photoOverlay.addEventListener('click', function() {
+      photoOverlay.classList.remove('active');
+    });
+
+    // ===== EFFECTS =====
+    function spawnFloatNumber(x, y, text) {
+      var el = document.createElement('div');
+      el.className = 'float-number';
+      el.textContent = text;
+      el.style.left = (x - 30) + 'px';
+      el.style.top = (y - 20) + 'px';
+      document.body.appendChild(el);
+      setTimeout(function() { el.remove(); }, 1000);
+    }
+
+    function spawnParticle(x, y) {
+      var emojis = ['\u{1F4B0}', '\u{1FA99}', '\u2728', '\u{1F4AB}', '\u{1F922}', '\u{1F4A8}', '\u{1F443}'];
+      var el = document.createElement('div');
+      el.className = 'particle';
+      el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.setProperty('--tx', (Math.random() * 200 - 100) + 'px');
+      el.style.setProperty('--ty', (Math.random() * -200 - 50) + 'px');
+      document.body.appendChild(el);
+      setTimeout(function() { el.remove(); }, 1500);
+    }
+
+    function spawnCoinRain() {
+      var el = document.createElement('img');
+      el.src = 'jared-coin.png';
+      el.className = 'coin-rain';
+      el.style.left = Math.random() * window.innerWidth + 'px';
+      el.style.animationDuration = (2 + Math.random() * 3) + 's';
+      document.body.appendChild(el);
+      setTimeout(function() { el.remove(); }, 5000);
+    }
+
+    // ===== ACHIEVEMENTS =====
+    var achievementQueue = [];
+    var showingAchievement = false;
+
+    function checkAchievements() {
+      for (var i = 0; i < achievements.length; i++) {
+        var ach = achievements[i];
+        if (!state.achievements.has(ach.id) && ach.check()) {
+          state.achievements.add(ach.id);
+          achievementQueue.push(ach.name);
+          processAchievementQueue();
+        }
+      }
+    }
+
+    function processAchievementQueue() {
+      if (showingAchievement || achievementQueue.length === 0) return;
+      showingAchievement = true;
+      var name = achievementQueue.shift();
+      achNameEl.textContent = name;
+      achievementToast.classList.add('show');
+      setTimeout(function() {
+        achievementToast.classList.remove('show');
+        setTimeout(function() {
+          showingAchievement = false;
+          processAchievementQueue();
+        }, 500);
+      }, 3000);
+    }
+
+    // ===== UPGRADES UI (safe DOM methods) =====
+    function createUpgradeButton(upgrade) {
+      var cost = getUpgradeCost(upgrade);
+      var owned = state.upgrades[upgrade.id] || 0;
+      var affordable = state.coins >= cost;
+
+      var btn = document.createElement('button');
+      btn.className = 'upgrade-btn' + (affordable ? ' affordable' : '');
+      btn.disabled = !affordable;
+
+      var nameDiv = document.createElement('div');
+      nameDiv.className = 'upgrade-name';
+      nameDiv.textContent = upgrade.emoji + ' ' + upgrade.name;
+      btn.appendChild(nameDiv);
+
+      var descDiv = document.createElement('div');
+      descDiv.className = 'upgrade-desc';
+      descDiv.textContent = upgrade.desc;
+      btn.appendChild(descDiv);
+
+      var costDiv = document.createElement('div');
+      costDiv.className = 'upgrade-cost';
+      costDiv.textContent = 'Cost: ' + formatNumber(cost) + ' coins';
+      btn.appendChild(costDiv);
+
+      if (owned > 0) {
+        var ownedDiv = document.createElement('div');
+        ownedDiv.className = 'upgrade-owned';
+        ownedDiv.textContent = owned;
+        btn.appendChild(ownedDiv);
+      }
+
+      btn.addEventListener('click', function() { buyUpgrade(upgrade); });
+      return btn;
+    }
+
+    function renderUpgrades() {
+      upgradeListEl.textContent = '';
+      for (var i = 0; i < upgrades.length; i++) {
+        upgradeListEl.appendChild(createUpgradeButton(upgrades[i]));
+      }
+    }
+
+    function buyUpgrade(upgrade) {
+      var cost = getUpgradeCost(upgrade);
+      if (state.coins < cost) return;
+
+      state.coins -= cost;
+      state.upgrades[upgrade.id] = (state.upgrades[upgrade.id] || 0) + 1;
+      upgrade.effect();
+
+      checkAchievements();
+      updateUI();
+      saveGame();
+    }
+
+    // ===== UPDATE UI =====
+    function updateUI() {
+      coinCountEl.textContent = formatNumber(state.coins);
+      perSecEl.textContent = formatNumber(state.coinsPerSecond) + ' per sec';
+      clickInfo.textContent = 'Click the coin! (+' + formatNumber(state.coinsPerClick) + ' per click)';
+
+      document.getElementById('statTotal').textContent = formatNumber(state.totalCoins);
+      document.getElementById('statPerClick').textContent = formatNumber(state.coinsPerClick);
+      document.getElementById('statPerSec').textContent = formatNumber(state.coinsPerSecond);
+      document.getElementById('statClicks').textContent = formatNumber(state.totalClicks);
+      document.getElementById('statSightings').textContent = state.sightings;
+
+      var smellyLevel = getSmellyLevel();
+      document.getElementById('statSmelly').textContent = smellyLevel.name;
+      document.getElementById('smellyLabel').textContent = smellyLevel.name;
+      document.getElementById('smellyFill').style.width = getSmellyProgress() + '%';
+
+      renderUpgrades();
+    }
+
+    // ===== AUTO INCOME =====
+    setInterval(function() {
+      if (state.coinsPerSecond > 0) {
+        state.coins += state.coinsPerSecond / 10;
+        state.totalCoins += state.coinsPerSecond / 10;
+        updateUI();
+      }
+    }, 100);
+
+    // Auto-save every 30 seconds
+    setInterval(function() { saveGame(); }, 30000);
+
+    // ===== SAVE / LOAD =====
+    function saveGame() {
+      var saveData = {
+        coins: state.coins,
+        totalCoins: state.totalCoins,
+        totalClicks: state.totalClicks,
+        coinsPerClick: state.coinsPerClick,
+        coinsPerSecond: state.coinsPerSecond,
+        sightings: state.sightings,
+        clicksSinceLastEvent: state.clicksSinceLastEvent,
+        nextEventAt: state.nextEventAt,
+        upgrades: state.upgrades,
+        achievements: Array.from(state.achievements),
+      };
+      localStorage.setItem('jaredClicker', JSON.stringify(saveData));
+    }
+
+    function loadGame() {
+      var data = localStorage.getItem('jaredClicker');
+      if (!data) return;
+
+      try {
+        var parsed = JSON.parse(data);
+        state.coins = parsed.coins || 0;
+        state.totalCoins = parsed.totalCoins || 0;
+        state.totalClicks = parsed.totalClicks || 0;
+        state.sightings = parsed.sightings || 0;
+        state.upgrades = parsed.upgrades || {};
+        state.achievements = new Set(parsed.achievements || []);
+        state.clicksSinceLastEvent = parsed.clicksSinceLastEvent || 0;
+        state.nextEventAt = parsed.nextEventAt || randomBetween(12, 25);
+
+        // Recalculate rates from upgrades
+        state.coinsPerClick = 1;
+        state.coinsPerSecond = 0;
+        for (var i = 0; i < upgrades.length; i++) {
+          var upgrade = upgrades[i];
+          var owned = state.upgrades[upgrade.id] || 0;
+          for (var j = 0; j < owned; j++) {
+            upgrade.effect();
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load save:', e);
+      }
+    }
+
+    // ===== INIT =====
+    loadGame();
+    updateUI();
+
+    // Background coin rain (subtle)
+    setInterval(function() {
+      if (state.coinsPerSecond > 0 && Math.random() < 0.1) {
+        spawnCoinRain();
+      }
+    }, 2000);
+  </script>
+</body>
+</html>
