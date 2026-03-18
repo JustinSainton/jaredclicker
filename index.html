@@ -2596,7 +2596,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '38';
+    var CURRENT_VERSION = '39';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -5101,8 +5101,9 @@
       // Edit button for custom skins you created
       var existingEditDiv = document.getElementById('skinEditDiv');
       if (existingEditDiv) existingEditDiv.remove();
-      if (skin.custom && skin.owned && skin.creatorName && playerName &&
-          skin.creatorName.toLowerCase() === playerName.toLowerCase()) {
+      var isMyCustomSkin = skin.custom && skin.owned && playerName &&
+          (!skin.creatorName || skin.creatorName.toLowerCase() === playerName.toLowerCase());
+      if (isMyCustomSkin) {
         var editDiv = document.createElement('div');
         editDiv.id = 'skinEditDiv';
         editDiv.style.cssText = 'margin-top:12px;padding:10px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:10px;';
@@ -5152,8 +5153,7 @@
       // Regenerate button for owned custom skins (one free regen)
       var existingRegenBtn = document.getElementById('skinRegenBtn');
       if (existingRegenBtn) existingRegenBtn.remove();
-      if (skin.custom && skin.owned && skin.creatorName && playerName &&
-          skin.creatorName.toLowerCase() === playerName.toLowerCase()) {
+      if (isMyCustomSkin) {
         var regenBtn = document.createElement('button');
         regenBtn.id = 'skinRegenBtn';
         regenBtn.className = 'account-btn secondary';

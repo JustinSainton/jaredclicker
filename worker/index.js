@@ -736,8 +736,9 @@ export class LiveVisitors {
           var c = skinData.custom[owned[i]];
           customs.push({
             id: owned[i],
-            name: c.description.slice(0, 30),
+            name: c.name || (c.description || "Custom").slice(0, 30),
             description: c.description,
+            creatorName: c.creatorName || "",
             color: "#a78bfa",
             priceCents: 599,
             owned: true,
@@ -782,6 +783,7 @@ export class LiveVisitors {
         apiCostCents: body.apiCostCents,
         totalOutputTokens: body.totalOutputTokens,
         totalInputTokens: body.totalInputTokens,
+        creatorName: body.playerName,
         createdAt: Date.now(),
       };
       if (!skinData.owned[key]) skinData.owned[key] = [];
@@ -809,9 +811,16 @@ export class LiveVisitors {
       if (!custom) {
         return new Response(JSON.stringify({ error: "Skin not found" }), { status: 404 });
       }
-      if (!custom.creatorName || custom.creatorName.toLowerCase() !== playerName.toLowerCase()) {
+      // Allow editing if you're the creator OR if you own it and no creator is set
+      var key2 = playerName.toLowerCase();
+      var owned2 = skinData.owned[key2] || [];
+      var isCreator = custom.creatorName && custom.creatorName.toLowerCase() === playerName.toLowerCase();
+      var isOwner = owned2.indexOf(skinId) >= 0;
+      if (!isCreator && !isOwner) {
         return new Response(JSON.stringify({ error: "Only the creator can edit this skin" }), { status: 403 });
       }
+      // Set creatorName if not already set
+      if (!custom.creatorName) custom.creatorName = playerName;
       if (newName) custom.name = newName;
       if (newDesc) custom.description = newDesc;
       this.skinData = skinData;
@@ -2811,7 +2820,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "38" }), {
+      return corsResponse(JSON.stringify({ version: "39" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
