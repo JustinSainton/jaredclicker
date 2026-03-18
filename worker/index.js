@@ -2308,13 +2308,16 @@ export default {
     // Which assets should include the Jared reference image
     var ASSETS_WITH_REF = { coin: true, banner: true, icon: true };
     function getSkinPrompts(theme) {
-      var themeUpper = theme.toUpperCase();
+      // Extract a short label for rim text (first 2-3 words max) from user description
+      var themeWords = theme.trim().split(/\s+/);
+      var shortTheme = themeWords.slice(0, Math.min(3, themeWords.length)).join(" ");
+      var rimText = shortTheme.toUpperCase();
       return {
-        coin: REF_INSTRUCTION + "Create a circular coin game asset for a clicker game. Theme: " + theme + ". The coin MUST feature the EXACT SAME man from the reference image — same face shape, same hairstyle, same facial features — but dressed/styled for the " + theme + " theme. Keep his likeness consistent and recognizable. Surround him with decorative border elements and small thematic icons matching the " + theme + " theme. The coin should have a metallic sheen and look like a real collectible token. Style: polished game asset, clean edges, circular shape, transparent background. The text around the rim should say 'JARED IS " + themeUpper + "'. High quality, detailed, game-ready asset.",
-        background: "Create a seamless background pattern for a " + theme + "-themed clicker game UI. Dark, moody atmosphere suitable for a game interface. Include subtle " + theme + "-related motifs and patterns. Color palette should complement the " + theme + " theme with deep, rich tones. No text. No characters. Just an atmospheric background pattern. Style: dark game UI background, subtle patterns, not too busy or distracting.",
-        banner: REF_INSTRUCTION + "Create a decorative header banner for a " + theme + "-themed clicker game. Wide horizontal banner shape. The SAME man from the reference coin image should appear as a small motif or emblem within the banner design — keep his face recognizable. Include " + theme + "-themed ornamental elements on both sides. Leave space in the center for game title text overlay. Dark background with glowing " + theme + "-themed accent colors. Style: game UI banner, ornate but not cluttered, horizontal layout.",
-        icon: REF_INSTRUCTION + "Create a small square app icon for a " + theme + "-themed clicker game. Feature the EXACT SAME man from the reference image on a coin — keep his face, hairstyle, and expression recognizable but simplified for small sizes. Dress/style him for the " + theme + " theme. Bold, recognizable at small sizes. " + theme + " color palette. Style: mobile app icon, clean, bold, square with rounded corners.",
-        particle: "Create a small particle effect sprite for a " + theme + "-themed clicker game. This appears when the player clicks the coin. Small burst of " + theme + "-themed sparkles, stars, or thematic elements. Transparent background. Bright, eye-catching colors matching " + theme + " theme. Style: game particle effect, small sprite, transparent background, vibrant.",
+        coin: REF_INSTRUCTION + "Create a circular coin game asset for a clicker game. The user's theme description is: \"" + theme + "\". The coin MUST feature the EXACT SAME man from the reference image — same face shape, same hairstyle, same facial features — but dressed/styled to match this theme. Keep his likeness consistent and recognizable. Surround him with decorative border elements and small thematic icons. The coin should have a metallic gold sheen and look like a real collectible token. CRITICAL: The coin must be on a SOLID COLORED background (gold, dark, or theme-appropriate) — absolutely NO transparency, NO checkerboard, NO alpha channel. The coin should fill the entire image. The ONLY text on the rim should be exactly 'JARED IS " + rimText + "' — do NOT put the full description or any other text on the coin. High quality, detailed, game-ready asset, circular shape.",
+        background: "Create a seamless background pattern for a clicker game UI. The user's theme description is: \"" + theme + "\". Dark, moody atmosphere suitable for a game interface. Include subtle related motifs and patterns. Color palette should complement the theme with deep, rich tones. No text. No characters. Just an atmospheric background pattern. Style: dark game UI background, subtle patterns, not too busy or distracting.",
+        banner: REF_INSTRUCTION + "Create a decorative header banner for a clicker game. The user's theme description is: \"" + theme + "\". Wide horizontal banner shape. The SAME man from the reference coin image should appear as a small motif or emblem within the banner design — keep his face recognizable. Include themed ornamental elements on both sides. Leave space in the center for game title text overlay. Dark background with glowing themed accent colors. Style: game UI banner, ornate but not cluttered, horizontal layout.",
+        icon: REF_INSTRUCTION + "Create a small square app icon for a clicker game. The user's theme description is: \"" + theme + "\". Feature the EXACT SAME man from the reference image on a coin — keep his face, hairstyle, and expression recognizable but simplified for small sizes. Dress/style him to match the theme. Bold, recognizable at small sizes. Style: mobile app icon, clean, bold, square with rounded corners. SOLID background color, no transparency.",
+        particle: "Create a small particle effect sprite for a clicker game. The user's theme description is: \"" + theme + "\". This appears when the player clicks the coin. Small burst of themed sparkles, stars, or thematic elements. Transparent background. Bright, eye-catching colors matching the theme. Style: game particle effect, small sprite, transparent background, vibrant.",
       };
     }
 
@@ -2679,7 +2682,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "36" }), {
+      return corsResponse(JSON.stringify({ version: "37" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
