@@ -218,10 +218,14 @@ export class LiveVisitors {
       'faggot','fag','f4g',
       'retard','retarded',
     ];
+    // Sort longest first so compound words (e.g. "asshole") match before "ass"
+    badWords.sort(function(a, b) { return b.length - a.length; });
     var result = text;
     for (var i = 0; i < badWords.length; i++) {
       var word = badWords[i];
-      var re = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      var escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Use word boundaries so "ass" doesn't match inside "passive" or "class"
+      var re = new RegExp('\\b' + escaped + '\\b', 'gi');
       result = result.replace(re, '*'.repeat(word.length));
     }
     return result;
@@ -2023,7 +2027,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "27" }), {
+      return corsResponse(JSON.stringify({ version: "28" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
