@@ -2972,7 +2972,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '42';
+    var CURRENT_VERSION = '43';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -3262,6 +3262,7 @@
           coinsPerClick: state.coinsPerClick,
           coinsPerSecond: state.coinsPerSecond,
           authToken: authToken || undefined,
+          scoreEpoch: parseInt(localStorage.getItem('jcScoreEpoch') || '0', 10),
         };
         if (authToken) {
           msg.gameState = {
@@ -3398,6 +3399,9 @@
             state.achievements = new Set();
             state.clicksSinceLastEvent = 0;
             state.nextEventAt = randomBetween(12, 25);
+            if (typeof data.scoreEpoch === 'number') {
+              localStorage.setItem('jcScoreEpoch', String(data.scoreEpoch));
+            }
             saveGame();
             updateUI();
             return;
@@ -3429,6 +3433,27 @@
               }
             }
             return;
+          }
+
+          // Epoch check: if server epoch is newer, this client missed a reset
+          if (typeof data.scoreEpoch === 'number') {
+            var localEpoch = parseInt(localStorage.getItem('jcScoreEpoch') || '0', 10);
+            if (data.scoreEpoch > localEpoch) {
+              // Wipe local game state — a reset happened while we were away
+              state.coins = 0;
+              state.totalCoins = 0;
+              state.totalClicks = 0;
+              state.coinsPerClick = 1;
+              state.coinsPerSecond = 0;
+              state.sightings = 0;
+              state.upgrades = {};
+              state.achievements = new Set();
+              state.clicksSinceLastEvent = 0;
+              state.nextEventAt = randomBetween(12, 25);
+              localStorage.setItem('jcScoreEpoch', String(data.scoreEpoch));
+              saveGame();
+              updateUI();
+            }
           }
 
           var count = data.count || 0;
@@ -6155,7 +6180,8 @@
         return;
       }
 
-      // Apply coin image
+      // Apply coin image (with fallback if skin asset is missing)
+      coinImg.onerror = function() { this.onerror = null; this.src = 'jared-coin.png'; };
       coinImg.src = apiBase + '/skins/' + skinId + '/coin.png';
 
       // Apply background

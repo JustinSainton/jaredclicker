@@ -12,6 +12,14 @@ export class LiveVisitors {
     this.photoNames = null; // lazy-loaded: { [photoKey]: displayName }
     this.accounts = null; // lazy-loaded: { [name_lower]: { displayName, pinHash, tokens, createdAt } }
     this.skinData = null; // lazy-loaded: { owned: { [player]: [skinIds] }, custom: { [skinId]: metadata }, equipped: { [player]: skinId } }
+    this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
+  }
+
+  async loadScoreEpoch() {
+    if (this.scoreEpoch === null) {
+      this.scoreEpoch = (await this.state.storage.get("scoreEpoch")) || 0;
+    }
+    return this.scoreEpoch;
   }
 
   async loadScores() {
@@ -107,11 +115,18 @@ export class LiveVisitors {
     this.broadcast();
   }
 
-  async saveScore(name, score, stats) {
+  async saveScore(name, score, stats, clientEpoch) {
     const scores = await this.loadScores();
     const key = name.toLowerCase();
     const s = typeof stats === "object" ? stats : { smellyLevel: stats || "" };
     const existing = scores[key];
+
+    // Reject scores from clients running a stale epoch (pre-reset scores)
+    const serverEpoch = await this.loadScoreEpoch();
+    if (typeof clientEpoch === "number" && clientEpoch < serverEpoch) {
+      return; // stale client, ignore entirely
+    }
+
     // If a server-side cut happened in the last 60s, don't let the client restore a higher score
     if (existing && existing.serverCutAt && (Date.now() - existing.serverCutAt) < 60000 && score > existing.score) {
       existing.stats = s;
@@ -334,12 +349,17 @@ export class LiveVisitors {
       this.persistedScores = {};
       await this.state.storage.put("scores", {});
 
-      // 2. Clear all in-memory connection scores so broadcast doesn't re-add them
+      // 2. Increment score epoch — clients with stale epochs are rejected
+      const newEpoch = (await this.loadScoreEpoch()) + 1;
+      this.scoreEpoch = newEpoch;
+      await this.state.storage.put("scoreEpoch", newEpoch);
+
+      // 3. Clear all in-memory connection scores so broadcast doesn't re-add them
       for (const [, info] of this.connections) {
         info.score = 0;
       }
 
-      // 3. Clear gameState from all accounts so login doesn't restore old scores
+      // 4. Clear gameState from all accounts so login doesn't restore old scores
       const accounts = await this.loadAccounts();
       for (const key of Object.keys(accounts)) {
         if (accounts[key].gameState) {
@@ -350,18 +370,18 @@ export class LiveVisitors {
       this.accounts = accounts;
       await this.saveAccounts();
 
-      // 4. Reset lastPodium so podium change detection starts fresh
+      // 5. Reset lastPodium so podium change detection starts fresh
       this.lastPodium = [];
 
       await this.addSystemChat("ADMIN reset all scores!");
 
-      // 5. Send resetAll event to every client so they clear localStorage + in-memory state
-      const resetMsg = JSON.stringify({ type: "resetAll" });
+      // 6. Send resetAll event with new epoch to every client
+      const resetMsg = JSON.stringify({ type: "resetAll", scoreEpoch: newEpoch });
       for (const [ws] of this.connections) {
         try { ws.send(resetMsg); } catch (e) {}
       }
 
-      // 6. Broadcast clean state
+      // 7. Broadcast clean state
       this.broadcast();
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json" },
@@ -1129,7 +1149,8 @@ export class LiveVisitors {
             coinsPerClick: Math.floor(msg.coinsPerClick || 0),
             coinsPerSecond: Math.floor(msg.coinsPerSecond || 0),
           };
-          this.saveScore(info.name, info.score, info.stats);
+          var clientEpoch = typeof msg.scoreEpoch === "number" ? msg.scoreEpoch : undefined;
+          this.saveScore(info.name, info.score, info.stats, clientEpoch);
           // Save full game state for cross-device sync if authenticated
           if (msg.authToken && msg.gameState) {
             this.findAccountByToken(msg.authToken).then(found => {
@@ -1263,6 +1284,8 @@ export class LiveVisitors {
     }
     this.lastPodium = currentPodium;
 
+    const currentEpoch = await this.loadScoreEpoch();
+
     const data = JSON.stringify({
       count: this.connections.size,
       locations: locations,
@@ -1273,6 +1296,7 @@ export class LiveVisitors {
       campaigns: activeCampaigns,
       equippedSkins: equippedSkins,
       podiumChanges: podiumChanges.length > 0 ? podiumChanges : undefined,
+      scoreEpoch: currentEpoch,
     });
 
     for (const [ws] of this.connections) {
@@ -2884,7 +2908,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "42" }), {
+      return corsResponse(JSON.stringify({ version: "43" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
