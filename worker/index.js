@@ -797,6 +797,43 @@ export class LiveVisitors {
       });
     }
 
+    // Skin: update custom skin name/description (creator only)
+    if (url.pathname === "/skins/update-meta" && request.method === "POST") {
+      var body = await request.json();
+      var skinId = String(body.skinId || "");
+      var playerName = String(body.playerName || "").slice(0, 20);
+      var newName = String(body.name || "").slice(0, 30);
+      var newDesc = String(body.description || "").slice(0, 200);
+      var skinData = await this.loadSkinData();
+      var custom = skinData.custom[skinId];
+      if (!custom) {
+        return new Response(JSON.stringify({ error: "Skin not found" }), { status: 404 });
+      }
+      if (!custom.creatorName || custom.creatorName.toLowerCase() !== playerName.toLowerCase()) {
+        return new Response(JSON.stringify({ error: "Only the creator can edit this skin" }), { status: 403 });
+      }
+      if (newName) custom.name = newName;
+      if (newDesc) custom.description = newDesc;
+      this.skinData = skinData;
+      await this.saveSkinData();
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Skin: total API costs across all custom skins
+    if (url.pathname === "/skins/total-api-cost" && request.method === "GET") {
+      var skinData = await this.loadSkinData();
+      var total = 0;
+      for (var sid in skinData.custom) {
+        total += (skinData.custom[sid].apiCostCents || 0);
+      }
+      return new Response(JSON.stringify({ totalApiCostCents: total }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Skin: equip a skin
     if (url.pathname === "/skins/equip" && request.method === "POST") {
       var body = await request.json();
@@ -849,7 +886,7 @@ export class LiveVisitors {
         if (c.published) {
           published.push({
             id: sid,
-            name: (c.description || "Custom").slice(0, 30),
+            name: c.name || (c.description || "Custom").slice(0, 30),
             description: c.description || "",
             creatorName: c.creatorName || "Unknown",
             color: "#a78bfa",
@@ -2230,7 +2267,17 @@ export default {
           hasMore = result.has_more === true;
           if (hasMore) startingAfter = result.data[result.data.length - 1].id;
         }
-        const data = { totalRaisedCents: totalNetCents, transactionCount: transactionCount };
+        // Deduct API costs for custom skin generation from total raised
+        let totalApiCostCents = 0;
+        try {
+          const doId = env.LIVE_VISITORS.idFromName("global");
+          const doObj = env.LIVE_VISITORS.get(doId);
+          const apiCostRes = await doObj.fetch(new Request("https://dummy/skins/total-api-cost", { method: "GET" }));
+          const apiCostData = await apiCostRes.json();
+          totalApiCostCents = apiCostData.totalApiCostCents || 0;
+        } catch(e) {}
+        const adjustedNetCents = totalNetCents - totalApiCostCents;
+        const data = { totalRaisedCents: adjustedNetCents, transactionCount: transactionCount, apiCostCents: totalApiCostCents };
         totalRaisedCache = { data: data, timestamp: now };
         return corsResponse(JSON.stringify(data), {
           headers: { "Content-Type": "application/json" },
@@ -2462,6 +2509,27 @@ export default {
       }
     }
 
+    // Update custom skin metadata (creator only)
+    if (url.pathname === "/update-skin-meta" && request.method === "POST") {
+      try {
+        var body = await request.json();
+        var doId = env.LIVE_VISITORS.idFromName("global");
+        var doObj = env.LIVE_VISITORS.get(doId);
+        var res = await doObj.fetch(new Request("https://dummy/skins/update-meta", {
+          method: "POST",
+          body: JSON.stringify(body),
+        }));
+        var result = await res.text();
+        return corsResponse(result, {
+          status: res.status, headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Publish a custom skin to the marketplace
     if (url.pathname === "/publish-skin" && request.method === "POST") {
       try {
@@ -2611,7 +2679,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "35" }), {
+      return corsResponse(JSON.stringify({ version: "36" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

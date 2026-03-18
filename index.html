@@ -2596,7 +2596,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '35';
+    var CURRENT_VERSION = '36';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -5054,8 +5054,8 @@
       skinPreviewDesc.textContent = skin.description;
       skinPreviewGrid.textContent = '';
 
-      // Show all 5 assets as preview (for pre-built skins only, not custom unseen ones)
-      if (!skin.custom || skin.owned) {
+      // Show all 5 assets as preview (pre-built, owned, or published community skins)
+      if (!skin.custom || skin.owned || skin.community) {
         var assetNames = ['coin', 'background', 'banner', 'icon', 'particle'];
         for (var i = 0; i < assetNames.length; i++) {
           var wrap = document.createElement('div');
@@ -5098,6 +5098,57 @@
         skinPreviewOverlay.classList.remove('active');
       };
 
+      // Edit button for custom skins you created
+      var existingEditDiv = document.getElementById('skinEditDiv');
+      if (existingEditDiv) existingEditDiv.remove();
+      if (skin.custom && skin.owned && skin.creatorName && playerName &&
+          skin.creatorName.toLowerCase() === playerName.toLowerCase()) {
+        var editDiv = document.createElement('div');
+        editDiv.id = 'skinEditDiv';
+        editDiv.style.cssText = 'margin-top:12px;padding:10px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:10px;';
+        var editTitle = document.createElement('input');
+        editTitle.type = 'text';
+        editTitle.value = skin.name || '';
+        editTitle.placeholder = 'Skin name';
+        editTitle.maxLength = 30;
+        editTitle.style.cssText = 'width:100%;padding:8px;border-radius:6px;border:1px solid rgba(167,139,250,0.4);background:rgba(0,0,0,0.3);color:#fff;font-family:Fredoka One,cursive;font-size:13px;margin-bottom:6px;box-sizing:border-box;';
+        editDiv.appendChild(editTitle);
+        var editDesc = document.createElement('textarea');
+        editDesc.value = skin.description || '';
+        editDesc.placeholder = 'Description';
+        editDesc.maxLength = 200;
+        editDesc.rows = 2;
+        editDesc.style.cssText = 'width:100%;padding:8px;border-radius:6px;border:1px solid rgba(167,139,250,0.4);background:rgba(0,0,0,0.3);color:#fff;font-family:Fredoka One,cursive;font-size:12px;margin-bottom:6px;box-sizing:border-box;resize:vertical;';
+        editDiv.appendChild(editDesc);
+        var editSaveBtn = document.createElement('button');
+        editSaveBtn.className = 'account-btn secondary';
+        editSaveBtn.style.cssText = 'font-size:12px;padding:8px;';
+        editSaveBtn.textContent = 'Save Changes';
+        editSaveBtn.addEventListener('click', function() {
+          editSaveBtn.disabled = true;
+          editSaveBtn.textContent = 'Saving...';
+          fetch(apiBase + '/update-skin-meta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skinId: skin.id, playerName: playerName, name: editTitle.value, description: editDesc.value }),
+          }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.ok) {
+              editSaveBtn.textContent = 'Saved!';
+              editSaveBtn.style.background = '#4ade80';
+              editSaveBtn.style.color = '#064e3b';
+              skinPreviewTitle.textContent = editTitle.value;
+              skinPreviewDesc.textContent = editDesc.value;
+              fetchSkinCatalog();
+            } else {
+              editSaveBtn.textContent = data.error || 'Failed';
+              editSaveBtn.disabled = false;
+            }
+          });
+        });
+        editDiv.appendChild(editSaveBtn);
+        skinPreviewCard.querySelector('div[style*="text-align:center"]').insertBefore(editDiv, skinPreviewCard.querySelector('div[style*="text-align:center"]').firstChild);
+      }
+
       // Publish button for owned custom skins
       var existingPublishBtn = document.getElementById('skinPublishBtn');
       if (existingPublishBtn) existingPublishBtn.remove();
@@ -5133,7 +5184,7 @@
       // Preview button — temporarily apply skin for 10 seconds
       var existingPreviewBtn = document.getElementById('skinPreviewTryBtn');
       if (existingPreviewBtn) existingPreviewBtn.remove();
-      if (!skin.custom || skin.owned) {
+      if (!skin.custom || skin.owned || skin.community) {
         var tryBtn = document.createElement('button');
         tryBtn.id = 'skinPreviewTryBtn';
         tryBtn.className = 'account-btn secondary';
