@@ -822,6 +822,54 @@ export class LiveVisitors {
       });
     }
 
+    // Skin: regenerate a custom skin (one free regen allowed)
+    if (url.pathname === "/skins/regenerate" && request.method === "POST") {
+      var body = await request.json();
+      var skinId = String(body.skinId || "");
+      var playerName = String(body.playerName || "").slice(0, 20);
+      var skinData = await this.loadSkinData();
+      var custom = skinData.custom[skinId];
+      if (!custom) {
+        return new Response(JSON.stringify({ error: "Skin not found" }), { status: 404 });
+      }
+      // Verify ownership
+      var key = playerName.toLowerCase();
+      var owned = skinData.owned[key] || [];
+      if (owned.indexOf(skinId) < 0) {
+        return new Response(JSON.stringify({ error: "You don't own this skin" }), { status: 403 });
+      }
+      // Check if free regen already used
+      if (custom.regenUsed) {
+        return new Response(JSON.stringify({ error: "Free regeneration already used for this skin" }), { status: 400 });
+      }
+      // Mark regen as used (will be saved after generation completes in outer handler)
+      custom.regenUsed = true;
+      this.skinData = skinData;
+      await this.saveSkinData();
+      return new Response(JSON.stringify({ ok: true, description: custom.description }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Skin: update API cost after regeneration
+    if (url.pathname === "/skins/update-api-cost" && request.method === "POST") {
+      var body = await request.json();
+      var skinId = String(body.skinId || "");
+      var additionalCostCents = Math.floor(Number(body.additionalCostCents) || 0);
+      var skinData = await this.loadSkinData();
+      var custom = skinData.custom[skinId];
+      if (custom) {
+        custom.apiCostCents = (custom.apiCostCents || 0) + additionalCostCents;
+        custom.totalOutputTokens = (custom.totalOutputTokens || 0) + (body.totalOutputTokens || 0);
+        custom.totalInputTokens = (custom.totalInputTokens || 0) + (body.totalInputTokens || 0);
+        this.skinData = skinData;
+        await this.saveSkinData();
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Skin: total API costs across all custom skins
     if (url.pathname === "/skins/total-api-cost" && request.method === "GET") {
       var skinData = await this.loadSkinData();
@@ -2573,6 +2621,87 @@ export default {
       }
     }
 
+    // Regenerate a custom skin (one free regen)
+    if (url.pathname === "/regenerate-skin" && request.method === "POST") {
+      try {
+        var body = await request.json();
+        var skinId = String(body.skinId || "");
+        var playerName = String(body.playerName || "").slice(0, 20);
+
+        // Check eligibility via DO
+        var doId = env.LIVE_VISITORS.idFromName("global");
+        var doObj = env.LIVE_VISITORS.get(doId);
+        var eligRes = await doObj.fetch(new Request("https://dummy/skins/regenerate", {
+          method: "POST",
+          body: JSON.stringify({ skinId, playerName }),
+        }));
+        var eligData = await eligRes.json();
+        if (!eligData.ok) {
+          return corsResponse(JSON.stringify({ error: eligData.error || "Cannot regenerate" }), {
+            status: eligRes.status, headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        // Re-generate all assets
+        var description = eligData.description;
+        var prompts = getSkinPrompts(description);
+        var totalOutputTokens = 0;
+        var totalInputTokens = 0;
+        var generatedAssets = [];
+        var errors = [];
+
+        // Load Jared reference
+        var jaredRefBase64 = null;
+        try {
+          var refObj = await env.PHOTOS.get("skins/jared-coin-reference.png");
+          if (refObj) {
+            var refBuf = await refObj.arrayBuffer();
+            jaredRefBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(refBuf)));
+          }
+        } catch(e) {}
+
+        for (var ai = 0; ai < SKIN_ASSETS.length; ai++) {
+          var assetName = SKIN_ASSETS[ai];
+          var prompt = prompts[assetName];
+          var refsToSend = [];
+          if (ASSETS_WITH_REF[assetName] && jaredRefBase64) refsToSend.push(jaredRefBase64);
+          var result = await callGemini(env.GEMINI_API_KEY, prompt, refsToSend.length > 0 ? refsToSend : null);
+          if (result.error || !result.base64) {
+            errors.push(assetName + ": " + (result.error || "no image returned"));
+            continue;
+          }
+          totalOutputTokens += result.outputTokens;
+          totalInputTokens += result.inputTokens;
+          var r2Key = "skins/" + skinId + "/" + assetName + ".png";
+          var imageBytes = Uint8Array.from(atob(result.base64), function(c) { return c.charCodeAt(0); });
+          await env.PHOTOS.put(r2Key, imageBytes, {
+            httpMetadata: { contentType: "image/png" },
+          });
+          generatedAssets.push(assetName);
+        }
+
+        // Update API cost
+        var apiCostCents = Math.ceil((totalOutputTokens * 0.06 + totalInputTokens * 0.015) / 10);
+        await doObj.fetch(new Request("https://dummy/skins/update-api-cost", {
+          method: "POST",
+          body: JSON.stringify({ skinId, additionalCostCents: apiCostCents, totalOutputTokens, totalInputTokens }),
+        }));
+
+        return corsResponse(JSON.stringify({
+          ok: true,
+          assets: generatedAssets,
+          errors: errors,
+          apiCostCents: apiCostCents,
+        }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Generate a custom skin pack after payment (server-side Gemini call)
     if (url.pathname === "/generate-custom-skin" && request.method === "POST") {
       try {
@@ -2682,7 +2811,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "37" }), {
+      return corsResponse(JSON.stringify({ version: "38" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

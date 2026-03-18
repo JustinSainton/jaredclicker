@@ -2596,7 +2596,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '37';
+    var CURRENT_VERSION = '38';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -5147,6 +5147,64 @@
         });
         editDiv.appendChild(editSaveBtn);
         skinPreviewCard.querySelector('div[style*="text-align:center"]').insertBefore(editDiv, skinPreviewCard.querySelector('div[style*="text-align:center"]').firstChild);
+      }
+
+      // Regenerate button for owned custom skins (one free regen)
+      var existingRegenBtn = document.getElementById('skinRegenBtn');
+      if (existingRegenBtn) existingRegenBtn.remove();
+      if (skin.custom && skin.owned && skin.creatorName && playerName &&
+          skin.creatorName.toLowerCase() === playerName.toLowerCase()) {
+        var regenBtn = document.createElement('button');
+        regenBtn.id = 'skinRegenBtn';
+        regenBtn.className = 'account-btn secondary';
+        regenBtn.style.cssText = 'max-width:250px;margin-top:8px;';
+        regenBtn.textContent = 'Regenerate (1 free)';
+        regenBtn.addEventListener('click', function() {
+          if (!confirm('Regenerate all 5 assets for this skin? This uses your one free regeneration.')) return;
+          regenBtn.disabled = true;
+          regenBtn.textContent = 'Regenerating...';
+          var regenAssets = ['coin', 'background', 'banner', 'icon', 'particle'];
+          var regenStep = 0;
+          var regenStatus = document.createElement('div');
+          regenStatus.style.cssText = 'color:#a78bfa;font-size:12px;text-align:center;margin-top:6px;';
+          regenStatus.textContent = 'Generating coin (1/5)...';
+          regenBtn.parentNode.insertBefore(regenStatus, regenBtn.nextSibling);
+          var regenTimer = setInterval(function() {
+            regenStep++;
+            if (regenStep < regenAssets.length) {
+              regenStatus.textContent = 'Generating ' + regenAssets[regenStep] + ' (' + (regenStep + 1) + '/5)...';
+            } else {
+              regenStatus.textContent = 'Finishing up...';
+              clearInterval(regenTimer);
+            }
+          }, 6000);
+          fetch(apiBase + '/regenerate-skin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skinId: skin.id, playerName: playerName }),
+          }).then(function(r) { return r.json(); }).then(function(data) {
+            clearInterval(regenTimer);
+            if (data.ok) {
+              regenStatus.textContent = 'Regenerated! API cost: $' + ((data.apiCostCents || 0) / 100).toFixed(3);
+              regenStatus.style.color = '#4ade80';
+              regenBtn.textContent = 'Done!';
+              regenBtn.style.background = '#4ade80';
+              regenBtn.style.color = '#064e3b';
+              // Refresh preview images by cache-busting
+              var imgs = skinPreviewGrid.querySelectorAll('img');
+              for (var ii = 0; ii < imgs.length; ii++) {
+                imgs[ii].src = imgs[ii].src.split('?')[0] + '?t=' + Date.now();
+              }
+              fetchSkinCatalog();
+            } else {
+              regenStatus.textContent = data.error || 'Regeneration failed';
+              regenStatus.style.color = '#ef4444';
+              regenBtn.disabled = false;
+              regenBtn.textContent = 'Regenerate (1 free)';
+            }
+          });
+        });
+        skinPreviewCard.querySelector('div[style*="text-align:center"]').appendChild(regenBtn);
       }
 
       // Publish button for owned custom skins
