@@ -765,6 +765,367 @@
       background: rgba(255, 215, 0, 0.1);
     }
 
+    /* ===== PODIUM ===== */
+    .podium-stage {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 6px;
+      margin-bottom: 16px;
+      padding: 12px 0 0;
+      position: relative;
+      min-height: 180px;
+    }
+    .podium-slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .podium-slot-1 { order: 2; }
+    .podium-slot-2 { order: 1; }
+    .podium-slot-3 { order: 3; }
+
+    .podium-avatar-wrap {
+      position: relative;
+      margin-bottom: 4px;
+    }
+    .podium-avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #888;
+      box-shadow: 0 0 12px rgba(255,215,0,0.2);
+    }
+    .podium-slot-1 .podium-avatar { width: 70px; height: 70px; border-color: #ffd700; box-shadow: 0 0 20px rgba(255,215,0,0.6); }
+    .podium-slot-2 .podium-avatar { border-color: #c0c0c0; box-shadow: 0 0 15px rgba(192,192,192,0.5); }
+    .podium-slot-3 .podium-avatar { border-color: #cd7f32; box-shadow: 0 0 12px rgba(205,127,50,0.4); }
+
+    .podium-crown {
+      position: absolute;
+      top: -22px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 22px;
+      animation: crownBob 2.5s ease-in-out infinite;
+      filter: drop-shadow(0 0 6px rgba(255,215,0,0.8));
+    }
+    @keyframes crownBob {
+      0%, 100% { transform: translateX(-50%) translateY(0) rotate(-3deg); }
+      50% { transform: translateX(-50%) translateY(-5px) rotate(3deg); }
+    }
+
+    .podium-name {
+      font-size: 11px;
+      color: #ffd700;
+      font-family: 'Press Start 2P', monospace;
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .podium-score {
+      font-size: 9px;
+      color: #daa520;
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    .podium-block {
+      width: 90px;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-family: 'Fredoka One', cursive;
+      margin-top: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .podium-block-1 {
+      height: 70px;
+      background: linear-gradient(180deg, #ffd700 0%, #b8860b 100%);
+      color: #1a1a2e;
+      box-shadow: 0 0 20px rgba(255,215,0,0.4), inset 0 2px 0 rgba(255,255,255,0.3);
+    }
+    .podium-block-2 {
+      height: 50px;
+      background: linear-gradient(180deg, #e0e0e0 0%, #888 100%);
+      color: #1a1a2e;
+      box-shadow: 0 0 15px rgba(192,192,192,0.3), inset 0 2px 0 rgba(255,255,255,0.3);
+    }
+    .podium-block-3 {
+      height: 36px;
+      background: linear-gradient(180deg, #cd7f32 0%, #8b4513 100%);
+      color: #1a1a2e;
+      box-shadow: 0 0 12px rgba(205,127,50,0.3), inset 0 2px 0 rgba(255,255,255,0.2);
+    }
+    .podium-block::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: rgba(255,255,255,0.4);
+    }
+
+    .podium-empty {
+      opacity: 0.4;
+    }
+    .podium-empty .podium-avatar {
+      background: rgba(255,255,255,0.1);
+      border-color: #555;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .podium-empty .podium-name {
+      color: #888;
+      font-family: 'Fredoka One', cursive;
+      font-size: 10px;
+    }
+
+    /* Sparkle particles orbiting #1 */
+    .podium-sparkle {
+      position: absolute;
+      font-size: 10px;
+      pointer-events: none;
+    }
+    .podium-sparkle-1 { animation: sparkleOrbit1 3s linear infinite; }
+    .podium-sparkle-2 { animation: sparkleOrbit2 3.5s linear infinite; }
+    .podium-sparkle-3 { animation: sparkleOrbit3 4s linear infinite; }
+    @keyframes sparkleOrbit1 {
+      from { transform: rotate(0deg) translateX(42px) rotate(0deg); }
+      to { transform: rotate(360deg) translateX(42px) rotate(-360deg); }
+    }
+    @keyframes sparkleOrbit2 {
+      from { transform: rotate(120deg) translateX(46px) rotate(-120deg); }
+      to { transform: rotate(480deg) translateX(46px) rotate(-480deg); }
+    }
+    @keyframes sparkleOrbit3 {
+      from { transform: rotate(240deg) translateX(40px) rotate(-240deg); }
+      to { transform: rotate(600deg) translateX(40px) rotate(-600deg); }
+    }
+
+    /* Idle animations per position */
+    .podium-slot-1 .podium-avatar-wrap { animation: championBounce 3s ease-in-out infinite; }
+    @keyframes championBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    .podium-slot-1 .podium-block-1 { animation: goldPulse 4s ease-in-out infinite; }
+    @keyframes goldPulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(255,215,0,0.4), inset 0 2px 0 rgba(255,255,255,0.3); }
+      50% { box-shadow: 0 0 35px rgba(255,215,0,0.7), inset 0 2px 0 rgba(255,255,255,0.3); }
+    }
+
+    .podium-slot-2 .podium-avatar-wrap { animation: rivalLean 4s ease-in-out infinite; }
+    @keyframes rivalLean {
+      0%, 100% { transform: skewY(0deg); }
+      25% { transform: skewY(-2deg); }
+      75% { transform: skewY(2deg); }
+    }
+
+    .podium-slot-3 .podium-avatar-wrap { animation: underdogWobble 2s ease-in-out infinite; }
+    @keyframes underdogWobble {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-2deg); }
+      75% { transform: rotate(2deg); }
+    }
+
+    /* Emoji popups for #2 and #3 */
+    .podium-emoji-popup {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      font-size: 16px;
+      pointer-events: none;
+      animation: emojiPop 1.5s ease-out forwards;
+      z-index: 5;
+    }
+    @keyframes emojiPop {
+      0% { opacity: 0; transform: scale(0.3) translateY(0); }
+      20% { opacity: 1; transform: scale(1.2) translateY(-5px); }
+      40% { transform: scale(1) translateY(-10px); }
+      100% { opacity: 0; transform: scale(0.8) translateY(-25px); }
+    }
+
+    /* Takeover animations */
+    @keyframes stageShake {
+      0%, 100% { transform: translateX(0); }
+      10% { transform: translateX(-4px); }
+      20% { transform: translateX(4px); }
+      30% { transform: translateX(-3px); }
+      40% { transform: translateX(3px); }
+      50% { transform: translateX(-2px); }
+      60% { transform: translateX(2px); }
+      70% { transform: translateX(-1px); }
+      80% { transform: translateX(1px); }
+    }
+    @keyframes podiumBoot {
+      0% { transform: scale(1) translate(0, 0) rotate(0deg); opacity: 1; }
+      20% { transform: scale(1.1) translate(0, 0) rotate(0deg); opacity: 1; }
+      100% { transform: scale(0) translate(var(--boot-tx, 400px), -300px) rotate(720deg); opacity: 0; }
+    }
+    @keyframes podiumSlam {
+      0% { transform: translateY(-200px) scale(1.5); opacity: 0; }
+      60% { transform: translateY(10px) scale(1); opacity: 1; }
+      80% { transform: translateY(-3px) scale(1); opacity: 1; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    @keyframes shockwave {
+      0% { width: 0; height: 0; opacity: 0.6; border-width: 3px; }
+      100% { width: 150px; height: 150px; opacity: 0; border-width: 1px; }
+    }
+    @keyframes victoryBounce {
+      0% { transform: scale(1); }
+      20% { transform: scale(1.15); }
+      40% { transform: scale(1); }
+      60% { transform: scale(1.05); }
+      80% { transform: scale(1); }
+      100% { transform: scale(1); }
+    }
+    @keyframes impactFlash {
+      0% { opacity: 0.8; transform: translate(-50%, -50%) scale(0); }
+      50% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+    }
+
+    .podium-shockwave {
+      position: absolute;
+      border: 3px solid rgba(255,215,0,0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      animation: shockwave 0.6s ease-out forwards;
+    }
+    .podium-impact-flash {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      left: 50%;
+      top: 50%;
+      animation: impactFlash 0.5s ease-out forwards;
+    }
+
+    /* Full-screen takeover notification */
+    .podium-takeover-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(10, 5, 20, 0.92);
+      z-index: 555;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 16px;
+      animation: fadeIn 0.3s;
+    }
+    .podium-takeover-overlay.active { display: flex; }
+    .podium-takeover-title {
+      font-size: 32px;
+      color: #ffd700;
+      text-shadow: 2px 2px 0 #b8860b, 0 0 30px rgba(255,215,0,0.6);
+      animation: stageShake 0.5s ease-out, popIn 0.3s ease-out;
+      text-align: center;
+    }
+    .podium-takeover-vs {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      animation: popIn 0.4s ease-out 0.2s both;
+    }
+    .podium-takeover-player {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .podium-takeover-player img {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #ffd700;
+      box-shadow: 0 0 20px rgba(255,215,0,0.5);
+    }
+    .podium-takeover-player .name {
+      font-size: 14px;
+      font-family: 'Press Start 2P', monospace;
+      color: #ffd700;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .podium-takeover-vs-text {
+      font-size: 28px;
+      color: #ff4444;
+      text-shadow: 0 0 20px rgba(255,68,68,0.6);
+      font-family: 'Press Start 2P', monospace;
+    }
+    .podium-takeover-announcement {
+      font-size: 20px;
+      color: #fff;
+      text-shadow: 0 0 15px rgba(255,255,255,0.4);
+      text-align: center;
+      animation: popIn 0.4s ease-out 0.4s both;
+    }
+    .podium-takeover-subtitle {
+      font-size: 24px;
+      color: #ffd700;
+      text-shadow: 2px 2px 0 #b8860b;
+      animation: popIn 0.4s ease-out 0.6s both;
+    }
+    .podium-takeover-dismiss {
+      font-size: 12px;
+      color: #888;
+      margin-top: 10px;
+      animation: fadeIn 1s ease-out 1s both;
+    }
+
+    /* Toast notification for #2/#3 changes */
+    .podium-toast {
+      position: fixed;
+      top: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #2a2a4a, #1a1a3a);
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      padding: 10px 20px;
+      z-index: 500;
+      font-family: 'Fredoka One', cursive;
+      font-size: 15px;
+      color: #ffd700;
+      text-shadow: 1px 1px 0 #b8860b;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      transition: top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      text-align: center;
+      max-width: 90vw;
+    }
+    .podium-toast.show { top: 20px; }
+
+    @media (max-width: 600px) {
+      .podium-stage { gap: 3px; min-height: 150px; }
+      .podium-avatar { width: 46px !important; height: 46px !important; }
+      .podium-slot-1 .podium-avatar { width: 54px !important; height: 54px !important; }
+      .podium-block { width: 72px; }
+      .podium-name { font-size: 9px; max-width: 70px; }
+      .podium-score { font-size: 8px; }
+      .podium-crown { font-size: 18px; top: -18px; }
+      .podium-takeover-title { font-size: 22px; }
+      .podium-takeover-player img { width: 55px; height: 55px; }
+      .podium-takeover-announcement { font-size: 16px; }
+    }
+
     .lb-detail-overlay {
       display: none;
       position: fixed;
@@ -1747,6 +2108,7 @@
         <button id="lbSubmitBtn">Submit</button>
       </div>
       <button class="lb-account-btn" id="lbAccountBtn">🔐 Save progress across devices</button>
+      <div id="podiumStage" class="podium-stage"></div>
       <div id="leaderboardList" style="margin-top: 12px;"></div>
     </div>
 
@@ -1891,6 +2253,15 @@
     <div class="sabotage-notify-text" id="sabotageNotifyText">You've been sabotaged!</div>
     <div class="sabotage-notify-sub" id="sabotageNotifySub">Half speed for 15 minutes!</div>
     <div class="sabotage-notify-dismiss" id="sabotageNotifyDismiss">tap to dismiss</div>
+  </div>
+
+  <!-- Podium Takeover Overlay -->
+  <div class="podium-takeover-overlay" id="podiumTakeoverOverlay">
+    <div class="podium-takeover-title" id="podiumTakeoverTitle"></div>
+    <div class="podium-takeover-vs" id="podiumTakeoverVs"></div>
+    <div class="podium-takeover-announcement" id="podiumTakeoverAnnouncement"></div>
+    <div class="podium-takeover-subtitle" id="podiumTakeoverSubtitle"></div>
+    <div class="podium-takeover-dismiss">tap to dismiss</div>
   </div>
 
   <!-- Sabotage Banner (persistent while active) -->
@@ -2601,7 +2972,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '40';
+    var CURRENT_VERSION = '41';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -3059,6 +3430,11 @@
             window._equippedSkins = data.equippedSkins;
           }
 
+          // Handle podium changes
+          if (data.podiumChanges && data.podiumChanges.length > 0) {
+            handlePodiumChanges(data.podiumChanges);
+          }
+
           // Update credits from broadcast
           if (data.credits && playerName) {
             myCredits = data.credits[playerName.toLowerCase()] || 0;
@@ -3408,9 +3784,329 @@
     });
 
     var lastLeaderboardData = [];
+    window._lastPodiumState = [];
+    var _podiumEmojiTimers = [];
+
+    function getPodiumAvatarSrc(playerName) {
+      var eqSkins = window._equippedSkins || {};
+      var skinId = eqSkins[playerName.toLowerCase()];
+      if (skinId) return apiBase + '/skins/' + skinId + '/coin.png';
+      return 'jared-coin.png';
+    }
+
+    function renderPodium(scores) {
+      var podiumEl = document.getElementById('podiumStage');
+      if (!podiumEl) return;
+      var top3 = (scores || []).slice(0, 3);
+
+      // Clear emoji timers
+      for (var t = 0; t < _podiumEmojiTimers.length; t++) clearInterval(_podiumEmojiTimers[t]);
+      _podiumEmojiTimers = [];
+
+      // Clear podium safely
+      while (podiumEl.firstChild) podiumEl.removeChild(podiumEl.firstChild);
+
+      var positions = [
+        { pos: 1, label: '\uD83C\uDFC6', blockClass: 'podium-block-1' },
+        { pos: 2, label: '#2', blockClass: 'podium-block-2' },
+        { pos: 3, label: '#3', blockClass: 'podium-block-3' }
+      ];
+
+      for (var p = 0; p < 3; p++) {
+        var entry = top3[p] || null;
+        var pos = positions[p];
+        var slot = document.createElement('div');
+        slot.className = 'podium-slot podium-slot-' + pos.pos + (entry ? '' : ' podium-empty');
+
+        var avatarWrap = document.createElement('div');
+        avatarWrap.className = 'podium-avatar-wrap';
+
+        if (entry) {
+          var avatar = document.createElement('img');
+          avatar.className = 'podium-avatar';
+          avatar.src = getPodiumAvatarSrc(entry.name);
+          avatar.alt = entry.name;
+          avatar.onerror = function() { this.src = 'jared-coin.png'; };
+          avatarWrap.appendChild(avatar);
+
+          // Crown for #1
+          if (pos.pos === 1) {
+            var crown = document.createElement('div');
+            crown.className = 'podium-crown';
+            crown.textContent = '\uD83D\uDC51';
+            avatarWrap.appendChild(crown);
+
+            // Sparkle particles
+            for (var sp = 1; sp <= 3; sp++) {
+              var sparkle = document.createElement('div');
+              sparkle.className = 'podium-sparkle podium-sparkle-' + sp;
+              sparkle.textContent = '\u2728';
+              avatarWrap.appendChild(sparkle);
+            }
+          }
+
+          // Periodic emoji for #2 (angry)
+          if (pos.pos === 2) {
+            (function(wrap) {
+              var timer = setInterval(function() {
+                var emoji = document.createElement('div');
+                emoji.className = 'podium-emoji-popup';
+                emoji.textContent = '\uD83D\uDCA2';
+                wrap.appendChild(emoji);
+                setTimeout(function() { if (emoji.parentNode) emoji.parentNode.removeChild(emoji); }, 1500);
+              }, 8000 + Math.random() * 4000);
+              _podiumEmojiTimers.push(timer);
+            })(avatarWrap);
+          }
+
+          // Periodic emoji for #3 (sweat)
+          if (pos.pos === 3) {
+            (function(wrap) {
+              var timer = setInterval(function() {
+                var emoji = document.createElement('div');
+                emoji.className = 'podium-emoji-popup';
+                emoji.textContent = '\uD83D\uDE30';
+                wrap.appendChild(emoji);
+                setTimeout(function() { if (emoji.parentNode) emoji.parentNode.removeChild(emoji); }, 1500);
+              }, 10000 + Math.random() * 5000);
+              _podiumEmojiTimers.push(timer);
+            })(avatarWrap);
+          }
+        } else {
+          // Empty slot placeholder
+          var placeholder = document.createElement('div');
+          placeholder.className = 'podium-avatar';
+          placeholder.style.cssText = 'display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(255,255,255,0.05);';
+          placeholder.textContent = '?';
+          avatarWrap.appendChild(placeholder);
+        }
+
+        slot.appendChild(avatarWrap);
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'podium-name';
+        nameEl.textContent = entry ? entry.name : 'Claim this spot!';
+        slot.appendChild(nameEl);
+
+        var scoreEl = document.createElement('div');
+        scoreEl.className = 'podium-score';
+        scoreEl.textContent = entry ? formatNumber(entry.score) : '';
+        slot.appendChild(scoreEl);
+
+        var block = document.createElement('div');
+        block.className = 'podium-block ' + pos.blockClass;
+        block.textContent = pos.pos === 1 ? '\uD83C\uDFC6' : (pos.pos === 2 ? '#2' : '#3');
+        slot.appendChild(block);
+
+        // Make podium slots tappable for player detail
+        if (entry) {
+          (function(e) {
+            slot.style.cursor = 'pointer';
+            slot.addEventListener('click', function() { showPlayerDetail(e); });
+          })(entry);
+        }
+
+        podiumEl.appendChild(slot);
+      }
+
+      window._lastPodiumState = top3.map(function(e) { return e ? e.name : null; });
+    }
+
+    // === Podium takeover animations ===
+    function animatePodiumTakeover(changes) {
+      var podiumEl = document.getElementById('podiumStage');
+      if (!podiumEl) return;
+
+      // Phase 1: Stage shake
+      podiumEl.style.animation = 'stageShake 0.3s ease-out';
+      setTimeout(function() { podiumEl.style.animation = ''; }, 300);
+
+      // Phase 2-3: Boot + Slam on changed slots
+      for (var c = 0; c < changes.length; c++) {
+        (function(change) {
+          var slotEl = podiumEl.querySelector('.podium-slot-' + change.position);
+          if (!slotEl) return;
+          var avatarWrap = slotEl.querySelector('.podium-avatar-wrap');
+          if (!avatarWrap) return;
+
+          // Boot animation on current avatar
+          var bootDir = change.position === 2 ? -1 : 1;
+          avatarWrap.style.setProperty('--boot-tx', (bootDir * 400) + 'px');
+          avatarWrap.style.animation = 'podiumBoot 0.6s ease-in forwards';
+
+          // Spawn trail stars
+          for (var s = 0; s < 5; s++) {
+            var star = document.createElement('div');
+            star.className = 'particle';
+            star.textContent = '\u2605';
+            star.style.left = slotEl.getBoundingClientRect().left + slotEl.offsetWidth / 2 + 'px';
+            star.style.top = slotEl.getBoundingClientRect().top + 'px';
+            star.style.setProperty('--tx', (Math.random() * 200 - 100) + 'px');
+            star.style.setProperty('--ty', (Math.random() * -200 - 50) + 'px');
+            document.body.appendChild(star);
+            (function(el) { setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 1500); })(star);
+          }
+
+          // Phase 3: Slam in new avatar after boot
+          setTimeout(function() {
+            avatarWrap.style.animation = 'podiumSlam 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+
+            // Shockwave + impact flash
+            var shock = document.createElement('div');
+            shock.className = 'podium-shockwave';
+            slotEl.style.position = 'relative';
+            slotEl.appendChild(shock);
+            setTimeout(function() { if (shock.parentNode) shock.parentNode.removeChild(shock); }, 600);
+
+            var flash = document.createElement('div');
+            flash.className = 'podium-impact-flash';
+            slotEl.appendChild(flash);
+            setTimeout(function() { if (flash.parentNode) flash.parentNode.removeChild(flash); }, 500);
+
+            // Confetti burst
+            spawnPodiumConfetti(slotEl);
+
+            // Phase 4: Victory bounce
+            setTimeout(function() {
+              avatarWrap.style.animation = 'victoryBounce 0.8s ease-out';
+              setTimeout(function() { avatarWrap.style.animation = ''; }, 800);
+            }, 500);
+          }, 650);
+        })(changes[c]);
+      }
+
+      hapticHeavy();
+    }
+
+    function spawnPodiumConfetti(anchorEl) {
+      var rect = anchorEl.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      var colors = ['#ffd700', '#ff4444', '#4ade80', '#60a5fa', '#a78bfa', '#f472b6', '#fff'];
+      for (var i = 0; i < 18; i++) {
+        var cp = document.createElement('div');
+        cp.className = 'particle';
+        cp.style.left = cx + 'px';
+        cp.style.top = cy + 'px';
+        cp.style.fontSize = (8 + Math.random() * 10) + 'px';
+        cp.style.color = colors[Math.floor(Math.random() * colors.length)];
+        cp.textContent = ['*', '\u2605', '\u2666', '\u25CF', '\u2764'][Math.floor(Math.random() * 5)];
+        cp.style.setProperty('--tx', (Math.random() * 300 - 150) + 'px');
+        cp.style.setProperty('--ty', (Math.random() * -300 - 50) + 'px');
+        document.body.appendChild(cp);
+        (function(el) { setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 1500); })(cp);
+      }
+    }
+
+    // === Podium notifications ===
+    function showPodiumTakeoverOverlay(change) {
+      var overlay = document.getElementById('podiumTakeoverOverlay');
+      if (!overlay) return;
+      document.getElementById('podiumTakeoverTitle').textContent = '\u2694\uFE0F PODIUM SHAKEUP! \u2694\uFE0F';
+
+      var vsEl = document.getElementById('podiumTakeoverVs');
+      while (vsEl.firstChild) vsEl.removeChild(vsEl.firstChild);
+
+      // Old champion
+      var oldDiv = document.createElement('div');
+      oldDiv.className = 'podium-takeover-player';
+      var oldImg = document.createElement('img');
+      oldImg.src = change.oldPlayer ? getPodiumAvatarSrc(change.oldPlayer) : 'jared-coin.png';
+      oldImg.onerror = function() { this.src = 'jared-coin.png'; };
+      oldImg.style.borderColor = '#ff4444';
+      oldDiv.appendChild(oldImg);
+      var oldName = document.createElement('div');
+      oldName.className = 'name';
+      oldName.style.color = '#ff4444';
+      oldName.textContent = change.oldPlayer || '???';
+      oldDiv.appendChild(oldName);
+      vsEl.appendChild(oldDiv);
+
+      var vsText = document.createElement('div');
+      vsText.className = 'podium-takeover-vs-text';
+      vsText.textContent = 'VS';
+      vsEl.appendChild(vsText);
+
+      // New champion
+      var newDiv = document.createElement('div');
+      newDiv.className = 'podium-takeover-player';
+      var newImg = document.createElement('img');
+      newImg.src = getPodiumAvatarSrc(change.newPlayer);
+      newImg.onerror = function() { this.src = 'jared-coin.png'; };
+      newDiv.appendChild(newImg);
+      var newName = document.createElement('div');
+      newName.className = 'name';
+      newName.textContent = change.newPlayer;
+      newDiv.appendChild(newName);
+      vsEl.appendChild(newDiv);
+
+      document.getElementById('podiumTakeoverAnnouncement').textContent = change.newPlayer + ' DETHRONED ' + (change.oldPlayer || '???') + '!';
+      document.getElementById('podiumTakeoverSubtitle').textContent = '\uD83D\uDC51 NEW CHAMPION \uD83D\uDC51';
+
+      overlay.classList.add('active');
+      hapticHeavy();
+
+      // Extra confetti for #1 takeover
+      setTimeout(function() {
+        for (var i = 0; i < 3; i++) {
+          setTimeout(function() { spawnPodiumConfetti(overlay); }, i * 300);
+        }
+      }, 500);
+
+      // Auto-dismiss
+      var dismissTimer = setTimeout(function() { overlay.classList.remove('active'); }, 5000);
+      overlay.onclick = function() {
+        overlay.classList.remove('active');
+        clearTimeout(dismissTimer);
+      };
+    }
+
+    function showPodiumToast(message) {
+      var existing = document.querySelector('.podium-toast');
+      if (existing) existing.parentNode.removeChild(existing);
+      var toast = document.createElement('div');
+      toast.className = 'podium-toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() { toast.classList.add('show'); });
+      });
+      setTimeout(function() {
+        toast.classList.remove('show');
+        setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 500);
+      }, 3000);
+      hapticMedium();
+    }
+
+    function handlePodiumChanges(changes) {
+      if (!changes || changes.length === 0) return;
+
+      // Animate the podium slots
+      animatePodiumTakeover(changes);
+
+      // Show appropriate notification
+      for (var i = 0; i < changes.length; i++) {
+        var ch = changes[i];
+        if (!ch.newPlayer) continue;
+
+        if (ch.position === 1 && ch.oldPlayer) {
+          showPodiumTakeoverOverlay(ch);
+        } else if (ch.position === 2 && ch.oldPlayer) {
+          showPodiumToast('\uD83E\uDD4A ' + ch.newPlayer + ' claimed #2 from ' + ch.oldPlayer + '!');
+        } else if (ch.position === 3 && ch.oldPlayer) {
+          showPodiumToast('\uD83E\uDD4A ' + ch.newPlayer + ' claimed #3 from ' + ch.oldPlayer + '!');
+        } else if (ch.type === 'new_entry') {
+          showPodiumToast('\uD83C\uDF89 ' + ch.newPlayer + ' enters the podium at #' + ch.position + '!');
+        }
+      }
+    }
 
     function renderLeaderboard(scores) {
       lastLeaderboardData = scores || [];
+
+      // Render podium for top 3
+      renderPodium(scores);
+
       leaderboardListEl.textContent = '';
       if (!scores || scores.length === 0) {
         var empty = document.createElement('div');
@@ -3422,8 +4118,11 @@
         leaderboardListEl.appendChild(empty);
         return;
       }
+      // Skip top 3 (they're on the podium) — if ≤3 players, nothing to show below
+      var startIdx = Math.min(3, scores.length);
+      if (startIdx >= scores.length) return;
       var sabotagedNames = (typeof getSabotagedNames === 'function') ? getSabotagedNames() : {};
-      for (var i = 0; i < Math.min(scores.length, 20); i++) {
+      for (var i = startIdx; i < Math.min(scores.length, 20); i++) {
         (function(entry, rank) {
           var row = document.createElement('div');
           row.className = 'lb-row lb-row-tappable';

@@ -1200,6 +1200,40 @@ export class LiveVisitors {
     const skinData = await this.loadSkinData();
     const equippedSkins = skinData.equipped || {};
 
+    // Detect podium (top-3) changes
+    const currentPodium = leaderboard.slice(0, 3).map(e => e.name);
+    const prevPodium = this.lastPodium || [];
+    const podiumChanges = [];
+    for (let i = 0; i < 3; i++) {
+      const newPlayer = currentPodium[i] || null;
+      const oldPlayer = prevPodium[i] || null;
+      if (newPlayer !== oldPlayer) {
+        const wasOnPodium = newPlayer && prevPodium.includes(newPlayer);
+        podiumChanges.push({
+          position: i + 1,
+          newPlayer: newPlayer,
+          oldPlayer: oldPlayer,
+          type: !oldPlayer ? 'new_entry' : (!wasOnPodium ? 'takeover' : 'swap')
+        });
+      }
+    }
+    // Fire system chat for podium changes
+    if (podiumChanges.length > 0 && prevPodium.length > 0) {
+      for (const change of podiumChanges) {
+        if (!change.newPlayer) continue;
+        if (change.position === 1 && change.oldPlayer) {
+          await this.addSystemChat("\uD83D\uDC51 DETHRONED! " + change.newPlayer + " knocked " + change.oldPlayer + " off the throne!");
+        } else if (change.position === 2 && change.oldPlayer) {
+          await this.addSystemChat("\uD83E\uDD48 " + change.newPlayer + " snatched #2 from " + change.oldPlayer + "!");
+        } else if (change.position === 3 && change.oldPlayer) {
+          await this.addSystemChat("\uD83E\uDD49 " + change.newPlayer + " muscled onto the podium, booting " + change.oldPlayer + "!");
+        } else if (!change.oldPlayer || change.type === 'new_entry') {
+          await this.addSystemChat("\uD83C\uDF89 " + change.newPlayer + " enters the podium for the first time at #" + change.position + "!");
+        }
+      }
+    }
+    this.lastPodium = currentPodium;
+
     const data = JSON.stringify({
       count: this.connections.size,
       locations: locations,
@@ -1209,6 +1243,7 @@ export class LiveVisitors {
       credits: credits,
       campaigns: activeCampaigns,
       equippedSkins: equippedSkins,
+      podiumChanges: podiumChanges.length > 0 ? podiumChanges : undefined,
     });
 
     for (const [ws] of this.connections) {
@@ -2820,7 +2855,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "40" }), {
+      return corsResponse(JSON.stringify({ version: "41" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
