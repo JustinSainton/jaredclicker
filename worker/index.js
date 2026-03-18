@@ -813,6 +813,58 @@ export class LiveVisitors {
       });
     }
 
+    // Skin: publish a custom skin to the marketplace
+    if (url.pathname === "/skins/publish" && request.method === "POST") {
+      var body = await request.json();
+      var skinId = String(body.skinId || "");
+      var playerName = String(body.playerName || "").slice(0, 20);
+      var skinData = await this.loadSkinData();
+      var custom = skinData.custom[skinId];
+      if (!custom) {
+        return new Response(JSON.stringify({ error: "Custom skin not found" }), { status: 404 });
+      }
+      // Verify ownership
+      var key = playerName.toLowerCase();
+      var owned = skinData.owned[key] || [];
+      if (owned.indexOf(skinId) < 0) {
+        return new Response(JSON.stringify({ error: "You don't own this skin" }), { status: 403 });
+      }
+      custom.published = true;
+      custom.creatorName = playerName;
+      this.skinData = skinData;
+      await this.saveSkinData();
+      await this.addSystemChat(playerName + " published a custom skin to the marketplace: " + (custom.description || "").slice(0, 40));
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Skin: get all published community skins
+    if (url.pathname === "/skins/marketplace" && request.method === "GET") {
+      var skinData = await this.loadSkinData();
+      var published = [];
+      for (var sid in skinData.custom) {
+        var c = skinData.custom[sid];
+        if (c.published) {
+          published.push({
+            id: sid,
+            name: (c.description || "Custom").slice(0, 30),
+            description: c.description || "",
+            creatorName: c.creatorName || "Unknown",
+            color: "#a78bfa",
+            priceCents: 599,
+            custom: true,
+            community: true,
+            assets: (c.assets || []).map(function(a) { return "/skins/" + sid + "/" + a + ".png"; }),
+          });
+        }
+      }
+      return new Response(JSON.stringify(published), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Freeze endpoint (0x multiplier for 5 min)
     if (url.pathname === "/freeze" && request.method === "POST") {
       const body = await request.json();
@@ -2035,9 +2087,10 @@ export default {
       });
     }
 
-    // Photos: list all uploaded photos (public)
+    // Photos: list all uploaded photos (public) — exclude skin assets
     if (url.pathname === "/photos" && request.method === "GET") {
-      const list = await env.PHOTOS.list();
+      const fullList = await env.PHOTOS.list();
+      const list = { objects: fullList.objects.filter(function(o) { return !o.key.startsWith("skins/"); }) };
       // Fetch display name overrides from LiveVisitors DO
       const doId = env.LIVE_VISITORS.idFromName("global");
       const doObj = env.LIVE_VISITORS.get(doId);
@@ -2405,6 +2458,46 @@ export default {
       }
     }
 
+    // Publish a custom skin to the marketplace
+    if (url.pathname === "/publish-skin" && request.method === "POST") {
+      try {
+        var body = await request.json();
+        var skinId = String(body.skinId || "");
+        var playerName = String(body.playerName || "").slice(0, 20);
+        var doId = env.LIVE_VISITORS.idFromName("global");
+        var doObj = env.LIVE_VISITORS.get(doId);
+        var res = await doObj.fetch(new Request("https://dummy/skins/publish", {
+          method: "POST",
+          body: JSON.stringify({ skinId, playerName }),
+        }));
+        var result = await res.text();
+        return corsResponse(result, {
+          status: res.status, headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Get community marketplace skins
+    if (url.pathname === "/skin-marketplace" && request.method === "GET") {
+      try {
+        var doId = env.LIVE_VISITORS.idFromName("global");
+        var doObj = env.LIVE_VISITORS.get(doId);
+        var res = await doObj.fetch(new Request("https://dummy/skins/marketplace", { method: "GET" }));
+        var result = await res.text();
+        return corsResponse(result, {
+          status: res.status, headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Generate a custom skin pack after payment (server-side Gemini call)
     if (url.pathname === "/generate-custom-skin" && request.method === "POST") {
       try {
@@ -2511,7 +2604,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "31" }), {
+      return corsResponse(JSON.stringify({ version: "32" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

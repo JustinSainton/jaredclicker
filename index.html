@@ -2565,7 +2565,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '31';
+    var CURRENT_VERSION = '32';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -3018,6 +3018,11 @@
             renderLeaderboard(data.leaderboard);
           }
 
+          // Track equipped skins from broadcast
+          if (data.equippedSkins) {
+            window._equippedSkins = data.equippedSkins;
+          }
+
           // Update credits from broadcast
           if (data.credits && playerName) {
             myCredits = data.credits[playerName.toLowerCase()] || 0;
@@ -3391,6 +3396,17 @@
           rankEl.className = 'lb-rank';
           rankEl.textContent = '#' + rank;
           row.appendChild(rankEl);
+
+          // Show equipped skin coin next to name
+          var eqSkins = window._equippedSkins || {};
+          var eqSkinId = eqSkins[entry.name.toLowerCase()];
+          if (eqSkinId) {
+            var skinIcon = document.createElement('img');
+            skinIcon.src = apiBase + '/skins/' + eqSkinId + '/coin.png';
+            skinIcon.style.cssText = 'width:20px;height:20px;border-radius:50%;margin-right:6px;vertical-align:middle;object-fit:cover;';
+            skinIcon.alt = '';
+            row.appendChild(skinIcon);
+          }
 
           var nameEl = document.createElement('span');
           nameEl.className = 'lb-name';
@@ -4921,8 +4937,21 @@
 
     function fetchSkinCatalog() {
       var url = apiBase + '/skins?player=' + encodeURIComponent(playerName || '');
-      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
-        skinCatalog = data;
+      Promise.all([
+        fetch(url).then(function(r) { return r.json(); }),
+        fetch(apiBase + '/skin-marketplace').then(function(r) { return r.json(); }).catch(function() { return []; }),
+      ]).then(function(results) {
+        var catalog = results[0] || [];
+        var marketplace = results[1] || [];
+        // Merge marketplace skins, avoiding duplicates (already owned ones)
+        var existingIds = {};
+        for (var i = 0; i < catalog.length; i++) existingIds[catalog[i].id] = true;
+        for (var j = 0; j < marketplace.length; j++) {
+          if (!existingIds[marketplace[j].id]) {
+            catalog.push(marketplace[j]);
+          }
+        }
+        skinCatalog = catalog;
         renderSkinGrid();
       }).catch(function() {});
     }
@@ -4956,6 +4985,13 @@
           desc.className = 'skin-desc';
           desc.textContent = skin.description;
           card.appendChild(desc);
+
+          if (skin.community && skin.creatorName) {
+            var creator = document.createElement('div');
+            creator.style.cssText = 'color:#a78bfa;font-size:9px;margin-bottom:4px;font-style:italic;';
+            creator.textContent = 'by ' + skin.creatorName;
+            card.appendChild(creator);
+          }
 
           if (currentEquippedSkin === skin.id) {
             var badge = document.createElement('div');
@@ -5030,6 +5066,38 @@
         equipSkin('');
         skinPreviewOverlay.classList.remove('active');
       };
+
+      // Publish button for owned custom skins
+      var existingPublishBtn = document.getElementById('skinPublishBtn');
+      if (existingPublishBtn) existingPublishBtn.remove();
+      if (skin.custom && skin.owned && !skin.community) {
+        var publishBtn = document.createElement('button');
+        publishBtn.id = 'skinPublishBtn';
+        publishBtn.className = 'account-btn secondary';
+        publishBtn.style.cssText = 'max-width:250px;margin-top:8px;';
+        publishBtn.textContent = 'Publish to Marketplace';
+        publishBtn.addEventListener('click', function() {
+          if (!confirm('Publish this skin to the marketplace? Other players will be able to buy it ($5.99) with your name as creator.')) return;
+          publishBtn.disabled = true;
+          publishBtn.textContent = 'Publishing...';
+          fetch(apiBase + '/publish-skin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ skinId: skin.id, playerName: playerName }),
+          }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.ok) {
+              publishBtn.textContent = 'Published!';
+              publishBtn.style.background = '#4ade80';
+              publishBtn.style.color = '#064e3b';
+              fetchSkinCatalog();
+            } else {
+              publishBtn.textContent = data.error || 'Failed';
+              publishBtn.disabled = false;
+            }
+          });
+        });
+        skinPreviewCard.querySelector('div[style*="text-align:center"]').appendChild(publishBtn);
+      }
 
       // Preview button — temporarily apply skin for 10 seconds
       var existingPreviewBtn = document.getElementById('skinPreviewTryBtn');
