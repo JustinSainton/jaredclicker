@@ -330,9 +330,38 @@ export class LiveVisitors {
 
     // Admin: reset all scores
     if (url.pathname === "/admin/reset-scores" && request.method === "POST") {
+      // 1. Clear persisted scores
       this.persistedScores = {};
       await this.state.storage.put("scores", {});
+
+      // 2. Clear all in-memory connection scores so broadcast doesn't re-add them
+      for (const [, info] of this.connections) {
+        info.score = 0;
+      }
+
+      // 3. Clear gameState from all accounts so login doesn't restore old scores
+      const accounts = await this.loadAccounts();
+      for (const key of Object.keys(accounts)) {
+        if (accounts[key].gameState) {
+          accounts[key].gameState = null;
+          accounts[key].gameStateUpdatedAt = null;
+        }
+      }
+      this.accounts = accounts;
+      await this.saveAccounts();
+
+      // 4. Reset lastPodium so podium change detection starts fresh
+      this.lastPodium = [];
+
       await this.addSystemChat("ADMIN reset all scores!");
+
+      // 5. Send resetAll event to every client so they clear localStorage + in-memory state
+      const resetMsg = JSON.stringify({ type: "resetAll" });
+      for (const [ws] of this.connections) {
+        try { ws.send(resetMsg); } catch (e) {}
+      }
+
+      // 6. Broadcast clean state
       this.broadcast();
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json" },
@@ -2855,7 +2884,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "41" }), {
+      return corsResponse(JSON.stringify({ version: "42" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

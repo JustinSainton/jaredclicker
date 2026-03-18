@@ -2972,7 +2972,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '41';
+    var CURRENT_VERSION = '42';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -3383,6 +3383,23 @@
               saveGame();
               updateCounters();
             }
+            return;
+          }
+
+          if (data.type === 'resetAll') {
+            // Admin reset: zero out all local state
+            state.coins = 0;
+            state.totalCoins = 0;
+            state.totalClicks = 0;
+            state.coinsPerClick = 1;
+            state.coinsPerSecond = 0;
+            state.sightings = 0;
+            state.upgrades = {};
+            state.achievements = new Set();
+            state.clicksSinceLastEvent = 0;
+            state.nextEventAt = randomBetween(12, 25);
+            saveGame();
+            updateUI();
             return;
           }
 
