@@ -2204,13 +2204,16 @@ export default {
     const SKIN_PRICE_CENTS = 599;
 
     // Gemini prompt templates for skin generation
+    var REF_INSTRUCTION = "IMPORTANT: Use the attached reference image as the character reference. The man on this coin is 'Jared' — you MUST preserve his exact likeness, face shape, and features in the new image. Re-imagine him in the new theme but keep him recognizable. ";
+    // Which assets should include the Jared reference image
+    var ASSETS_WITH_REF = { coin: true, banner: true, icon: true };
     function getSkinPrompts(theme) {
       var themeUpper = theme.toUpperCase();
       return {
-        coin: "Create a circular coin game asset for a clicker game. Theme: " + theme + ". The coin should feature a humorous caricature of a man's face in the center, surrounded by decorative border elements matching the " + theme + " theme. Include small thematic icons around the border. The coin should have a metallic sheen and look like a real collectible token. Style: polished game asset, clean edges, circular shape, transparent background. The text around the rim should say 'JARED IS " + themeUpper + "'. High quality, detailed, game-ready asset.",
+        coin: REF_INSTRUCTION + "Create a circular coin game asset for a clicker game. Theme: " + theme + ". The coin MUST feature the EXACT SAME man from the reference image — same face shape, same hairstyle, same facial features — but dressed/styled for the " + theme + " theme. Keep his likeness consistent and recognizable. Surround him with decorative border elements and small thematic icons matching the " + theme + " theme. The coin should have a metallic sheen and look like a real collectible token. Style: polished game asset, clean edges, circular shape, transparent background. The text around the rim should say 'JARED IS " + themeUpper + "'. High quality, detailed, game-ready asset.",
         background: "Create a seamless background pattern for a " + theme + "-themed clicker game UI. Dark, moody atmosphere suitable for a game interface. Include subtle " + theme + "-related motifs and patterns. Color palette should complement the " + theme + " theme with deep, rich tones. No text. No characters. Just an atmospheric background pattern. Style: dark game UI background, subtle patterns, not too busy or distracting.",
-        banner: "Create a decorative header banner for a " + theme + "-themed clicker game. Wide horizontal banner shape. Include " + theme + "-themed ornamental elements on both sides. Leave space in the center for game title text overlay. Dark background with glowing " + theme + "-themed accent colors. Style: game UI banner, ornate but not cluttered, horizontal layout.",
-        icon: "Create a small square app icon for a " + theme + "-themed clicker game. Feature a simplified version of a coin with a funny man's face. Bold, recognizable at small sizes. " + theme + " color palette. Style: mobile app icon, clean, bold, square with rounded corners.",
+        banner: REF_INSTRUCTION + "Create a decorative header banner for a " + theme + "-themed clicker game. Wide horizontal banner shape. The SAME man from the reference coin image should appear as a small motif or emblem within the banner design — keep his face recognizable. Include " + theme + "-themed ornamental elements on both sides. Leave space in the center for game title text overlay. Dark background with glowing " + theme + "-themed accent colors. Style: game UI banner, ornate but not cluttered, horizontal layout.",
+        icon: REF_INSTRUCTION + "Create a small square app icon for a " + theme + "-themed clicker game. Feature the EXACT SAME man from the reference image on a coin — keep his face, hairstyle, and expression recognizable but simplified for small sizes. Dress/style him for the " + theme + " theme. Bold, recognizable at small sizes. " + theme + " color palette. Style: mobile app icon, clean, bold, square with rounded corners.",
         particle: "Create a small particle effect sprite for a " + theme + "-themed clicker game. This appears when the player clicks the coin. Small burst of " + theme + "-themed sparkles, stars, or thematic elements. Transparent background. Bright, eye-catching colors matching " + theme + " theme. Style: game particle effect, small sprite, transparent background, vibrant.",
       };
     }
@@ -2421,10 +2424,22 @@ export default {
         var generatedAssets = [];
         var errors = [];
 
+        // Always load Jared reference from R2 for character consistency
+        var jaredRefBase64 = null;
+        try {
+          var refObj = await env.PHOTOS.get("skins/jared-coin-reference.png");
+          if (refObj) {
+            var refBuf = await refObj.arrayBuffer();
+            jaredRefBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(refBuf)));
+          }
+        } catch(e) {}
+
         for (var ai = 0; ai < SKIN_ASSETS.length; ai++) {
           var assetName = SKIN_ASSETS[ai];
           var prompt = prompts[assetName];
-          var result = await callGemini(env.GEMINI_API_KEY, prompt, referenceImage);
+          // Use Jared reference for coin/banner/icon, user reference as additional context
+          var refToSend = ASSETS_WITH_REF[assetName] ? (jaredRefBase64 || referenceImage) : null;
+          var result = await callGemini(env.GEMINI_API_KEY, prompt, refToSend);
           if (result.error || !result.base64) {
             errors.push(assetName + ": " + (result.error || "no image returned"));
             continue;
@@ -2438,8 +2453,6 @@ export default {
             httpMetadata: { contentType: "image/png" },
           });
           generatedAssets.push(assetName);
-          // Only send reference image for the first asset
-          referenceImage = null;
         }
 
         // Calculate actual API cost from tokens
@@ -2498,7 +2511,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "30" }), {
+      return corsResponse(JSON.stringify({ version: "31" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

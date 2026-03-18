@@ -2565,7 +2565,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '30';
+    var CURRENT_VERSION = '31';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -5030,6 +5030,39 @@
         equipSkin('');
         skinPreviewOverlay.classList.remove('active');
       };
+
+      // Preview button — temporarily apply skin for 10 seconds
+      var existingPreviewBtn = document.getElementById('skinPreviewTryBtn');
+      if (existingPreviewBtn) existingPreviewBtn.remove();
+      if (!skin.custom || skin.owned) {
+        var tryBtn = document.createElement('button');
+        tryBtn.id = 'skinPreviewTryBtn';
+        tryBtn.className = 'account-btn secondary';
+        tryBtn.style.cssText = 'max-width:250px;margin-top:8px;';
+        tryBtn.textContent = 'Preview for 10s';
+        tryBtn.addEventListener('click', function() {
+          skinPreviewOverlay.classList.remove('active');
+          applySkin(skin.id);
+          tryBtn.disabled = true;
+          var countdown = 10;
+          var previewBanner = document.createElement('div');
+          previewBanner.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);border:2px solid #a78bfa;border-radius:16px;padding:16px 28px;z-index:5000;color:#a78bfa;font-family:Fredoka One,cursive;font-size:18px;text-align:center;pointer-events:none;';
+          previewBanner.textContent = 'Previewing ' + skin.name + '... ' + countdown + 's';
+          document.body.appendChild(previewBanner);
+          var previewTimer = setInterval(function() {
+            countdown--;
+            if (countdown <= 0) {
+              clearInterval(previewTimer);
+              previewBanner.remove();
+              applySkin(currentEquippedSkin);
+              tryBtn.disabled = false;
+            } else {
+              previewBanner.textContent = 'Previewing ' + skin.name + '... ' + countdown + 's';
+            }
+          }, 1000);
+        });
+        skinPreviewCard.querySelector('div[style*="text-align:center"]').appendChild(tryBtn);
+      }
 
       skinPreviewOverlay.classList.add('active');
     }
