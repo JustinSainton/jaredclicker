@@ -104,14 +104,15 @@ ASSETS = [
 ]
 
 
-def generate_image(api_key, prompt, size="1K", reference_b64=None):
+def generate_image(api_key, prompt, size="1K", reference_b64_list=None):
     """Call Gemini API to generate a single image. Returns base64 PNG data."""
     url = API_URL.format(model=MODEL)
     url += "?key=" + api_key
 
     parts = []
-    if reference_b64:
-        parts.append({"inlineData": {"mimeType": "image/png", "data": reference_b64}})
+    if reference_b64_list:
+        for ref_b64 in reference_b64_list:
+            parts.append({"inlineData": {"mimeType": "image/png", "data": ref_b64}})
     parts.append({"text": prompt})
 
     payload = {
@@ -154,7 +155,7 @@ def generate_image(api_key, prompt, size="1K", reference_b64=None):
     return None
 
 
-def generate_skin_pack(theme, api_key, output_dir, size="1K", dry_run=False, reference_path=None):
+def generate_skin_pack(theme, api_key, output_dir, size="1K", dry_run=False, reference_paths=None):
     """Generate all assets for a skin pack."""
     os.makedirs(output_dir, exist_ok=True)
 
@@ -164,18 +165,20 @@ def generate_skin_pack(theme, api_key, output_dir, size="1K", dry_run=False, ref
     generated = []
     failed = []
 
-    # Load reference image if provided
-    reference_b64 = None
-    if reference_path:
-        with open(reference_path, "rb") as f:
-            reference_b64 = base64.b64encode(f.read()).decode("utf-8")
-        print(f"Using reference image: {reference_path}")
+    # Load reference images if provided
+    reference_b64_list = []
+    if reference_paths:
+        for ref_path in reference_paths:
+            with open(ref_path, "rb") as f:
+                reference_b64_list.append(base64.b64encode(f.read()).decode("utf-8"))
+            print(f"Using reference image: {ref_path}")
 
     ref_instruction = (
-        "IMPORTANT: Use the attached reference image as the character reference. "
-        "The man on this coin is 'Jared' — you MUST preserve his exact likeness, face shape, "
-        "and features in the new image. Re-imagine him in the new theme but keep him recognizable. "
-    ) if reference_b64 else ""
+        "IMPORTANT: Use the attached reference images for character and style reference. "
+        "The man on the coin is 'Jared' — you MUST preserve his exact likeness, face shape, "
+        "and features in the new image. Use the other reference images for additional style guidance. "
+        "Re-imagine him in the new theme but keep him recognizable. "
+    ) if reference_b64_list else ""
 
     print(f"Generating '{theme}' skin pack ({len(ASSETS)} assets at {size} resolution)")
     print(f"Estimated cost: ~${cost_per_image * len(ASSETS):.3f}")
@@ -189,7 +192,7 @@ def generate_skin_pack(theme, api_key, output_dir, size="1K", dry_run=False, ref
                 theme=theme, theme_upper=theme_upper,
                 ref_instruction=ref_instruction if asset.get("use_reference") else "",
             )
-            ref_tag = " [+REF IMAGE]" if asset.get("use_reference") and reference_b64 else ""
+            ref_tag = " [+REF x" + str(len(reference_b64_list)) + "]" if asset.get("use_reference") and reference_b64_list else ""
             print(f"  {asset['name']}:{ref_tag}")
             print(f"    {prompt}\n")
         return {"generated": [], "failed": [], "total_cost": 0}
@@ -201,13 +204,13 @@ def generate_skin_pack(theme, api_key, output_dir, size="1K", dry_run=False, ref
         )
         filepath = os.path.join(output_dir, asset["filename"])
 
-        # Only send reference image for assets that need it
-        send_ref = reference_b64 if asset.get("use_reference") else None
+        # Only send reference images for assets that need it
+        send_refs = reference_b64_list if asset.get("use_reference") else None
 
         print(f"  [{i+1}/{len(ASSETS)}] Generating {asset['name']}" +
-              (" [+ref]" if send_ref else "") + "...", end=" ", flush=True)
+              (f" [+ref x{len(send_refs)}]" if send_refs else "") + "...", end=" ", flush=True)
 
-        image_data = generate_image(api_key, prompt, size, send_ref)
+        image_data = generate_image(api_key, prompt, size, send_refs)
 
         if image_data:
             img_bytes = base64.b64decode(image_data)
@@ -236,7 +239,8 @@ def generate_skin_pack(theme, api_key, output_dir, size="1K", dry_run=False, ref
         "assets": {a["name"]: a["filename"] for a in ASSETS if a["name"] in generated},
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "estimated_cost_cents": round(total_cost * 100),
-        "reference_used": bool(reference_path),
+        "reference_used": bool(reference_paths),
+        "reference_count": len(reference_paths) if reference_paths else 0,
     }
     manifest_path = os.path.join(output_dir, "manifest.json")
     with open(manifest_path, "w") as f:
@@ -254,7 +258,7 @@ def main():
     parser.add_argument("--size", default="1K", choices=["512", "1K", "2K"], help="Image resolution (default: 1K)")
     parser.add_argument("--dry-run", action="store_true", help="Show prompts without generating")
     parser.add_argument("--asset", help="Generate only a specific asset (coin, background, banner, icon, particle)")
-    parser.add_argument("--reference", help="Path to reference image (e.g. jared-coin.png) for character consistency")
+    parser.add_argument("--reference", nargs="+", help="Path(s) to reference image(s) (e.g. jared-coin.png photo.jpg) for character/style consistency")
     args = parser.parse_args()
 
     if not args.api_key and not args.dry_run:
@@ -268,7 +272,7 @@ def main():
             print(f"Error: unknown asset '{args.asset}'", file=sys.stderr)
             sys.exit(1)
 
-    result = generate_skin_pack(args.theme, args.api_key, args.output, args.size, args.dry_run, args.reference)
+    result = generate_skin_pack(args.theme, args.api_key, args.output, args.size, args.dry_run, args.reference or None)
 
     if result["failed"] and not args.dry_run:
         sys.exit(1)

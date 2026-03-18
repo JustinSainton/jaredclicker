@@ -2272,11 +2272,15 @@ export default {
     }
 
     // Call Gemini API to generate one image, returns { base64, tokens }
-    async function callGemini(apiKey, prompt, referenceImageBase64) {
+    // referenceImages can be a single base64 string or an array of base64 strings
+    async function callGemini(apiKey, prompt, referenceImages) {
       var parts = [];
-      if (referenceImageBase64) {
-        parts.push({ inlineData: { mimeType: "image/png", data: referenceImageBase64 } });
-        parts.push({ text: "Using the reference image above as style inspiration: " + prompt });
+      var refs = !referenceImages ? [] : Array.isArray(referenceImages) ? referenceImages : [referenceImages];
+      for (var ri = 0; ri < refs.length; ri++) {
+        parts.push({ inlineData: { mimeType: "image/png", data: refs[ri] } });
+      }
+      if (refs.length > 0) {
+        parts.push({ text: "Using the " + refs.length + " reference image(s) above: " + prompt });
       } else {
         parts.push({ text: prompt });
       }
@@ -2504,7 +2508,8 @@ export default {
         var body = await request.json();
         var description = String(body.description || "").slice(0, 500);
         var playerName = String(body.playerName || "").slice(0, 20);
-        var referenceImage = body.referenceImage || null; // base64 encoded
+        // Support single or multiple reference images from client
+        var userRefs = body.referenceImages || (body.referenceImage ? [body.referenceImage] : []);
         if (!description || !playerName) {
           return corsResponse(JSON.stringify({ error: "description and playerName required" }), {
             status: 400, headers: { "Content-Type": "application/json" },
@@ -2530,9 +2535,11 @@ export default {
         for (var ai = 0; ai < SKIN_ASSETS.length; ai++) {
           var assetName = SKIN_ASSETS[ai];
           var prompt = prompts[assetName];
-          // Use Jared reference for coin/banner/icon, user reference as additional context
-          var refToSend = ASSETS_WITH_REF[assetName] ? (jaredRefBase64 || referenceImage) : null;
-          var result = await callGemini(env.GEMINI_API_KEY, prompt, refToSend);
+          // Build reference list: Jared ref for character assets + user refs for style
+          var refsToSend = [];
+          if (ASSETS_WITH_REF[assetName] && jaredRefBase64) refsToSend.push(jaredRefBase64);
+          for (var uri = 0; uri < userRefs.length; uri++) refsToSend.push(userRefs[uri]);
+          var result = await callGemini(env.GEMINI_API_KEY, prompt, refsToSend.length > 0 ? refsToSend : null);
           if (result.error || !result.base64) {
             errors.push(assetName + ": " + (result.error || "no image returned"));
             continue;
@@ -2604,7 +2611,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "33" }), {
+      return corsResponse(JSON.stringify({ version: "34" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

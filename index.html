@@ -1768,8 +1768,8 @@
         <h3>Create Custom Skin</h3>
         <textarea class="custom-skin-input" id="customSkinDesc" placeholder="Describe your dream skin... e.g. 'vaporwave aesthetic with pink and teal neon, retro 80s vibes'" rows="2"></textarea>
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
-          <button class="custom-skin-ref-btn" id="customRefBtn">Add Reference Image</button>
-          <input type="file" id="customRefInput" accept="image/*" style="display:none;">
+          <button class="custom-skin-ref-btn" id="customRefBtn">Add Reference Images</button>
+          <input type="file" id="customRefInput" accept="image/*" multiple style="display:none;">
           <span id="customRefName" style="color:#aaa;font-size:11px;"></span>
         </div>
         <button class="account-btn" id="customSkinBtn" style="margin-top:10px;background:#a78bfa;color:#1a1a2e;">Generate Custom Skin - $5.99</button>
@@ -2596,7 +2596,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '33';
+    var CURRENT_VERSION = '34';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -4948,7 +4948,7 @@
     var skinCatalog = [];
     var currentEquippedSkin = localStorage.getItem('jcEquippedSkin') || '';
     var skinAnimEnabled = localStorage.getItem('jcSkinAnim') !== 'false';
-    var customRefBase64 = null;
+    var customRefBase64List = [];
 
     skinAnimToggle.checked = skinAnimEnabled;
     skinAnimToggle.addEventListener('change', function() {
@@ -5244,7 +5244,7 @@
                     body: JSON.stringify({
                       description: customSkinDesc.value,
                       playerName: playerName,
-                      referenceImage: customRefBase64,
+                      referenceImages: customRefBase64List.length > 0 ? customRefBase64List : undefined,
                       paymentIntentId: result.paymentIntent.id,
                     }),
                   }).then(function(r) { return r.json(); }).then(function(genResult) {
@@ -5334,17 +5334,28 @@
       }
     }
 
-    // Custom skin reference image handling
+    // Custom skin reference image handling (multiple)
     customRefBtn.addEventListener('click', function() { customRefInput.click(); });
     customRefInput.addEventListener('change', function() {
-      var file = customRefInput.files[0];
-      if (!file) return;
-      customRefName.textContent = file.name;
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        customRefBase64 = e.target.result.split(',')[1]; // strip data:... prefix
-      };
-      reader.readAsDataURL(file);
+      var files = customRefInput.files;
+      if (!files || files.length === 0) return;
+      customRefBase64List = [];
+      var names = [];
+      var loaded = 0;
+      for (var fi = 0; fi < files.length; fi++) {
+        (function(file, idx) {
+          names.push(file.name);
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            customRefBase64List[idx] = e.target.result.split(',')[1];
+            loaded++;
+            if (loaded === files.length) {
+              customRefName.textContent = names.join(', ');
+            }
+          };
+          reader.readAsDataURL(file);
+        })(files[fi], fi);
+      }
     });
 
     customSkinBtn.addEventListener('click', function() {
