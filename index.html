@@ -2135,6 +2135,11 @@
       { threshold: 10000000000000, name: 'Stink So Strong It Has Mass' },
       { threshold: 50000000000000, name: 'Rewriting the Laws of Stink' },
       { threshold: 100000000000000, name: 'BEYOND ALL KNOWN STINK' },
+      { threshold: 500000000000000, name: 'Stink That Echoes Through Eternity' },
+      { threshold: 1000000000000000, name: 'The Funk Multiverse' },
+      { threshold: 5000000000000000, name: 'Odor Older Than Time' },
+      { threshold: 10000000000000000, name: 'THE STINK THAT ENDED EVERYTHING' },
+      { threshold: 50000000000000000, name: 'Jared Ascended' },
     ];
 
     // ===== HELPERS =====
@@ -2596,7 +2601,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '39';
+    var CURRENT_VERSION = '40';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })

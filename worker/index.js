@@ -2820,7 +2820,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "39" }), {
+      return corsResponse(JSON.stringify({ version: "40" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
