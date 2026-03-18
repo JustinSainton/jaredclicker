@@ -2406,7 +2406,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '24';
+    var CURRENT_VERSION = '26';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -2488,6 +2488,7 @@
     }
 
     // ===== ACCOUNT SYSTEM =====
+    var apiBase = 'https://jaredclicker-live.justin-5b6.workers.dev';
     var authToken = localStorage.getItem('jcAuthToken') || null;
     var accountDisplayName = localStorage.getItem('jcAccountName') || null;
 
@@ -2540,7 +2541,7 @@
       document.getElementById('accountPanelLogin').className = 'account-panel' + (tab === 'login' ? ' active' : '');
     }
 
-    function onAccountSuccess(token, displayName, serverScore) {
+    function onAccountSuccess(token, displayName, serverScore, serverGameState) {
       authToken = token;
       accountDisplayName = displayName;
       localStorage.setItem('jcAuthToken', token);
@@ -2549,12 +2550,32 @@
       playerName = displayName;
       localStorage.setItem('jcPlayerName', playerName);
       document.getElementById('lbNameInput').value = playerName;
-      // Sync score: take server score if higher than local
-      if (typeof serverScore === 'number' && serverScore > state.totalCoins) {
-        state.totalCoins = serverScore;
-        state.coins = Math.max(state.coins, 0);
+      // Full game state sync: if server has a richer game state, apply it entirely
+      if (serverGameState && serverGameState.totalCoins > state.totalCoins) {
+        state.coins = serverGameState.coins || 0;
+        state.totalCoins = serverGameState.totalCoins || 0;
+        state.totalClicks = serverGameState.totalClicks || 0;
+        state.sightings = serverGameState.sightings || 0;
+        state.upgrades = serverGameState.upgrades || {};
+        state.achievements = new Set(serverGameState.achievements || []);
+        // Recalculate rates from synced upgrades
+        state.coinsPerClick = 1;
+        state.coinsPerSecond = 0;
+        for (var i = 0; i < upgrades.length; i++) {
+          var owned = state.upgrades[upgrades[i].id] || 0;
+          for (var j = 0; j < owned; j++) {
+            upgrades[i].effect();
+          }
+        }
         saveGame();
-        updateDisplay();
+        updateUI();
+      } else if (typeof serverScore === 'number' && serverScore > state.totalCoins) {
+        // Fallback: no gameState but score is higher
+        var gained = serverScore - state.totalCoins;
+        state.totalCoins = serverScore;
+        state.coins += gained;
+        saveGame();
+        updateCounters();
       }
       updateAccountBtn();
       showAccountLoggedIn();
@@ -2581,7 +2602,7 @@
         body: JSON.stringify({ name: name, pin: pin }),
       }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.error) { errEl.textContent = data.error; return; }
-        onAccountSuccess(data.token, data.displayName, data.score);
+        onAccountSuccess(data.token, data.displayName, data.score, data.gameState);
       }).catch(function() { errEl.textContent = 'Network error. Try again.'; });
     });
 
@@ -2597,7 +2618,7 @@
         body: JSON.stringify({ name: name, pin: pin }),
       }).then(function(r) { return r.json(); }).then(function(data) {
         if (data.error) { errEl.textContent = data.error; return; }
-        onAccountSuccess(data.token, data.displayName, data.score);
+        onAccountSuccess(data.token, data.displayName, data.score, data.gameState);
       }).catch(function() { errEl.textContent = 'Network error. Try again.'; });
     });
 
@@ -2636,7 +2657,7 @@
         if (data.error) { errEl.textContent = data.error; return; }
         sucEl.textContent = 'Merged! Score is now ' + formatNumber(data.newScore) + ' coins.';
         state.totalCoins = Math.max(state.totalCoins, data.newScore);
-        saveGame(); updateDisplay();
+        saveGame(); updateCounters();
       }).catch(function() { errEl.textContent = 'Network error. Try again.'; });
     });
 
@@ -2645,7 +2666,6 @@
     // ===== LIVE VISITORS =====
     var liveCountEl = document.getElementById('liveCount');
     var liveCountriesEl = document.getElementById('liveCountries');
-    var apiBase = 'https://jaredclicker-live.justin-5b6.workers.dev';
     var wsUrl = 'wss://jaredclicker-live.justin-5b6.workers.dev/ws';
     var liveWs = null;
     var wsReconnectDelay = 1000;
@@ -2666,7 +2686,7 @@
 
     function sendScoreUpdate() {
       if (liveWs && liveWs.readyState === WebSocket.OPEN && playerName) {
-        liveWs.send(JSON.stringify({
+        var msg = {
           type: 'scoreUpdate',
           name: playerName,
           score: Math.floor(state.totalCoins),
@@ -2676,7 +2696,20 @@
           coinsPerClick: state.coinsPerClick,
           coinsPerSecond: state.coinsPerSecond,
           authToken: authToken || undefined,
-        }));
+        };
+        if (authToken) {
+          msg.gameState = {
+            coins: state.coins,
+            totalCoins: state.totalCoins,
+            totalClicks: state.totalClicks,
+            coinsPerClick: state.coinsPerClick,
+            coinsPerSecond: state.coinsPerSecond,
+            sightings: state.sightings,
+            upgrades: state.upgrades,
+            achievements: Array.from(state.achievements),
+          };
+        }
+        liveWs.send(JSON.stringify(msg));
       }
     }
 
@@ -2782,7 +2815,7 @@
               state.totalCoins = data.newScore;
               state.coins = Math.min(state.coins, data.newScore);
               saveGame();
-              updateDisplay();
+              updateCounters();
             }
             return;
           }
@@ -3451,6 +3484,7 @@
 
       var myStacks = 0;
       var myFrozen = false;
+      var myFreezePriceCents = 0;
       var myEarliestExpiry = Infinity;
 
       for (var i = 0; i < activeSabotages.length; i++) {
@@ -3461,7 +3495,10 @@
         if (playerName && sab.targetName.toLowerCase() === playerName.toLowerCase()) {
           isTargeted = true;
           myStacks++;
-          if (sab.freeze) myFrozen = true;
+          if (sab.freeze) {
+            myFrozen = true;
+            myFreezePriceCents += (sab.priceCents || 200);
+          }
           if (sab.expiresAt < myEarliestExpiry) myEarliestExpiry = sab.expiresAt;
         }
 
@@ -3529,12 +3566,13 @@
           sabotageBanner.appendChild(bannerText);
         }
 
+        var breakFreePrice = myFrozen ? (myFreezePriceCents / 100).toFixed(2) : '0.99';
         var breakFreeBtn = document.createElement('button');
-        breakFreeBtn.textContent = 'Break Free - $0.99';
+        breakFreeBtn.textContent = 'Break Free - $' + breakFreePrice;
         breakFreeBtn.style.cssText = 'background:#4ade80;color:#000;border:none;border-radius:6px;padding:4px 12px;font-family:Fredoka One,cursive;font-size:12px;cursor:pointer;margin-left:8px;';
         breakFreeBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          openUnsabotagePayment();
+          openUnsabotagePayment(breakFreePrice);
         });
         sabotageBanner.appendChild(breakFreeBtn);
         sabotageBanner.classList.add('active');
@@ -4238,12 +4276,13 @@
     setInterval(fetchTotalRaised, 60000);
 
     // ===== UNSABOTAGE (break free) =====
-    function openUnsabotagePayment() {
+    function openUnsabotagePayment(priceStr) {
+      var price = priceStr || '0.99';
       var payCard = paymentModal.querySelector('.payment-card');
       payCard.querySelector('h3').textContent = 'Break Free!';
-      payCard.querySelector('.price').textContent = '$0.99';
+      payCard.querySelector('.price').textContent = '$' + price;
       payCard.querySelector('.payment-desc').textContent = 'Remove the sabotage and get back to full speed immediately.';
-      payBtn.textContent = 'Pay $0.99';
+      payBtn.textContent = 'Pay $' + price;
       paymentStatus.textContent = 'Loading...';
       paymentStatus.style.color = '#aaa';
       payBtn.disabled = true;
@@ -4254,7 +4293,11 @@
         paymentElement = null;
       }
 
-      fetch(apiBase + '/create-unsabotage-intent', { method: 'POST' })
+      fetch(apiBase + '/create-unsabotage-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetName: playerName }),
+      })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.error) {
@@ -4296,7 +4339,7 @@
                 paymentStatus.textContent = result.error.message;
                 paymentStatus.style.color = '#ef4444';
                 payBtn.disabled = false;
-                payBtn.textContent = 'Pay $0.99';
+                payBtn.textContent = 'Pay $' + price;
               } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
                 fetch(apiBase + '/unsabotage', {
                   method: 'POST',

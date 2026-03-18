@@ -346,6 +346,28 @@ export class LiveVisitors {
       });
     }
 
+    // Break-free price lookup
+    if (url.pathname === "/break-free-price" && request.method === "POST") {
+      const body = await request.json();
+      const targetName = String(body.targetName || "").slice(0, 20);
+      await this.loadSabotages();
+      const now = Date.now();
+      let totalFreezeCents = 0;
+      let hasFreezeActive = false;
+      for (const s of this.sabotages) {
+        if (s.targetName.toLowerCase() === targetName.toLowerCase() && s.expiresAt > now) {
+          if (s.freeze) {
+            hasFreezeActive = true;
+            totalFreezeCents += (s.priceCents || 200);
+          }
+        }
+      }
+      const priceCents = hasFreezeActive ? totalFreezeCents : 99;
+      return new Response(JSON.stringify({ priceCents }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Import score endpoint (used by migration)
     if (url.pathname === "/import-score" && request.method === "POST") {
       const body = await request.json();
@@ -561,7 +583,7 @@ export class LiveVisitors {
       await this.saveAccounts();
       const scores = await this.loadScores();
       const entry = scores[key] || null;
-      return new Response(JSON.stringify({ ok: true, token, displayName: account.displayName, score: entry ? entry.score : 0, stats: entry ? entry.stats : null }), { headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true, token, displayName: account.displayName, score: entry ? entry.score : 0, stats: entry ? entry.stats : null, gameState: account.gameState || null }), { headers: { "Content-Type": "application/json" } });
     }
 
     // Account: logout (revoke token)
@@ -646,7 +668,8 @@ export class LiveVisitors {
       const rawMin = Math.floor(Number(body.durationMin) || 2);
       const durationMin = allowedMins.indexOf(rawMin) >= 0 ? rawMin : 2;
       const expiresAt = Date.now() + durationMin * 60 * 1000;
-      this.sabotages.push({ targetName, attackerName, expiresAt, freeze: true });
+      const priceCents = Number(body.priceCents) || 200;
+      this.sabotages.push({ targetName, attackerName, expiresAt, freeze: true, priceCents });
       await this.saveSabotages();
       const durLabel = durationMin >= 60 ? (durationMin / 60) + " hr" : durationMin + " min";
       await this.addSystemChat(attackerName + " FROZE " + targetName + " for " + durLabel + "!");
@@ -774,6 +797,16 @@ export class LiveVisitors {
             coinsPerSecond: Math.floor(msg.coinsPerSecond || 0),
           };
           this.saveScore(info.name, info.score, info.stats);
+          // Save full game state for cross-device sync if authenticated
+          if (msg.authToken && msg.gameState) {
+            this.findAccountByToken(msg.authToken).then(found => {
+              if (found) {
+                found.account.gameState = msg.gameState;
+                found.account.gameStateUpdatedAt = Date.now();
+                this.saveAccounts();
+              }
+            });
+          }
         }
 
         if (msg.type === "chat" && msg.message && info.name) {
@@ -1537,11 +1570,14 @@ export default {
             status: 400, headers: { "Content-Type": "application/json" },
           });
         }
+        const freezePriceMap = {2:200,5:300,10:500,15:700,30:1000,60:1500,120:2500,180:3500,240:4500,360:6000};
+        const reqMin = Math.floor(Number(durationMin) || 2);
+        const priceCents = freezePriceMap[reqMin] || 200;
         const id = env.LIVE_VISITORS.idFromName("global");
         const obj = env.LIVE_VISITORS.get(id);
         const res = await obj.fetch(new Request("https://dummy/freeze", {
           method: "POST",
-          body: JSON.stringify({ attackerName, targetName, durationMin }),
+          body: JSON.stringify({ attackerName, targetName, durationMin, priceCents }),
         }));
         const result = await res.text();
         return corsResponse(result, {
@@ -1711,9 +1747,20 @@ export default {
       }
     }
 
-    // Stripe: Create Payment Intent for Unsabotage ($0.99)
+    // Stripe: Create Payment Intent for Unsabotage (dynamic price: freeze = attacker's cost, slow = $0.99)
     if (url.pathname === "/create-unsabotage-intent" && request.method === "POST") {
       try {
+        const body = await request.json();
+        const targetName = String(body.targetName || "").slice(0, 20);
+        // Query DO for break-free price
+        const doId = env.LIVE_VISITORS.idFromName("global");
+        const doObj = env.LIVE_VISITORS.get(doId);
+        const priceRes = await doObj.fetch(new Request("https://dummy/break-free-price", {
+          method: "POST",
+          body: JSON.stringify({ targetName }),
+        }));
+        const priceData = await priceRes.json();
+        const amount = priceData.priceCents || 99;
         const stripeRes = await fetch(
           "https://api.stripe.com/v1/payment_intents",
           {
@@ -1723,7 +1770,7 @@ export default {
               "Content-Type": "application/x-www-form-urlencoded",
             },
             body: new URLSearchParams({
-              amount: "99",
+              amount: String(amount),
               currency: "usd",
               "automatic_payment_methods[enabled]": "true",
               description: "Break free from sabotage - Jared Clicker",
@@ -1976,7 +2023,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "24" }), {
+      return corsResponse(JSON.stringify({ version: "26" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
