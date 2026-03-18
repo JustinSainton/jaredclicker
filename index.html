@@ -41,7 +41,15 @@
       box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
     }
 
-    .cc-left, .cc-right { display: none; }
+    .cc-left { display: none; }
+    .cc-right {
+      display: flex;
+      align-items: center;
+      font-size: 10px;
+      color: #4ade80;
+      font-family: 'Press Start 2P', monospace;
+      text-shadow: 1px 1px 0 #065f46;
+    }
     .cc-center { display: flex; align-items: center; gap: 12px; }
 
     .coin-counter img {
@@ -2406,7 +2414,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '26';
+    var CURRENT_VERSION = '27';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
