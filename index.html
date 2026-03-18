@@ -2596,7 +2596,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '34';
+    var CURRENT_VERSION = '35';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -5236,8 +5236,19 @@
                 // For pre-built skins, just unlock. For custom, generate.
                 if (isCustom) {
                   // Custom skins need server-side generation
-                  paymentStatus.textContent = 'Generating your custom skin pack... this takes ~30 seconds';
                   paymentStatus.style.color = '#a78bfa';
+                  var genAssets = ['coin', 'background', 'banner', 'icon', 'particle'];
+                  var genStep = 0;
+                  paymentStatus.textContent = 'Generating coin (1/5)...';
+                  var genTimer = setInterval(function() {
+                    genStep++;
+                    if (genStep < genAssets.length) {
+                      paymentStatus.textContent = 'Generating ' + genAssets[genStep] + ' (' + (genStep + 1) + '/5)...';
+                    } else {
+                      paymentStatus.textContent = 'Finishing up...';
+                      clearInterval(genTimer);
+                    }
+                  }, 6000);
                   fetch(apiBase + '/generate-custom-skin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -5248,13 +5259,15 @@
                       paymentIntentId: result.paymentIntent.id,
                     }),
                   }).then(function(r) { return r.json(); }).then(function(genResult) {
+                    clearInterval(genTimer);
                     if (genResult.ok) {
-                      paymentStatus.textContent = 'Custom skin created! API cost: $' + (genResult.apiCostCents / 100).toFixed(3);
+                      var assetCount = genResult.assets ? genResult.assets.length : 5;
+                      paymentStatus.textContent = 'Custom skin created! ' + assetCount + '/5 assets generated.';
                       paymentStatus.style.color = '#4ade80';
                       payBtn.textContent = 'Done!';
                       hapticSuccess();
                       fetchSkinCatalog();
-                      setTimeout(function() { paymentModal.classList.remove('active'); }, 2000);
+                      setTimeout(function() { paymentModal.classList.remove('active'); }, 2500);
                     } else {
                       paymentStatus.textContent = genResult.error || 'Generation failed';
                       paymentStatus.style.color = '#ef4444';
