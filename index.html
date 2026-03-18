@@ -2414,7 +2414,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '28';
+    var CURRENT_VERSION = '29';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -4472,10 +4472,25 @@
             contribDiv.className = 'campaign-contributors';
             var contribNames = [];
             for (var j = 0; j < campaign.contributors.length; j++) {
-              contribNames.push(campaign.contributors[j].name + ' ($' + (campaign.contributors[j].cents / 100).toFixed(2) + ')');
+              var c = campaign.contributors[j];
+              var label = c.name + ' ($' + (c.cents / 100).toFixed(2) + ')';
+              if (c.premiumCents > 0) label += ' \uD83D\uDCB0';
+              contribNames.push(label);
             }
             contribDiv.textContent = 'Contributors: ' + contribNames.join(', ');
             card.appendChild(contribDiv);
+
+            // Show loot info if any premium payers
+            var totalPremium = 0;
+            for (var pi = 0; pi < campaign.contributors.length; pi++) {
+              totalPremium += (campaign.contributors[pi].premiumCents || 0);
+            }
+            if (totalPremium > 0) {
+              var lootInfo = document.createElement('div');
+              lootInfo.style.cssText = 'color:#a78bfa;font-size:11px;margin-top:4px;font-style:italic;';
+              lootInfo.textContent = 'Loot pool active — cut coins will be split among premium contributors';
+              card.appendChild(lootInfo);
+            }
           }
 
           if (campaign.status === 'completed') {
@@ -4554,8 +4569,16 @@
       pickerDiv.className = 'campaign-amount-picker';
       pickerDiv.style.marginTop = '8px';
 
+      var lootEnabled = false;
       var amounts = [1, 2, 5, 10];
       var btns = [];
+
+      function updateTotalDisplay() {
+        var total = lootEnabled ? selectedAmount * 2 : selectedAmount;
+        payCard.querySelector('.price').textContent = '$' + total;
+        payBtn.textContent = 'Pay $' + total;
+      }
+
       for (var ai = 0; ai < amounts.length; ai++) {
         (function(amt) {
           if (amt > maxDollars) return;
@@ -4568,14 +4591,40 @@
               btns[bi].className = 'campaign-amount-btn';
             }
             amtBtn.className = 'campaign-amount-btn selected';
-            payCard.querySelector('.price').textContent = '$' + amt;
-            payBtn.textContent = 'Pay $' + amt;
+            updateTotalDisplay();
           });
           pickerDiv.appendChild(amtBtn);
           btns.push(amtBtn);
         })(amounts[ai]);
       }
       descEl.appendChild(pickerDiv);
+
+      // Loot toggle
+      var lootDiv = document.createElement('div');
+      lootDiv.style.cssText = 'margin-top:12px;padding:10px;background:linear-gradient(135deg,#1e1e3a,#2d1b69);border:2px solid #a78bfa;border-radius:10px;';
+      var lootLabel = document.createElement('label');
+      lootLabel.style.cssText = 'display:flex;align-items:center;gap:10px;cursor:pointer;';
+      var lootCheckbox = document.createElement('input');
+      lootCheckbox.type = 'checkbox';
+      lootCheckbox.style.cssText = 'width:20px;height:20px;accent-color:#a78bfa;cursor:pointer;';
+      var lootTextDiv = document.createElement('div');
+      var lootTitle = document.createElement('div');
+      lootTitle.style.cssText = 'color:#a78bfa;font-family:Fredoka One,cursive;font-size:14px;';
+      lootTitle.textContent = 'Loot Coins';
+      var lootDesc = document.createElement('div');
+      lootDesc.style.cssText = 'color:#ccc;font-size:11px;';
+      lootDesc.textContent = 'Pay 2x to claim your share of the cut coins, proportional to your premium';
+      lootTextDiv.appendChild(lootTitle);
+      lootTextDiv.appendChild(lootDesc);
+      lootLabel.appendChild(lootCheckbox);
+      lootLabel.appendChild(lootTextDiv);
+      lootDiv.appendChild(lootLabel);
+      descEl.appendChild(lootDiv);
+
+      lootCheckbox.addEventListener('change', function() {
+        lootEnabled = lootCheckbox.checked;
+        updateTotalDisplay();
+      });
 
       if (paymentElement) {
         paymentElement.unmount();
@@ -4597,7 +4646,7 @@
         fetch(apiBase + '/create-campaign-contribution-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ campaignId: campaignId, amount: selectedAmount, maxAmount: maxDollars }),
+          body: JSON.stringify({ campaignId: campaignId, amount: selectedAmount, maxAmount: maxDollars, loot: lootEnabled }),
         })
           .then(function(r) { return r.json(); })
           .then(function(data) {
@@ -4609,6 +4658,9 @@
               return;
             }
             var contributionCents = data.priceCents;
+            var returnedPremiumCents = data.premiumCents || 0;
+            var totalChargeCents = data.totalChargeCents || contributionCents;
+            var totalDisplay = '$' + (totalChargeCents / 100);
             sabotageStripeElements = stripe.elements({
               clientSecret: data.clientSecret,
               appearance: {
@@ -4627,7 +4679,7 @@
             sabotagePaymentElement.mount('#payment-element');
             sabotagePaymentElement.on('ready', function() {
               payBtn.disabled = false;
-              payBtn.textContent = 'Pay $' + (contributionCents / 100);
+              payBtn.textContent = 'Pay ' + totalDisplay;
               paymentStatus.textContent = '';
             });
 
@@ -4644,7 +4696,7 @@
                   paymentStatus.textContent = result.error.message;
                   paymentStatus.style.color = '#ef4444';
                   payBtn.disabled = false;
-                  payBtn.textContent = 'Pay $' + (contributionCents / 100);
+                  payBtn.textContent = 'Pay ' + totalDisplay;
                 } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
                   fetch(apiBase + '/campaign-contribute', {
                     method: 'POST',
@@ -4653,9 +4705,11 @@
                       campaignId: campaignId,
                       contributorName: playerName,
                       cents: contributionCents,
+                      premiumCents: returnedPremiumCents,
                     }),
                   }).then(function() {
-                    paymentStatus.textContent = 'Contribution added!';
+                    var doneMsg = returnedPremiumCents > 0 ? 'Contribution + loot added!' : 'Contribution added!';
+                    paymentStatus.textContent = doneMsg;
                     paymentStatus.style.color = '#4ade80';
                     payBtn.textContent = 'Done!';
                     hapticSuccess();

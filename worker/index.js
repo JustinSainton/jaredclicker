@@ -465,6 +465,7 @@ export class LiveVisitors {
       const campaignId = String(body.campaignId || "");
       const contributorName = String(body.contributorName || "").slice(0, 20);
       const cents = Math.floor(Number(body.cents) || 0);
+      const premiumCents = Math.floor(Number(body.premiumCents) || 0);
       if (!campaignId || !contributorName || cents <= 0) {
         return new Response(JSON.stringify({ error: "campaignId, contributorName, and positive cents required" }), { status: 400 });
       }
@@ -474,7 +475,7 @@ export class LiveVisitors {
         return new Response(JSON.stringify({ error: "Campaign not found or already completed" }), { status: 404 });
       }
       campaign.contributedCents += cents;
-      campaign.contributors.push({ name: contributorName, cents: cents });
+      campaign.contributors.push({ name: contributorName, cents: cents, premiumCents: premiumCents });
       var completed = false;
       if (campaign.contributedCents >= campaign.totalPriceCents) {
         // Auto-execute the coin cut
@@ -489,18 +490,59 @@ export class LiveVisitors {
           scores[targetKey].score = newScore;
           scores[targetKey].serverCutAt = Date.now();
           this.persistedScores = scores;
+
+          // Distribute looted coins to premium payers proportionally
+          const totalPremium = campaign.contributors.reduce(function(sum, c) { return sum + (c.premiumCents || 0); }, 0);
+          var lootMessages = [];
+          if (totalPremium > 0 && removed > 0) {
+            for (var ci = 0; ci < campaign.contributors.length; ci++) {
+              var contrib = campaign.contributors[ci];
+              if (contrib.premiumCents > 0) {
+                var share = Math.floor(removed * (contrib.premiumCents / totalPremium));
+                if (share > 0) {
+                  var contribKey = contrib.name.toLowerCase();
+                  if (!scores[contribKey]) {
+                    scores[contribKey] = { name: contrib.name, score: 0, stats: {} };
+                  }
+                  scores[contribKey].score += share;
+                  lootMessages.push({ name: contrib.name, share: share });
+                }
+              }
+            }
+          }
+
           await this.state.storage.put("scores", scores);
-          await this.addSystemChat("Campaign complete! " + campaign.targetName + "'s coins were cut by " + campaign.percentage + "%! They lost " + removed.toLocaleString() + " coins!");
+
+          // Build completion chat message
+          var lootSummary = "";
+          if (lootMessages.length > 0) {
+            var lootParts = [];
+            for (var li = 0; li < lootMessages.length; li++) {
+              lootParts.push(lootMessages[li].name + " +" + lootMessages[li].share.toLocaleString());
+            }
+            lootSummary = " Loot: " + lootParts.join(", ") + "!";
+          }
+          await this.addSystemChat("Campaign complete! " + campaign.targetName + "'s coins were cut by " + campaign.percentage + "%! They lost " + removed.toLocaleString() + " coins!" + lootSummary);
+
+          // Send score corrections: target gets reduced, premium payers get increased
           var campCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: campaign.targetName, newScore: newScore });
           for (var [ws] of this.connections) {
             try { ws.send(campCorrectionMsg); } catch(e) { this.connections.delete(ws); }
+          }
+          for (var lmi = 0; lmi < lootMessages.length; lmi++) {
+            var lootKey = lootMessages[lmi].name.toLowerCase();
+            var lootCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: lootMessages[lmi].name, newScore: scores[lootKey].score });
+            for (var [ws2] of this.connections) {
+              try { ws2.send(lootCorrectionMsg); } catch(e) { this.connections.delete(ws2); }
+            }
           }
         }
         completed = true;
       } else {
         var contribDollars = (cents / 100).toFixed(2);
         var remaining = ((campaign.totalPriceCents - campaign.contributedCents) / 100).toFixed(2);
-        await this.addSystemChat(contributorName + " chipped in $" + contribDollars + " to cut " + campaign.targetName + "'s coins! $" + remaining + " to go.");
+        var lootNote = premiumCents > 0 ? " (with loot premium)" : "";
+        await this.addSystemChat(contributorName + " chipped in $" + contribDollars + lootNote + " to cut " + campaign.targetName + "'s coins! $" + remaining + " to go.");
       }
       this.campaigns = campaigns;
       await this.saveCampaigns();
@@ -1443,7 +1485,12 @@ export default {
         }
         const maxAmount = Math.floor(Number(body.maxAmount) || 50);
         const cappedAmount = Math.min(amount, maxAmount);
-        const priceCents = cappedAmount * 100;
+        const contributionCents = cappedAmount * 100;
+        const premiumCents = body.loot ? contributionCents : 0;
+        const totalChargeCents = contributionCents + premiumCents;
+        const desc = premiumCents > 0
+          ? "Campaign $" + cappedAmount + " + $" + cappedAmount + " loot premium - Jared Clicker"
+          : "Campaign contribution $" + cappedAmount + " - Jared Clicker";
         const stripeRes = await fetch("https://api.stripe.com/v1/payment_intents", {
           method: "POST",
           headers: {
@@ -1451,9 +1498,9 @@ export default {
             "Content-Type": "application/x-www-form-urlencoded",
           },
           body: new URLSearchParams({
-            amount: String(priceCents), currency: "usd",
+            amount: String(totalChargeCents), currency: "usd",
             "automatic_payment_methods[enabled]": "true",
-            description: "Campaign contribution $" + cappedAmount + " - Jared Clicker",
+            description: desc,
             "metadata[campaignId]": campaignId, "metadata[type]": "campaign-contribution",
           }).toString(),
         });
@@ -1463,7 +1510,7 @@ export default {
             status: 400, headers: { "Content-Type": "application/json" },
           });
         }
-        return corsResponse(JSON.stringify({ clientSecret: intent.client_secret, priceCents }), {
+        return corsResponse(JSON.stringify({ clientSecret: intent.client_secret, priceCents: contributionCents, premiumCents: premiumCents, totalChargeCents: totalChargeCents }), {
           headers: { "Content-Type": "application/json" },
         });
       } catch (e) {
@@ -1480,6 +1527,7 @@ export default {
         const campaignId = String(body.campaignId || "");
         const contributorName = String(body.contributorName || "").slice(0, 20);
         const cents = Math.floor(Number(body.cents) || 0);
+        const premiumCents = Math.floor(Number(body.premiumCents) || 0);
         if (!campaignId || !contributorName || cents <= 0) {
           return corsResponse(JSON.stringify({ error: "Invalid parameters" }), {
             status: 400, headers: { "Content-Type": "application/json" },
@@ -1489,7 +1537,7 @@ export default {
         const obj = env.LIVE_VISITORS.get(id);
         const res = await obj.fetch(new Request("https://dummy/campaign/contribute", {
           method: "POST",
-          body: JSON.stringify({ campaignId, contributorName, cents }),
+          body: JSON.stringify({ campaignId, contributorName, cents, premiumCents }),
         }));
         const result = await res.text();
         return corsResponse(result, {
@@ -2027,7 +2075,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "28" }), {
+      return corsResponse(JSON.stringify({ version: "29" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
