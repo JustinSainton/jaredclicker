@@ -1608,6 +1608,35 @@
     @keyframes skin-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
     @keyframes skin-sparkle { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.2); } }
     @keyframes skin-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    /* Skin selector under coin */
+    .skin-selector-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .skin-selector-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid rgba(167,139,250,0.4);
+      background: rgba(0,0,0,0.5);
+      cursor: pointer;
+      padding: 2px;
+      transition: border-color 0.2s, transform 0.1s;
+    }
+    .skin-selector-btn:hover { border-color: #a78bfa; transform: scale(1.1); }
+    .skin-selector-btn.active { border-color: #ffd700; box-shadow: 0 0 8px rgba(255,215,0,0.4); }
+    .skin-selector-btn img {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .skin-selector-btn.default-skin {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: #aaa; font-family: 'Fredoka One', cursive;
+    }
+
     .skin-anim-glow { animation: skin-glow 2s ease-in-out infinite; }
     .skin-anim-pulse { animation: skin-pulse 3s ease-in-out infinite; }
     .skin-anim-sparkle { animation: skin-sparkle 1.5s ease-in-out infinite; }
@@ -1686,6 +1715,8 @@
         <img src="jared-coin.png" alt="Jared Coin">
       </button>
       <div class="click-info" id="clickInfo">Click the coin! (+1 per click)</div>
+      <!-- Skin selector (only visible when player owns skins) -->
+      <div id="skinSelector" style="display:none;margin-top:8px;"></div>
       <!-- Inline name entry under the coin -->
       <div class="inline-name" id="inlineNameArea">
         <input type="text" id="inlineNameInput" placeholder="Enter your name for the leaderboard" maxlength="20">
@@ -2565,7 +2596,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '32';
+    var CURRENT_VERSION = '33';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -5330,6 +5361,66 @@
       var tempId = 'custom_pending';
       buySkin(tempId, true);
     });
+
+    // Skin selector under the coin
+    var skinSelectorEl = document.getElementById('skinSelector');
+    function renderSkinSelector() {
+      var owned = skinCatalog.filter(function(s) { return s.owned; });
+      if (owned.length === 0) {
+        skinSelectorEl.style.display = 'none';
+        return;
+      }
+      skinSelectorEl.style.display = 'block';
+      skinSelectorEl.textContent = '';
+
+      var row = document.createElement('div');
+      row.className = 'skin-selector-row';
+
+      // Default skin button
+      var defaultBtn = document.createElement('button');
+      defaultBtn.className = 'skin-selector-btn default-skin' + (!currentEquippedSkin ? ' active' : '');
+      defaultBtn.title = 'Default';
+      var defaultImg = document.createElement('img');
+      defaultImg.src = 'jared-coin.png';
+      defaultImg.alt = 'Default';
+      defaultBtn.appendChild(defaultImg);
+      defaultBtn.addEventListener('click', function() {
+        equipSkin('');
+        renderSkinSelector();
+      });
+      row.appendChild(defaultBtn);
+
+      // Owned skin buttons
+      for (var i = 0; i < owned.length; i++) {
+        (function(skin) {
+          var btn = document.createElement('button');
+          btn.className = 'skin-selector-btn' + (currentEquippedSkin === skin.id ? ' active' : '');
+          btn.title = skin.name;
+          var img = document.createElement('img');
+          if (!skin.custom) {
+            img.src = apiBase + '/skins/' + skin.id + '/coin.png';
+          } else if (skin.assets && skin.assets.length > 0) {
+            img.src = apiBase + skin.assets[0];
+          }
+          img.alt = skin.name;
+          btn.appendChild(img);
+          btn.addEventListener('click', function() {
+            equipSkin(skin.id);
+            renderSkinSelector();
+          });
+          row.appendChild(btn);
+        })(owned[i]);
+      }
+
+      skinSelectorEl.appendChild(row);
+    }
+
+    // Re-render selector when catalog updates
+    var _origRenderSkinGrid = renderSkinGrid;
+    renderSkinGrid = function() {
+      _origRenderSkinGrid();
+      renderSkinSelector();
+    };
 
     // Apply equipped skin on load
     if (currentEquippedSkin) {

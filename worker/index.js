@@ -2604,7 +2604,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "32" }), {
+      return corsResponse(JSON.stringify({ version: "33" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
