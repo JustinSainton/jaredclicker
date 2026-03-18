@@ -11,6 +11,7 @@ export class LiveVisitors {
     this.campaigns = null; // lazy-loaded from storage
     this.photoNames = null; // lazy-loaded: { [photoKey]: displayName }
     this.accounts = null; // lazy-loaded: { [name_lower]: { displayName, pinHash, tokens, createdAt } }
+    this.skinData = null; // lazy-loaded: { owned: { [player]: [skinIds] }, custom: { [skinId]: metadata }, equipped: { [player]: skinId } }
   }
 
   async loadScores() {
@@ -161,6 +162,17 @@ export class LiveVisitors {
 
   async savePhotoNames() {
     await this.state.storage.put("photoNames", this.photoNames);
+  }
+
+  async loadSkinData() {
+    if (this.skinData === null) {
+      this.skinData = (await this.state.storage.get("skinData")) || { owned: {}, custom: {}, equipped: {} };
+    }
+    return this.skinData;
+  }
+
+  async saveSkinData() {
+    await this.state.storage.put("skinData", this.skinData);
   }
 
   async loadAccounts() {
@@ -701,6 +713,106 @@ export class LiveVisitors {
       });
     }
 
+    // Skin: get owned skins for a player
+    if (url.pathname === "/skins/owned" && request.method === "GET") {
+      var playerName = url.searchParams.get("player") || "";
+      var skinData = await this.loadSkinData();
+      var key = playerName.toLowerCase();
+      var owned = skinData.owned[key] || [];
+      return new Response(JSON.stringify(owned), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Skin: get custom skins for a player
+    if (url.pathname === "/skins/custom" && request.method === "GET") {
+      var playerName = url.searchParams.get("player") || "";
+      var skinData = await this.loadSkinData();
+      var key = playerName.toLowerCase();
+      var owned = skinData.owned[key] || [];
+      var customs = [];
+      for (var i = 0; i < owned.length; i++) {
+        if (skinData.custom[owned[i]]) {
+          var c = skinData.custom[owned[i]];
+          customs.push({
+            id: owned[i],
+            name: c.description.slice(0, 30),
+            description: c.description,
+            color: "#a78bfa",
+            priceCents: 599,
+            owned: true,
+            custom: true,
+            assets: (c.assets || []).map(function(a) { return "/skins/" + owned[i] + "/" + a + ".png"; }),
+          });
+        }
+      }
+      return new Response(JSON.stringify(customs), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Skin: unlock a skin for a player
+    if (url.pathname === "/skins/unlock" && request.method === "POST") {
+      var body = await request.json();
+      var skinId = String(body.skinId || "");
+      var playerName = String(body.playerName || "").slice(0, 20);
+      var skinData = await this.loadSkinData();
+      var key = playerName.toLowerCase();
+      if (!skinData.owned[key]) skinData.owned[key] = [];
+      if (skinData.owned[key].indexOf(skinId) < 0) {
+        skinData.owned[key].push(skinId);
+      }
+      this.skinData = skinData;
+      await this.saveSkinData();
+      await this.addSystemChat(playerName + " unlocked the " + skinId + " skin pack!");
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Skin: save custom skin metadata
+    if (url.pathname === "/skins/save-custom" && request.method === "POST") {
+      var body = await request.json();
+      var skinData = await this.loadSkinData();
+      var key = body.playerName.toLowerCase();
+      skinData.custom[body.skinId] = {
+        description: body.description,
+        assets: body.assets,
+        apiCostCents: body.apiCostCents,
+        totalOutputTokens: body.totalOutputTokens,
+        totalInputTokens: body.totalInputTokens,
+        createdAt: Date.now(),
+      };
+      if (!skinData.owned[key]) skinData.owned[key] = [];
+      if (skinData.owned[key].indexOf(body.skinId) < 0) {
+        skinData.owned[key].push(body.skinId);
+      }
+      this.skinData = skinData;
+      await this.saveSkinData();
+      await this.addSystemChat(body.playerName + " created a custom skin pack!");
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Skin: equip a skin
+    if (url.pathname === "/skins/equip" && request.method === "POST") {
+      var body = await request.json();
+      var skinId = String(body.skinId || "");
+      var playerName = String(body.playerName || "").slice(0, 20);
+      var skinData = await this.loadSkinData();
+      var key = playerName.toLowerCase();
+      skinData.equipped[key] = skinId;
+      this.skinData = skinData;
+      await this.saveSkinData();
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Freeze endpoint (0x multiplier for 5 min)
     if (url.pathname === "/freeze" && request.method === "POST") {
       const body = await request.json();
@@ -938,6 +1050,10 @@ export class LiveVisitors {
       }
     }
 
+    // Load equipped skins
+    const skinData = await this.loadSkinData();
+    const equippedSkins = skinData.equipped || {};
+
     const data = JSON.stringify({
       count: this.connections.size,
       locations: locations,
@@ -946,6 +1062,7 @@ export class LiveVisitors {
       sabotages: activeSabotages,
       credits: credits,
       campaigns: activeCampaigns,
+      equippedSkins: equippedSkins,
     });
 
     for (const [ws] of this.connections) {
@@ -2073,9 +2190,315 @@ export default {
       }
     }
 
+    // ===== SKIN PACK SYSTEM =====
+
+    // Pre-built skin catalog
+    const SKIN_CATALOG = {
+      pirate: { name: "Pirate", description: "Ahoy! Sail the seven smelly seas", color: "#b8860b" },
+      cyberpunk: { name: "Cyberpunk", description: "Neon-lit stink of the future", color: "#00f0ff" },
+      space: { name: "Space", description: "Galactic funk across the cosmos", color: "#7c3aed" },
+      medieval: { name: "Medieval", description: "Ye olde stench of the kingdom", color: "#8b4513" },
+      underwater: { name: "Underwater", description: "Deep sea funk from the abyss", color: "#0891b2" },
+    };
+    const SKIN_ASSETS = ["coin", "background", "banner", "icon", "particle"];
+    const SKIN_PRICE_CENTS = 599;
+
+    // Gemini prompt templates for skin generation
+    function getSkinPrompts(theme) {
+      var themeUpper = theme.toUpperCase();
+      return {
+        coin: "Create a circular coin game asset for a clicker game. Theme: " + theme + ". The coin should feature a humorous caricature of a man's face in the center, surrounded by decorative border elements matching the " + theme + " theme. Include small thematic icons around the border. The coin should have a metallic sheen and look like a real collectible token. Style: polished game asset, clean edges, circular shape, transparent background. The text around the rim should say 'JARED IS " + themeUpper + "'. High quality, detailed, game-ready asset.",
+        background: "Create a seamless background pattern for a " + theme + "-themed clicker game UI. Dark, moody atmosphere suitable for a game interface. Include subtle " + theme + "-related motifs and patterns. Color palette should complement the " + theme + " theme with deep, rich tones. No text. No characters. Just an atmospheric background pattern. Style: dark game UI background, subtle patterns, not too busy or distracting.",
+        banner: "Create a decorative header banner for a " + theme + "-themed clicker game. Wide horizontal banner shape. Include " + theme + "-themed ornamental elements on both sides. Leave space in the center for game title text overlay. Dark background with glowing " + theme + "-themed accent colors. Style: game UI banner, ornate but not cluttered, horizontal layout.",
+        icon: "Create a small square app icon for a " + theme + "-themed clicker game. Feature a simplified version of a coin with a funny man's face. Bold, recognizable at small sizes. " + theme + " color palette. Style: mobile app icon, clean, bold, square with rounded corners.",
+        particle: "Create a small particle effect sprite for a " + theme + "-themed clicker game. This appears when the player clicks the coin. Small burst of " + theme + "-themed sparkles, stars, or thematic elements. Transparent background. Bright, eye-catching colors matching " + theme + " theme. Style: game particle effect, small sprite, transparent background, vibrant.",
+      };
+    }
+
+    // Call Gemini API to generate one image, returns { base64, tokens }
+    async function callGemini(apiKey, prompt, referenceImageBase64) {
+      var parts = [];
+      if (referenceImageBase64) {
+        parts.push({ inlineData: { mimeType: "image/png", data: referenceImageBase64 } });
+        parts.push({ text: "Using the reference image above as style inspiration: " + prompt });
+      } else {
+        parts.push({ text: prompt });
+      }
+      var payload = {
+        contents: [{ parts: parts }],
+        generationConfig: {
+          responseModalities: ["TEXT", "IMAGE"],
+          imageConfig: { imageSize: "1K" },
+        },
+      };
+      var res = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=" + apiKey,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
+      );
+      var result = await res.json();
+      if (result.error) {
+        return { error: result.error.message };
+      }
+      var candidates = result.candidates || [];
+      var imageData = null;
+      for (var ci = 0; ci < (candidates[0]?.content?.parts || []).length; ci++) {
+        var part = candidates[0].content.parts[ci];
+        if (part.inlineData) imageData = part.inlineData.data;
+      }
+      // Extract token usage for cost tracking
+      var usage = result.usageMetadata || {};
+      var outputTokens = usage.candidatesTokenCount || usage.totalTokenCount || 1120;
+      return { base64: imageData, outputTokens: outputTokens, inputTokens: usage.promptTokenCount || 0 };
+    }
+
+    // List available skins (catalog + ownership for a player)
+    if (url.pathname === "/skins" && request.method === "GET") {
+      var playerName = url.searchParams.get("player") || "";
+      // Load owned skins from DO
+      var doId = env.LIVE_VISITORS.idFromName("global");
+      var doObj = env.LIVE_VISITORS.get(doId);
+      var ownedRes = await doObj.fetch(new Request("https://dummy/skins/owned?player=" + encodeURIComponent(playerName), { method: "GET" }));
+      var owned = await ownedRes.json();
+      var catalog = [];
+      for (var skinId in SKIN_CATALOG) {
+        var entry = SKIN_CATALOG[skinId];
+        catalog.push({
+          id: skinId,
+          name: entry.name,
+          description: entry.description,
+          color: entry.color,
+          priceCents: SKIN_PRICE_CENTS,
+          owned: owned.indexOf(skinId) >= 0,
+          custom: false,
+          assets: SKIN_ASSETS.map(function(a) { return "/skins/" + skinId + "/" + a + ".png"; }),
+        });
+      }
+      // Also include custom skins the player owns
+      var customRes = await doObj.fetch(new Request("https://dummy/skins/custom?player=" + encodeURIComponent(playerName), { method: "GET" }));
+      var customSkins = await customRes.json();
+      for (var ci = 0; ci < customSkins.length; ci++) {
+        catalog.push(customSkins[ci]);
+      }
+      return corsResponse(JSON.stringify(catalog), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Serve skin assets from R2
+    if (url.pathname.startsWith("/skins/") && request.method === "GET") {
+      var skinPath = url.pathname.slice(7); // e.g. "pirate/coin.png"
+      var r2Key = "skins/" + skinPath;
+      var obj = await env.PHOTOS.get(r2Key);
+      if (!obj) {
+        return corsResponse("Not found", { status: 404 });
+      }
+      var headers = new Headers();
+      headers.set("Content-Type", obj.httpMetadata?.contentType || "image/png");
+      headers.set("Cache-Control", "public, max-age=604800");
+      headers.set("Access-Control-Allow-Origin", "*");
+      return new Response(obj.body, { headers });
+    }
+
+    // Create Stripe payment intent for skin purchase ($5.99)
+    if (url.pathname === "/create-skin-intent" && request.method === "POST") {
+      try {
+        var body = await request.json();
+        var skinId = String(body.skinId || "").slice(0, 50);
+        var playerName = String(body.playerName || "").slice(0, 20);
+        var isCustom = !!body.custom;
+        if (!skinId || !playerName) {
+          return corsResponse(JSON.stringify({ error: "skinId and playerName required" }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        var desc = isCustom
+          ? "Custom skin pack for " + playerName + " - Jared Clicker"
+          : SKIN_CATALOG[skinId]?.name + " skin pack for " + playerName + " - Jared Clicker";
+        var stripeRes = await fetch("https://api.stripe.com/v1/payment_intents", {
+          method: "POST",
+          headers: {
+            Authorization: "Basic " + btoa(env.STRIPE_SECRET_KEY + ":"),
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            amount: String(SKIN_PRICE_CENTS), currency: "usd",
+            "automatic_payment_methods[enabled]": "true",
+            description: desc,
+            "metadata[type]": "skin-pack",
+            "metadata[skinId]": skinId,
+            "metadata[playerName]": playerName,
+            "metadata[custom]": isCustom ? "true" : "false",
+          }).toString(),
+        });
+        var intent = await stripeRes.json();
+        if (intent.error) {
+          return corsResponse(JSON.stringify({ error: intent.error.message }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        return corsResponse(JSON.stringify({ clientSecret: intent.client_secret }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Unlock a pre-built skin after payment
+    if (url.pathname === "/unlock-skin" && request.method === "POST") {
+      try {
+        var body = await request.json();
+        var skinId = String(body.skinId || "");
+        var playerName = String(body.playerName || "").slice(0, 20);
+        if (!skinId || !playerName) {
+          return corsResponse(JSON.stringify({ error: "skinId and playerName required" }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        var doId = env.LIVE_VISITORS.idFromName("global");
+        var doObj = env.LIVE_VISITORS.get(doId);
+        var res = await doObj.fetch(new Request("https://dummy/skins/unlock", {
+          method: "POST",
+          body: JSON.stringify({ skinId, playerName }),
+        }));
+        var result = await res.text();
+        return corsResponse(result, {
+          status: res.status, headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Equip a skin
+    if (url.pathname === "/equip-skin" && request.method === "POST") {
+      try {
+        var body = await request.json();
+        var skinId = String(body.skinId || "");
+        var playerName = String(body.playerName || "").slice(0, 20);
+        if (!playerName) {
+          return corsResponse(JSON.stringify({ error: "playerName required" }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        var doId = env.LIVE_VISITORS.idFromName("global");
+        var doObj = env.LIVE_VISITORS.get(doId);
+        var res = await doObj.fetch(new Request("https://dummy/skins/equip", {
+          method: "POST",
+          body: JSON.stringify({ skinId, playerName }),
+        }));
+        var result = await res.text();
+        return corsResponse(result, {
+          status: res.status, headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Generate a custom skin pack after payment (server-side Gemini call)
+    if (url.pathname === "/generate-custom-skin" && request.method === "POST") {
+      try {
+        var body = await request.json();
+        var description = String(body.description || "").slice(0, 500);
+        var playerName = String(body.playerName || "").slice(0, 20);
+        var referenceImage = body.referenceImage || null; // base64 encoded
+        if (!description || !playerName) {
+          return corsResponse(JSON.stringify({ error: "description and playerName required" }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        var customId = "custom_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+        var prompts = getSkinPrompts(description);
+        var totalOutputTokens = 0;
+        var totalInputTokens = 0;
+        var generatedAssets = [];
+        var errors = [];
+
+        for (var ai = 0; ai < SKIN_ASSETS.length; ai++) {
+          var assetName = SKIN_ASSETS[ai];
+          var prompt = prompts[assetName];
+          var result = await callGemini(env.GEMINI_API_KEY, prompt, referenceImage);
+          if (result.error || !result.base64) {
+            errors.push(assetName + ": " + (result.error || "no image returned"));
+            continue;
+          }
+          totalOutputTokens += result.outputTokens;
+          totalInputTokens += result.inputTokens;
+          // Store in R2
+          var r2Key = "skins/" + customId + "/" + assetName + ".png";
+          var imageBytes = Uint8Array.from(atob(result.base64), function(c) { return c.charCodeAt(0); });
+          await env.PHOTOS.put(r2Key, imageBytes, {
+            httpMetadata: { contentType: "image/png" },
+          });
+          generatedAssets.push(assetName);
+          // Only send reference image for the first asset
+          referenceImage = null;
+        }
+
+        // Calculate actual API cost from tokens
+        // gemini-3.1-flash-image-preview: output $0.06/1K tokens, input $0.015/1K tokens
+        var apiCostCents = Math.ceil((totalOutputTokens * 0.06 + totalInputTokens * 0.015) / 10);
+
+        // Store custom skin metadata + ownership in DO
+        var doId = env.LIVE_VISITORS.idFromName("global");
+        var doObj = env.LIVE_VISITORS.get(doId);
+        await doObj.fetch(new Request("https://dummy/skins/save-custom", {
+          method: "POST",
+          body: JSON.stringify({
+            skinId: customId,
+            playerName: playerName,
+            description: description,
+            assets: generatedAssets,
+            apiCostCents: apiCostCents,
+            totalOutputTokens: totalOutputTokens,
+            totalInputTokens: totalInputTokens,
+          }),
+        }));
+
+        // Update the Stripe payment intent metadata with actual API cost
+        if (body.paymentIntentId && env.STRIPE_SECRET_KEY) {
+          await fetch("https://api.stripe.com/v1/payment_intents/" + body.paymentIntentId, {
+            method: "POST",
+            headers: {
+              Authorization: "Basic " + btoa(env.STRIPE_SECRET_KEY + ":"),
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              "metadata[apiCostCents]": String(apiCostCents),
+              "metadata[outputTokens]": String(totalOutputTokens),
+              "metadata[inputTokens]": String(totalInputTokens),
+              "metadata[assetsGenerated]": String(generatedAssets.length),
+            }).toString(),
+          });
+        }
+
+        return corsResponse(JSON.stringify({
+          ok: true,
+          skinId: customId,
+          assets: generatedAssets,
+          errors: errors,
+          apiCostCents: apiCostCents,
+          totalOutputTokens: totalOutputTokens,
+        }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "29" }), {
+      return corsResponse(JSON.stringify({ version: "30" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

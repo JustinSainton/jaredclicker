@@ -1497,6 +1497,121 @@
       font-size: 0.9em; cursor: pointer; text-align: center;
     }
     .lb-account-btn.logged-in { background: rgba(52,211,153,0.15); border-color: #34d399; color: #34d399; }
+
+    /* Skin Shop */
+    .skin-shop-section {
+      background: rgba(0,0,0,0.5);
+      border: 2px solid #a78bfa;
+      border-radius: 16px;
+      padding: 20px;
+      min-width: 280px;
+      max-width: 700px;
+      width: 100%;
+    }
+    .skin-shop-section h2 {
+      color: #a78bfa;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .skin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .skin-card {
+      background: linear-gradient(135deg, #1e1e3a, #2d1b69);
+      border: 2px solid rgba(167,139,250,0.4);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.1s;
+    }
+    .skin-card:hover { border-color: #a78bfa; transform: scale(1.03); }
+    .skin-card.owned { border-color: #4ade80; }
+    .skin-card.equipped { border-color: #ffd700; box-shadow: 0 0 12px rgba(255,215,0,0.3); }
+    .skin-card img {
+      width: 80px; height: 80px; object-fit: contain;
+      border-radius: 8px; margin-bottom: 6px;
+    }
+    .skin-card .skin-name {
+      color: #fff; font-family: 'Fredoka One', cursive;
+      font-size: 13px; margin-bottom: 2px;
+    }
+    .skin-card .skin-desc {
+      color: #aaa; font-size: 10px; margin-bottom: 6px;
+    }
+    .skin-card .skin-price {
+      color: #ffd700; font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+    }
+    .skin-card .skin-owned-badge {
+      color: #4ade80; font-size: 10px; font-family: 'Fredoka One', cursive;
+    }
+    .skin-card .skin-equipped-badge {
+      color: #ffd700; font-size: 10px; font-family: 'Fredoka One', cursive;
+    }
+    .skin-preview-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+      z-index: 3000; align-items: center; justify-content: center; flex-direction: column;
+    }
+    .skin-preview-overlay.active { display: flex; }
+    .skin-preview-card {
+      background: linear-gradient(135deg, #1a1a2e, #2d1b69);
+      border: 2px solid #a78bfa; border-radius: 20px; padding: 24px;
+      width: min(500px, 92vw); max-height: 90vh; overflow-y: auto;
+      position: relative;
+    }
+    .skin-preview-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin: 16px 0;
+    }
+    .skin-preview-grid img {
+      width: 100%; border-radius: 8px; border: 1px solid rgba(167,139,250,0.3);
+    }
+    .skin-preview-grid .preview-label {
+      color: #aaa; font-size: 10px; text-align: center; margin-top: 2px;
+    }
+    .custom-skin-section {
+      margin-top: 16px; padding: 14px;
+      background: linear-gradient(135deg, #1e1e3a, #2d1b69);
+      border: 2px dashed rgba(167,139,250,0.4);
+      border-radius: 12px;
+    }
+    .custom-skin-section h3 {
+      color: #a78bfa; font-family: 'Fredoka One', cursive;
+      font-size: 15px; margin-bottom: 8px;
+    }
+    .custom-skin-input {
+      width: 100%; padding: 10px; border-radius: 8px;
+      border: 1.5px solid rgba(167,139,250,0.4);
+      background: rgba(255,255,255,0.07); color: #fff;
+      font-family: 'Fredoka One', cursive; font-size: 13px;
+      margin-bottom: 8px; box-sizing: border-box; resize: vertical;
+    }
+    .custom-skin-input::placeholder { color: rgba(255,255,255,0.3); }
+    .custom-skin-ref-btn {
+      padding: 8px 14px; background: rgba(167,139,250,0.15);
+      border: 1px solid rgba(167,139,250,0.4); border-radius: 8px;
+      color: #a78bfa; font-family: 'Fredoka One', cursive;
+      font-size: 12px; cursor: pointer; margin-right: 8px;
+    }
+    .skin-anim-toggle {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 12px; color: #ccc; font-size: 12px;
+    }
+    .skin-anim-toggle input { accent-color: #a78bfa; width: 16px; height: 16px; }
+
+    /* Skin animations */
+    @keyframes skin-glow { 0%, 100% { filter: drop-shadow(0 0 8px var(--skin-color, #a78bfa)); } 50% { filter: drop-shadow(0 0 20px var(--skin-color, #a78bfa)); } }
+    @keyframes skin-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+    @keyframes skin-sparkle { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.2); } }
+    @keyframes skin-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    .skin-anim-glow { animation: skin-glow 2s ease-in-out infinite; }
+    .skin-anim-pulse { animation: skin-pulse 3s ease-in-out infinite; }
+    .skin-anim-sparkle { animation: skin-sparkle 1.5s ease-in-out infinite; }
+    .skin-anim-float { animation: skin-float 4s ease-in-out infinite; }
   </style>
 </head>
 <body class="has-banner">
@@ -1608,6 +1723,42 @@
     <div class="campaigns-section" id="campaignsSection" style="display:none;">
       <h2>Active Campaigns</h2>
       <div id="campaignsList"></div>
+    </div>
+
+    <!-- Skin Shop -->
+    <div class="skin-shop-section" id="skinShopSection">
+      <h2>Skin Shop</h2>
+      <div class="skin-anim-toggle">
+        <input type="checkbox" id="skinAnimToggle" checked>
+        <label for="skinAnimToggle">Skin animations</label>
+      </div>
+      <div class="skin-grid" id="skinGrid"></div>
+      <div class="custom-skin-section">
+        <h3>Create Custom Skin</h3>
+        <textarea class="custom-skin-input" id="customSkinDesc" placeholder="Describe your dream skin... e.g. 'vaporwave aesthetic with pink and teal neon, retro 80s vibes'" rows="2"></textarea>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+          <button class="custom-skin-ref-btn" id="customRefBtn">Add Reference Image</button>
+          <input type="file" id="customRefInput" accept="image/*" style="display:none;">
+          <span id="customRefName" style="color:#aaa;font-size:11px;"></span>
+        </div>
+        <button class="account-btn" id="customSkinBtn" style="margin-top:10px;background:#a78bfa;color:#1a1a2e;">Generate Custom Skin - $5.99</button>
+        <div id="customSkinStatus" style="color:#aaa;font-size:12px;text-align:center;margin-top:6px;min-height:20px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skin Preview Overlay -->
+  <div class="skin-preview-overlay" id="skinPreviewOverlay">
+    <div class="skin-preview-card" id="skinPreviewCard">
+      <button class="account-close-btn" id="skinPreviewClose">&times;</button>
+      <h3 id="skinPreviewTitle" style="color:#a78bfa;font-family:Fredoka One,cursive;font-size:18px;text-align:center;margin-bottom:4px;"></h3>
+      <div id="skinPreviewDesc" style="color:#aaa;font-size:12px;text-align:center;margin-bottom:12px;"></div>
+      <div class="skin-preview-grid" id="skinPreviewGrid"></div>
+      <div style="text-align:center;margin-top:12px;">
+        <button class="account-btn" id="skinPreviewBuyBtn" style="background:#a78bfa;color:#1a1a2e;max-width:250px;">Buy - $5.99</button>
+        <button class="account-btn" id="skinPreviewEquipBtn" style="background:#4ade80;color:#064e3b;max-width:250px;display:none;">Equip This Skin</button>
+        <button class="account-btn secondary" id="skinPreviewUnequipBtn" style="max-width:250px;display:none;margin-top:8px;">Unequip (Use Default)</button>
+      </div>
     </div>
   </div>
 
@@ -2414,7 +2565,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '29';
+    var CURRENT_VERSION = '30';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -4729,6 +4880,365 @@
           });
       };
     }
+
+    // ===== SKIN SHOP =====
+    var skinGrid = document.getElementById('skinGrid');
+    var skinPreviewOverlay = document.getElementById('skinPreviewOverlay');
+    var skinPreviewCard = document.getElementById('skinPreviewCard');
+    var skinPreviewGrid = document.getElementById('skinPreviewGrid');
+    var skinPreviewTitle = document.getElementById('skinPreviewTitle');
+    var skinPreviewDesc = document.getElementById('skinPreviewDesc');
+    var skinPreviewBuyBtn = document.getElementById('skinPreviewBuyBtn');
+    var skinPreviewEquipBtn = document.getElementById('skinPreviewEquipBtn');
+    var skinPreviewUnequipBtn = document.getElementById('skinPreviewUnequipBtn');
+    var skinAnimToggle = document.getElementById('skinAnimToggle');
+    var customSkinDesc = document.getElementById('customSkinDesc');
+    var customRefBtn = document.getElementById('customRefBtn');
+    var customRefInput = document.getElementById('customRefInput');
+    var customRefName = document.getElementById('customRefName');
+    var customSkinBtn = document.getElementById('customSkinBtn');
+    var customSkinStatus = document.getElementById('customSkinStatus');
+    var skinCatalog = [];
+    var currentEquippedSkin = localStorage.getItem('jcEquippedSkin') || '';
+    var skinAnimEnabled = localStorage.getItem('jcSkinAnim') !== 'false';
+    var customRefBase64 = null;
+
+    skinAnimToggle.checked = skinAnimEnabled;
+    skinAnimToggle.addEventListener('change', function() {
+      skinAnimEnabled = skinAnimToggle.checked;
+      localStorage.setItem('jcSkinAnim', skinAnimEnabled ? 'true' : 'false');
+      applySkin(currentEquippedSkin);
+    });
+
+    // Skin animation definitions per theme
+    var skinAnimations = {
+      pirate: 'skin-anim-float',
+      cyberpunk: 'skin-anim-glow',
+      space: 'skin-anim-sparkle',
+      medieval: 'skin-anim-pulse',
+      underwater: 'skin-anim-float',
+    };
+
+    function fetchSkinCatalog() {
+      var url = apiBase + '/skins?player=' + encodeURIComponent(playerName || '');
+      fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+        skinCatalog = data;
+        renderSkinGrid();
+      }).catch(function() {});
+    }
+
+    function renderSkinGrid() {
+      skinGrid.textContent = '';
+      for (var i = 0; i < skinCatalog.length; i++) {
+        (function(skin) {
+          var card = document.createElement('div');
+          card.className = 'skin-card';
+          if (skin.owned) card.className += ' owned';
+          if (currentEquippedSkin === skin.id) card.className += ' equipped';
+
+          var img = document.createElement('img');
+          // Show coin preview for pre-built, placeholder for custom
+          if (!skin.custom) {
+            img.src = apiBase + '/skins/' + skin.id + '/coin.png';
+          } else if (skin.assets && skin.assets.length > 0) {
+            img.src = apiBase + skin.assets[0];
+          }
+          img.alt = skin.name;
+          img.loading = 'lazy';
+          card.appendChild(img);
+
+          var name = document.createElement('div');
+          name.className = 'skin-name';
+          name.textContent = skin.name;
+          card.appendChild(name);
+
+          var desc = document.createElement('div');
+          desc.className = 'skin-desc';
+          desc.textContent = skin.description;
+          card.appendChild(desc);
+
+          if (currentEquippedSkin === skin.id) {
+            var badge = document.createElement('div');
+            badge.className = 'skin-equipped-badge';
+            badge.textContent = 'EQUIPPED';
+            card.appendChild(badge);
+          } else if (skin.owned) {
+            var badge = document.createElement('div');
+            badge.className = 'skin-owned-badge';
+            badge.textContent = 'OWNED';
+            card.appendChild(badge);
+          } else {
+            var price = document.createElement('div');
+            price.className = 'skin-price';
+            price.textContent = '$5.99';
+            card.appendChild(price);
+          }
+
+          card.addEventListener('click', function() {
+            openSkinPreview(skin);
+          });
+          skinGrid.appendChild(card);
+        })(skinCatalog[i]);
+      }
+    }
+
+    function openSkinPreview(skin) {
+      skinPreviewTitle.textContent = skin.name;
+      skinPreviewDesc.textContent = skin.description;
+      skinPreviewGrid.textContent = '';
+
+      // Show all 5 assets as preview (for pre-built skins only, not custom unseen ones)
+      if (!skin.custom || skin.owned) {
+        var assetNames = ['coin', 'background', 'banner', 'icon', 'particle'];
+        for (var i = 0; i < assetNames.length; i++) {
+          var wrap = document.createElement('div');
+          var pImg = document.createElement('img');
+          if (skin.custom && skin.assets) {
+            pImg.src = apiBase + skin.assets[i];
+          } else {
+            pImg.src = apiBase + '/skins/' + skin.id + '/' + assetNames[i] + '.png';
+          }
+          pImg.alt = assetNames[i];
+          pImg.loading = 'lazy';
+          wrap.appendChild(pImg);
+          var label = document.createElement('div');
+          label.className = 'preview-label';
+          label.textContent = assetNames[i];
+          wrap.appendChild(label);
+          skinPreviewGrid.appendChild(wrap);
+        }
+      } else {
+        var noPreview = document.createElement('div');
+        noPreview.style.cssText = 'grid-column:1/-1;text-align:center;color:#aaa;padding:20px;';
+        noPreview.textContent = 'Custom skins are generated after purchase — preview not available';
+        skinPreviewGrid.appendChild(noPreview);
+      }
+
+      // Show correct buttons
+      skinPreviewBuyBtn.style.display = skin.owned ? 'none' : 'inline-block';
+      skinPreviewEquipBtn.style.display = skin.owned && currentEquippedSkin !== skin.id ? 'inline-block' : 'none';
+      skinPreviewUnequipBtn.style.display = currentEquippedSkin === skin.id ? 'inline-block' : 'none';
+
+      skinPreviewBuyBtn.onclick = function() {
+        buySkin(skin.id, skin.custom);
+      };
+      skinPreviewEquipBtn.onclick = function() {
+        equipSkin(skin.id);
+        skinPreviewOverlay.classList.remove('active');
+      };
+      skinPreviewUnequipBtn.onclick = function() {
+        equipSkin('');
+        skinPreviewOverlay.classList.remove('active');
+      };
+
+      skinPreviewOverlay.classList.add('active');
+    }
+
+    document.getElementById('skinPreviewClose').addEventListener('click', function() {
+      skinPreviewOverlay.classList.remove('active');
+    });
+    skinPreviewOverlay.addEventListener('click', function(e) {
+      if (e.target === skinPreviewOverlay) skinPreviewOverlay.classList.remove('active');
+    });
+
+    function buySkin(skinId, isCustom) {
+      if (!playerName) {
+        document.getElementById('inlineNameInput').focus();
+        return;
+      }
+      skinPreviewBuyBtn.disabled = true;
+      skinPreviewBuyBtn.textContent = 'Processing...';
+
+      fetch(apiBase + '/create-skin-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skinId: skinId, playerName: playerName, custom: isCustom }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            skinPreviewBuyBtn.textContent = data.error;
+            skinPreviewBuyBtn.disabled = false;
+            return;
+          }
+          // Use the payment modal for Stripe
+          var payCard = paymentModal.querySelector('.payment-card');
+          payCard.querySelector('h3').textContent = 'Buy Skin Pack';
+          payCard.querySelector('.price').textContent = '$5.99';
+          payCard.querySelector('.payment-desc').textContent = 'Unlock this skin pack for your account.';
+          payBtn.textContent = 'Pay $5.99';
+          paymentStatus.textContent = 'Loading...';
+          paymentStatus.style.color = '#aaa';
+          payBtn.disabled = true;
+          skinPreviewOverlay.classList.remove('active');
+          paymentModal.classList.add('active');
+
+          if (paymentElement) { paymentElement.unmount(); paymentElement = null; }
+
+          var skinElements = stripe.elements({
+            clientSecret: data.clientSecret,
+            appearance: { theme: 'night', variables: { colorPrimary: '#a78bfa', colorBackground: '#1e1e3a', colorText: '#ffffff', borderRadius: '8px' } },
+          });
+          var skinPayEl = skinElements.create('payment', { wallets: { applePay: 'auto', googlePay: 'auto' } });
+          skinPayEl.mount('#payment-element');
+          skinPayEl.on('ready', function() {
+            payBtn.disabled = false;
+            paymentStatus.textContent = '';
+          });
+
+          payBtn.onclick = function() {
+            payBtn.disabled = true;
+            payBtn.textContent = 'Processing...';
+            stripe.confirmPayment({
+              elements: skinElements,
+              confirmParams: { return_url: window.location.href },
+              redirect: 'if_required',
+            }).then(function(result) {
+              if (result.error) {
+                paymentStatus.textContent = result.error.message;
+                paymentStatus.style.color = '#ef4444';
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pay $5.99';
+              } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+                payBtn.textContent = 'Unlocking...';
+                // For pre-built skins, just unlock. For custom, generate.
+                if (isCustom) {
+                  // Custom skins need server-side generation
+                  paymentStatus.textContent = 'Generating your custom skin pack... this takes ~30 seconds';
+                  paymentStatus.style.color = '#a78bfa';
+                  fetch(apiBase + '/generate-custom-skin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      description: customSkinDesc.value,
+                      playerName: playerName,
+                      referenceImage: customRefBase64,
+                      paymentIntentId: result.paymentIntent.id,
+                    }),
+                  }).then(function(r) { return r.json(); }).then(function(genResult) {
+                    if (genResult.ok) {
+                      paymentStatus.textContent = 'Custom skin created! API cost: $' + (genResult.apiCostCents / 100).toFixed(3);
+                      paymentStatus.style.color = '#4ade80';
+                      payBtn.textContent = 'Done!';
+                      hapticSuccess();
+                      fetchSkinCatalog();
+                      setTimeout(function() { paymentModal.classList.remove('active'); }, 2000);
+                    } else {
+                      paymentStatus.textContent = genResult.error || 'Generation failed';
+                      paymentStatus.style.color = '#ef4444';
+                    }
+                  });
+                } else {
+                  fetch(apiBase + '/unlock-skin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ skinId: skinId, playerName: playerName }),
+                  }).then(function() {
+                    paymentStatus.textContent = 'Skin unlocked!';
+                    paymentStatus.style.color = '#4ade80';
+                    payBtn.textContent = 'Done!';
+                    hapticSuccess();
+                    fetchSkinCatalog();
+                    setTimeout(function() { paymentModal.classList.remove('active'); }, 2000);
+                  });
+                }
+              }
+            });
+          };
+
+          skinPreviewBuyBtn.disabled = false;
+          skinPreviewBuyBtn.textContent = 'Buy - $5.99';
+        });
+    }
+
+    function equipSkin(skinId) {
+      currentEquippedSkin = skinId;
+      localStorage.setItem('jcEquippedSkin', skinId);
+      applySkin(skinId);
+      renderSkinGrid();
+      // Tell server
+      if (playerName) {
+        fetch(apiBase + '/equip-skin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ skinId: skinId, playerName: playerName }),
+        }).catch(function() {});
+      }
+    }
+
+    function applySkin(skinId) {
+      var coinImg = document.querySelector('.coin-button img');
+      var body = document.body;
+      // Remove any skin animation classes
+      coinImg.classList.remove('skin-anim-glow', 'skin-anim-pulse', 'skin-anim-sparkle', 'skin-anim-float');
+      body.style.removeProperty('--skin-color');
+
+      if (!skinId) {
+        // Default skin
+        coinImg.src = 'jared-coin.png';
+        document.body.style.background = '';
+        return;
+      }
+
+      // Apply coin image
+      coinImg.src = apiBase + '/skins/' + skinId + '/coin.png';
+
+      // Apply background
+      document.body.style.backgroundImage = 'url(' + apiBase + '/skins/' + skinId + '/background.png)';
+      document.body.style.backgroundSize = 'cover';
+      document.body.style.backgroundPosition = 'center';
+      document.body.style.backgroundAttachment = 'fixed';
+
+      // Apply animation if enabled
+      if (skinAnimEnabled && skinAnimations[skinId]) {
+        coinImg.classList.add(skinAnimations[skinId]);
+        // Find the skin color for the glow
+        for (var i = 0; i < skinCatalog.length; i++) {
+          if (skinCatalog[i].id === skinId) {
+            body.style.setProperty('--skin-color', skinCatalog[i].color);
+            break;
+          }
+        }
+      }
+    }
+
+    // Custom skin reference image handling
+    customRefBtn.addEventListener('click', function() { customRefInput.click(); });
+    customRefInput.addEventListener('change', function() {
+      var file = customRefInput.files[0];
+      if (!file) return;
+      customRefName.textContent = file.name;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        customRefBase64 = e.target.result.split(',')[1]; // strip data:... prefix
+      };
+      reader.readAsDataURL(file);
+    });
+
+    customSkinBtn.addEventListener('click', function() {
+      if (!customSkinDesc.value.trim()) {
+        customSkinStatus.textContent = 'Please describe your skin first';
+        customSkinStatus.style.color = '#ef4444';
+        return;
+      }
+      if (!playerName) {
+        document.getElementById('inlineNameInput').focus();
+        return;
+      }
+      // Use buySkin with custom flag — skinId will be generated server-side
+      var tempId = 'custom_pending';
+      buySkin(tempId, true);
+    });
+
+    // Apply equipped skin on load
+    if (currentEquippedSkin) {
+      // Wait a moment for catalog to load
+      setTimeout(function() { applySkin(currentEquippedSkin); }, 1000);
+    }
+
+    // Fetch skin catalog on load and periodically
+    fetchSkinCatalog();
+    setInterval(fetchSkinCatalog, 60000);
 
   </script>
 </body>
