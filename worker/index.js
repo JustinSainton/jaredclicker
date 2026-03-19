@@ -356,6 +356,13 @@ export class LiveVisitors {
       game.hangmanP1Wrong = 0;
       game.hangmanP2Wrong = 0;
       game.hangmanMaxWrong = 6;
+    } else if (challenge.gameType === 'clickerduel') {
+      game.cdDuration = 10000; // 10 seconds
+      game.cdStartAt = null; // set when game starts (after countdown)
+      game.cdEndAt = null;
+      game.cdP1Taps = 0;
+      game.cdP2Taps = 0;
+      game.cdCountdown = 3; // 3-2-1-GO
     } else if (challenge.gameType === 'battleship') {
       // 8x8 grids (simplified). Each player places 5 ships then fires shots.
       // Ships: sizes 5,4,3,3,2. Auto-placed randomly by server.
@@ -531,6 +538,16 @@ export class LiveVisitors {
         this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
         this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
       }
+    } else if (game.type === 'clickerduel') {
+      if (move !== 'tap') return;
+      if (!game.cdStartAt) return; // not started yet
+      if (Date.now() > game.cdEndAt) return; // time's up
+      if (isP1) game.cdP1Taps++;
+      else game.cdP2Taps++;
+      // Send real-time tap counts to both players
+      this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+      this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      this.broadcastToSpectators(game);
     } else if (game.type === 'battleship') {
       if (game.bsCurrentTurn.toLowerCase() !== playerName.toLowerCase()) return;
       const coords = String(move).split(',');
@@ -562,6 +579,10 @@ export class LiveVisitors {
         this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
         this.broadcastToSpectators(game);
       }
+    }
+    // Broadcast to spectators for all game types
+    if (game.spectators && game.spectators.length > 0 && !game._ended) {
+      this.broadcastToSpectators(game);
     }
   }
 
@@ -724,7 +745,7 @@ export class LiveVisitors {
       if (winSource === 'score') await this.awardWinnings(game.winner, game.wagerCoins * 2);
       else this.sendToPlayer(game.winner, { type: 'walletAward', amount: game.wagerCoins * 2 });
     }
-    const names = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
+    const names = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship', clickerduel: 'Clicker Duel' };
     const tn = names[game.type] || game.type;
     if (game.winner === 'draw') {
       await this.addSystemChat('\u2694\uFE0F ' + game.player1 + ' vs ' + game.player2 + ' in ' + tn + ' \u2014 DRAW! Wagers refunded.');
@@ -2066,7 +2087,7 @@ export class LiveVisitors {
         if (msg.type === "challenge" && info.name && msg.targetName && msg.gameType && typeof msg.wagerCoins === "number") {
           const self = this;
           (async () => {
-            const validTypes = ['rps', 'ttt', 'trivia', 'coinflip', 'reaction', 'connect4', 'hangman', 'battleship'];
+            const validTypes = ['rps', 'ttt', 'trivia', 'coinflip', 'reaction', 'connect4', 'hangman', 'battleship', 'clickerduel'];
             if (!validTypes.includes(msg.gameType)) return;
             const wager = Math.floor(msg.wagerCoins);
             if (wager < 100 || wager > 10000000) return;
@@ -2092,7 +2113,7 @@ export class LiveVisitors {
             }, 60000);
             self.sendToPlayer(msg.targetName, { type: "challengeReceived", challenge });
             self.sendToPlayer(info.name, { type: "challengeSent", challenge });
-            var typeLabel = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
+            var typeLabel = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship', clickerduel: 'Clicker Duel' };
             self.sendPushToPlayer(msg.targetName, "Battle from " + info.name + "!", (typeLabel[msg.gameType] || msg.gameType) + " for " + wager + " coins", "challenge");
           })();
           return;
@@ -2131,7 +2152,7 @@ export class LiveVisitors {
               }
             }
             const game = self.createGame(challenge);
-            const typeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
+            const typeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship', clickerduel: 'Clicker Duel' };
             await self.addSystemChat('\u2694\uFE0F ' + challenge.challengerName + ' vs ' + challenge.targetName + ' \u2014 ' + (typeNames[challenge.gameType] || challenge.gameType) + ' for ' + challenge.wagerCoins + ' coins!');
             // Coin flip: resolve instantly (winner already set in createGame)
             if (challenge.gameType === 'coinflip') {
@@ -2153,6 +2174,24 @@ export class LiveVisitors {
                   await self.endGame(game, 'completed');
                 }, 5000);
               }, game.reactionDelay);
+            }
+            // Clicker Duel: 3s countdown then 10s of tapping
+            if (challenge.gameType === 'clickerduel') {
+              setTimeout(function() {
+                if (game.winner || game._ended) return;
+                game.cdStartAt = Date.now();
+                game.cdEndAt = Date.now() + game.cdDuration;
+                self.sendToPlayer(game.player1, { type: "gameUpdate", game: self.sanitizeGame(game, game.player1) });
+                self.sendToPlayer(game.player2, { type: "gameUpdate", game: self.sanitizeGame(game, game.player2) });
+                // Auto-resolve after duration
+                setTimeout(async function() {
+                  if (game.winner || game._ended) return;
+                  if (game.cdP1Taps > game.cdP2Taps) game.winner = game.player1;
+                  else if (game.cdP2Taps > game.cdP1Taps) game.winner = game.player2;
+                  else game.winner = 'draw';
+                  await self.endGame(game, 'completed');
+                }, game.cdDuration + 500); // 500ms grace
+              }, 3000); // 3s countdown
             }
             // Trivia/Hangman: auto-resolve after 60s if not both answered
             if (challenge.gameType === 'trivia' || challenge.gameType === 'hangman') {
@@ -2213,6 +2252,14 @@ export class LiveVisitors {
             for (var si = 0; si < (scGame.spectators || []).length; si++) {
               this.sendToPlayer(scGame.spectators[si], chatData);
             }
+          }
+          return;
+        }
+
+        if (msg.type === "stopWatching" && msg.gameId && info.name) {
+          const swGame = this.activeGames.get(msg.gameId);
+          if (swGame && swGame.spectators) {
+            swGame.spectators = swGame.spectators.filter(function(s) { return s.toLowerCase() !== info.name.toLowerCase(); });
           }
           return;
         }
@@ -4393,7 +4440,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "55" }), {
+      return corsResponse(JSON.stringify({ version: "56" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

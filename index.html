@@ -11,6 +11,10 @@
     @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Press+Start+2P&display=swap');
 
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    /* Prevent iOS auto-zoom on input focus */
+    @supports (-webkit-touch-callout: none) {
+      input, select, textarea { font-size: 16px !important; }
+    }
 
     html {
       background: #1a1a2e;
@@ -2412,6 +2416,16 @@
     .bs-hit-small { background: rgba(239,68,68,0.5); border-color: #ef4444; }
     .bs-miss-small { background: rgba(100,100,100,0.3); }
 
+    /* Clicker Duel */
+    .cd-tap-btn {
+      width: 200px; height: 200px; border-radius: 50%;
+      border: 4px solid #ffd700; background: linear-gradient(135deg, #b8860b, #ffd700);
+      font-size: 32px; font-family: 'Fredoka One', cursive; color: #1a1a2e;
+      cursor: pointer; touch-action: manipulation;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+    }
+    .cd-tap-btn:active { transform: scale(0.95); box-shadow: 0 0 10px rgba(255, 215, 0, 0.2); }
+
     /* Spectator */
     .spectator-section { margin-top: 16px; border-top: 1px solid rgba(168,85,247,0.3); padding-top: 12px; }
     .spectator-game-card {
@@ -3561,7 +3575,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '55';
+    var CURRENT_VERSION = '56';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -7466,7 +7480,7 @@
 
     // ===== MOBILE FOOTER NAV =====
     var tabSections = {
-      'click': ['.header', '.click-area', '#statsPanel'],
+      'click': ['.header', '#statsPanel', '.click-area'],
       'shop': ['#shop'],
       'board': ['#leaderboardPanel', '#campaignsSection'],
       'battle': ['#battleSection'],
@@ -7539,8 +7553,9 @@
     var challengePopupInfoEl = document.getElementById('challengePopupInfo');
     var challengePopupWagerEl = document.getElementById('challengePopupWager');
     var challengePopupTimerEl = document.getElementById('challengePopupTimer');
-    var gameTypeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
+    var gameTypeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship', clickerduel: 'Clicker Duel' };
     var allGameTypes = [
+      { type: 'clickerduel', emoji: '\uD83D\uDCA5', label: 'Clicker Duel', desc: 'Tap frenzy!' },
       { type: 'rps', emoji: '\u270A', label: 'RPS', desc: 'Best of 1' },
       { type: 'ttt', emoji: '\u274C', label: 'Tic-Tac-Toe', desc: 'Classic grid' },
       { type: 'trivia', emoji: '\uD83E\uDDE0', label: 'Trivia', desc: 'Speed + smarts' },
@@ -7660,6 +7675,7 @@
       else if (game.type === 'connect4') renderConnect4Game(game, content);
       else if (game.type === 'hangman') renderHangmanGame(game, content);
       else if (game.type === 'battleship') renderBattleshipGame(game, content);
+      else if (game.type === 'clickerduel') renderClickerDuelGame(game, content);
     }
 
     function renderRpsGame(game, container) {
@@ -7936,6 +7952,83 @@
       container.appendChild(keyboard);
     }
 
+    function renderClickerDuelGame(game, container) {
+      var isP1 = playerName && playerName.toLowerCase() === game.player1.toLowerCase();
+      var myTaps = isP1 ? game.cdP1Taps : game.cdP2Taps;
+      var oppTaps = isP1 ? game.cdP2Taps : game.cdP1Taps;
+      var started = !!game.cdStartAt;
+      var wrapper = document.createElement('div');
+      wrapper.style.cssText = 'text-align:center;width:100%;';
+      if (!started) {
+        // Countdown phase
+        var cdText = document.createElement('div');
+        cdText.style.cssText = 'font-size:64px;color:#ffd700;font-family:Press Start 2P,monospace;animation:gpulse 0.5s ease-in-out infinite;';
+        cdText.textContent = 'GET READY';
+        wrapper.appendChild(cdText);
+        var cdSub = document.createElement('div');
+        cdSub.style.cssText = 'color:#daa520;font-size:14px;margin-top:12px;font-family:Fredoka One,cursive;';
+        cdSub.textContent = 'Tap as fast as you can!';
+        wrapper.appendChild(cdSub);
+      } else {
+        // Active tapping phase
+        var timeLeft = Math.max(0, Math.ceil((game.cdEndAt - Date.now()) / 1000));
+        var timerDiv = document.createElement('div');
+        timerDiv.style.cssText = 'font-size:36px;color:' + (timeLeft <= 3 ? '#ef4444' : '#ffd700') + ';font-family:Press Start 2P,monospace;margin-bottom:12px;';
+        timerDiv.textContent = timeLeft + 's';
+        wrapper.appendChild(timerDiv);
+        // Score display
+        var scores = document.createElement('div');
+        scores.style.cssText = 'display:flex;justify-content:space-around;margin-bottom:16px;';
+        var myScore = document.createElement('div');
+        myScore.style.cssText = 'text-align:center;';
+        var myLabel = document.createElement('div');
+        myLabel.style.cssText = 'color:#4ade80;font-size:11px;font-family:Fredoka One,cursive;';
+        myLabel.textContent = 'YOU';
+        myScore.appendChild(myLabel);
+        var myCount = document.createElement('div');
+        myCount.style.cssText = 'font-size:40px;color:#4ade80;font-family:Press Start 2P,monospace;';
+        myCount.textContent = String(myTaps);
+        myScore.appendChild(myCount);
+        scores.appendChild(myScore);
+        var vs = document.createElement('div');
+        vs.style.cssText = 'color:#888;font-size:20px;align-self:center;font-family:Fredoka One,cursive;';
+        vs.textContent = 'vs';
+        scores.appendChild(vs);
+        var oppScore = document.createElement('div');
+        oppScore.style.cssText = 'text-align:center;';
+        var oppLabel = document.createElement('div');
+        oppLabel.style.cssText = 'color:#ef4444;font-size:11px;font-family:Fredoka One,cursive;';
+        oppLabel.textContent = isP1 ? game.player2 : game.player1;
+        oppScore.appendChild(oppLabel);
+        var oppCount = document.createElement('div');
+        oppCount.style.cssText = 'font-size:40px;color:#ef4444;font-family:Press Start 2P,monospace;';
+        oppCount.textContent = String(oppTaps);
+        oppScore.appendChild(oppCount);
+        scores.appendChild(oppScore);
+        wrapper.appendChild(scores);
+        // Big tap button
+        if (timeLeft > 0) {
+          var tapBtn = document.createElement('button');
+          tapBtn.style.cssText = 'width:200px;height:200px;border-radius:50%;border:4px solid #ffd700;background:linear-gradient(135deg,#b8860b,#ffd700);font-size:32px;font-family:Fredoka One,cursive;color:#1a1a2e;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;box-shadow:0 0 30px rgba(255,215,0,0.4);transition:transform 0.05s;';
+          tapBtn.textContent = 'TAP!';
+          tapBtn.addEventListener('pointerdown', function(e) {
+            e.preventDefault();
+            liveWs.send(JSON.stringify({ type: 'gameMove', gameId: game.id, move: 'tap' }));
+            tapBtn.style.transform = 'scale(0.95)';
+            hapticLight();
+          });
+          tapBtn.addEventListener('pointerup', function() { tapBtn.style.transform = 'scale(1)'; });
+          wrapper.appendChild(tapBtn);
+        } else {
+          var doneMsg = document.createElement('div');
+          doneMsg.className = 'game-waiting';
+          doneMsg.textContent = 'Time\'s up! Calculating...';
+          wrapper.appendChild(doneMsg);
+        }
+      }
+      container.appendChild(wrapper);
+    }
+
     function renderBattleshipGame(game, container) {
       var isP1 = playerName && playerName.toLowerCase() === game.player1.toLowerCase();
       var myShips = isP1 ? (game.bsShips && game.bsShips.p1) : (game.bsShips && game.bsShips.p2);
@@ -8091,7 +8184,7 @@
           .then(function(d) {
             if (d.error) { alert(d.error); return; }
             // Reuse the payment modal
-            processRematchPayment(d.clientSecret, game.id);
+            processRematchPayment(d.clientSecret, game.id, 'Double or Nothing', '$0.99', 'Same game, double the stakes. Win it back or lose it all!');
           });
         });
         result.appendChild(doubleBtn);
@@ -8189,6 +8282,7 @@
       closeBtn.style.cssText += 'margin-top:12px;background:rgba(255,255,255,0.1);border-color:#888;color:#aaa;';
       closeBtn.textContent = 'Stop Watching';
       closeBtn.addEventListener('click', function() {
+        if (watchingGameId) liveWs.send(JSON.stringify({ type: 'stopWatching', gameId: watchingGameId }));
         watchingGameId = null;
         gameOverlayEl.classList.remove('active');
       });
@@ -8207,20 +8301,21 @@
       });
     }
 
-    function processRematchPayment(clientSecret, gameId) {
+    function processRematchPayment(clientSecret, gameId, title, price, desc) {
       if (!stripe) return;
       var elements = stripe.elements({ clientSecret: clientSecret });
       var payModal = document.getElementById('paymentModal');
       var payCard = payModal.querySelector('.payment-card');
-      payCard.querySelector('h3').textContent = 'Best 2 of 3 Rematch';
-      payCard.querySelector('.price').textContent = '$1.99';
-      payCard.querySelector('.payment-desc').textContent = 'Your original game counts as round 1. Win 2 rounds to claim the pot!';
+      payCard.querySelector('h3').textContent = title || 'Best 2 of 3 Rematch';
+      payCard.querySelector('.price').textContent = price || '$1.99';
+      payCard.querySelector('.payment-desc').textContent = desc || 'Your original game counts as round 1. Win 2 rounds to claim the pot!';
       var payElm = document.getElementById('payment-element');
       payElm.textContent = '';
       var cardEl = elements.create('payment');
       cardEl.mount(payElm);
       var payBtn = document.getElementById('payBtn');
-      payBtn.textContent = 'Pay $1.99';
+      var btnPrice = price || '$1.99';
+      payBtn.textContent = 'Pay ' + btnPrice;
       payBtn.disabled = false;
       payModal.classList.add('active');
       payBtn.onclick = function() {
@@ -8230,7 +8325,7 @@
         .then(function(result) {
           if (result.error) {
             document.getElementById('paymentStatus').textContent = result.error.message;
-            payBtn.disabled = false; payBtn.textContent = 'Pay $1.99';
+            payBtn.disabled = false; payBtn.textContent = 'Pay ' + btnPrice;
           } else {
             payModal.classList.remove('active');
             fetch(apiBase + '/rematch', {
