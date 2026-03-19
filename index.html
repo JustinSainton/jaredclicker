@@ -2628,13 +2628,6 @@
       <!-- Logged-in view -->
       <div class="account-panel active" id="accountPanelLoggedIn" style="display:none;">
         <div id="accountInfoRows"></div>
-        <button class="account-btn secondary" id="accountMergeToggleBtn" style="margin-top:14px;">Merge Duplicate Account</button>
-        <div id="accountMergeSection" style="display:none; margin-top:12px;">
-          <input class="account-input" id="accountMergeNameInput" placeholder="Duplicate account name..." maxlength="20">
-          <button class="account-btn secondary" id="accountMergeSubmitBtn">Merge (keeps highest score)</button>
-          <div class="account-error" id="accountMergeError"></div>
-          <div class="account-success" id="accountMergeSuccess"></div>
-        </div>
         <button class="account-btn danger" id="accountLogoutBtn">Log Out This Device</button>
       </div>
 
@@ -3563,7 +3556,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '53';
+    var CURRENT_VERSION = '55';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -3794,29 +3787,6 @@
       localStorage.removeItem('jcAccountName');
       updateAccountBtn();
       showAccountAuth();
-    });
-
-    document.getElementById('accountMergeToggleBtn').addEventListener('click', function() {
-      var sec = document.getElementById('accountMergeSection');
-      sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
-    });
-
-    document.getElementById('accountMergeSubmitBtn').addEventListener('click', function() {
-      var mergeName = document.getElementById('accountMergeNameInput').value.trim();
-      var errEl = document.getElementById('accountMergeError');
-      var sucEl = document.getElementById('accountMergeSuccess');
-      errEl.textContent = ''; sucEl.textContent = '';
-      if (!mergeName) { errEl.textContent = 'Enter the duplicate account name.'; return; }
-      fetch(apiBase + '/account/merge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: authToken, mergeFromName: mergeName }),
-      }).then(function(r) { return r.json(); }).then(function(data) {
-        if (data.error) { errEl.textContent = data.error; return; }
-        sucEl.textContent = 'Merged! Score is now ' + formatNumber(data.newScore) + ' coins.';
-        state.totalCoins = Math.max(state.totalCoins, data.newScore);
-        saveGame(); updateCounters();
-      }).catch(function() { errEl.textContent = 'Network error. Try again.'; });
     });
 
     updateAccountBtn();

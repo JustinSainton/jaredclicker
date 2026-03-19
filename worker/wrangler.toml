@@ -20,3 +20,8 @@ new_classes = ["Leaderboard"]
 [[r2_buckets]]
 bucket_name = "jaredclicker-photos"
 binding = "PHOTOS"
+
+[vars]
+# Generate with: npx web-push generate-vapid-keys
+# Then set VAPID_PRIVATE_KEY as a secret: wrangler secret put VAPID_PRIVATE_KEY
+VAPID_PUBLIC_KEY = "VAPID_PUBLIC_KEY_HERE"
