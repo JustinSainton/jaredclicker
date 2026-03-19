@@ -332,7 +332,8 @@ export class LiveVisitors {
     }
     if (challenge.gameType === 'coinflip') {
       game.coinFlipResult = Math.random() < 0.5 ? 'heads' : 'tails';
-      game.winner = Math.random() < 0.5 ? game.player1 : game.player2;
+      // Heads = player1 wins, tails = player2 wins
+      game.winner = game.coinFlipResult === 'heads' ? game.player1 : game.player2;
     } else if (challenge.gameType === 'reaction') {
       game.reactionDelay = 2000 + Math.floor(Math.random() * 6000);
       game.reactionGoAt = Date.now() + game.reactionDelay;
@@ -363,7 +364,7 @@ export class LiveVisitors {
       game.bsShots = { p1: [], p2: [] }; // [{x,y,hit}]
       game.bsCurrentTurn = Math.random() < 0.5 ? game.player1 : game.player2;
       game.bsSunk = { p1: 0, p2: 0 }; // count of sunk ships
-      game.bsTotalShips = 5;
+      game.bsTotalShips = Math.min(game.bsShips.p1.length, game.bsShips.p2.length);
       // Spectator support
       game.spectators = [];
       game.spectatorChat = [];
@@ -374,6 +375,7 @@ export class LiveVisitors {
   }
 
   async processMove(game, playerName, move) {
+    if (game.winner || game._ended) return; // game already resolved
     const isP1 = game.player1.toLowerCase() === playerName.toLowerCase();
     const isP2 = game.player2.toLowerCase() === playerName.toLowerCase();
     if (!isP1 && !isP2) return;
@@ -554,8 +556,6 @@ export class LiveVisitors {
         // Notify spectators
         this.broadcastToSpectators(game);
         await this.endGame(game, 'completed');
-        // Resolve spectator bets
-        await this.resolveSpectatorBets(game);
       } else {
         game.bsCurrentTurn = isP1 ? game.player2 : game.player1;
         this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
@@ -641,7 +641,6 @@ export class LiveVisitors {
   broadcastToSpectators(game) {
     if (!game.spectators || game.spectators.length === 0) return;
     const spectatorView = this.sanitizeGameForSpectator(game);
-    const msg = JSON.stringify({ type: "spectatorUpdate", game: spectatorView });
     for (const specName of game.spectators) {
       this.sendToPlayer(specName, { type: "spectatorUpdate", game: spectatorView });
     }
@@ -657,6 +656,16 @@ export class LiveVisitors {
     // Hide RPS moves until revealed
     if (game.type === 'rps' && game.rpsRound) {
       g.rpsRound = { p1Move: game.rpsRound.p1Move ? 'hidden' : null, p2Move: game.rpsRound.p2Move ? 'hidden' : null };
+    }
+    // Hide hangman word from spectators
+    if (game.type === 'hangman' && !game.winner) {
+      g.hangmanWord = undefined; g.hangmanMasked = undefined;
+      g.hangmanP1Guesses = undefined; g.hangmanP2Guesses = undefined;
+    }
+    // Hide reaction tap times from spectators
+    if (game.type === 'reaction' && !game.winner) {
+      g.reactionP1Tap = game.reactionP1Tap !== null ? 'hidden' : null;
+      g.reactionP2Tap = game.reactionP2Tap !== null ? 'hidden' : null;
     }
     // Hide trivia answers
     if (game.type === 'trivia') {
@@ -701,6 +710,8 @@ export class LiveVisitors {
   }
 
   async endGame(game, reason) {
+    if (game._ended) return; // idempotency guard — prevent double payouts
+    game._ended = true;
     if (game.winner === 'draw') {
       // Refund each player to their chosen source
       if ((game.p1Source || 'score') === 'score') await this.awardWinnings(game.player1, game.wagerCoins);
@@ -731,6 +742,9 @@ export class LiveVisitors {
       this.sendPushToPlayer(loser, "Lost to " + game.winner + "!", "-" + game.wagerCoins + " coins", "game-result");
     }
     const self = this;
+    // Notify spectators + resolve bets
+    this.broadcastToSpectators(game);
+    await this.resolveSpectatorBets(game);
     setTimeout(() => { self.activeGames.delete(game.id); }, 60000);
     this.scheduleBroadcast();
   }
@@ -1865,7 +1879,7 @@ export class LiveVisitors {
         const loser = oldGame.winner === oldGame.player1 ? oldGame.player2 : oldGame.player1;
         const challenge = {
           challengerName: oldGame.player1, targetName: oldGame.player2,
-          gameType: oldGame.type, wagerCoins: oldGame.wagerCoins,
+          gameType: oldGame.type, wagerCoins: 0, // no re-wagering — loser paid $1.99 for the chance
         };
         const newGame = this.createGame(challenge);
         newGame.maxRounds = 3;
@@ -1968,11 +1982,13 @@ export class LiveVisitors {
           if (oldName && oldName !== info.name) {
             this.renameScore(oldName, info.name);
           }
-          // Cancel forfeit timer on reconnection
-          var fKey = info.name.toLowerCase();
-          if (this.forfeitTimers.has(fKey)) {
-            clearTimeout(this.forfeitTimers.get(fKey).timer);
-            this.forfeitTimers.delete(fKey);
+          // Cancel forfeit timers on reconnection (keyed by gameId)
+          var fName = info.name.toLowerCase();
+          for (var [fId, fData] of this.forfeitTimers) {
+            if (fData.playerName && fData.playerName.toLowerCase() === fName) {
+              clearTimeout(fData.timer);
+              this.forfeitTimers.delete(fId);
+            }
           }
         }
 
@@ -2076,7 +2092,7 @@ export class LiveVisitors {
             }, 60000);
             self.sendToPlayer(msg.targetName, { type: "challengeReceived", challenge });
             self.sendToPlayer(info.name, { type: "challengeSent", challenge });
-            var typeLabel = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman' };
+            var typeLabel = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
             self.sendPushToPlayer(msg.targetName, "Battle from " + info.name + "!", (typeLabel[msg.gameType] || msg.gameType) + " for " + wager + " coins", "challenge");
           })();
           return;
@@ -2104,6 +2120,16 @@ export class LiveVisitors {
               self.sendToPlayer(challenge.challengerName, { type: "challengeDeclined", challengeId: msg.challengeId, reason: "insufficient_coins" });
               return;
             }
+            // Prevent playing multiple games simultaneously
+            for (const [, ag] of self.activeGames) {
+              if (!ag.winner && !ag._ended) {
+                if (ag.player1.toLowerCase() === challenge.challengerName.toLowerCase() || ag.player2.toLowerCase() === challenge.challengerName.toLowerCase() ||
+                    ag.player1.toLowerCase() === challenge.targetName.toLowerCase() || ag.player2.toLowerCase() === challenge.targetName.toLowerCase()) {
+                  self.sendToPlayer(challenge.challengerName, { type: "challengeDeclined", challengeId: msg.challengeId, reason: "in_game" });
+                  return;
+                }
+              }
+            }
             const game = self.createGame(challenge);
             const typeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
             await self.addSystemChat('\u2694\uFE0F ' + challenge.challengerName + ' vs ' + challenge.targetName + ' \u2014 ' + (typeNames[challenge.gameType] || challenge.gameType) + ' for ' + challenge.wagerCoins + ' coins!');
@@ -2127,6 +2153,26 @@ export class LiveVisitors {
                   await self.endGame(game, 'completed');
                 }, 5000);
               }, game.reactionDelay);
+            }
+            // Trivia/Hangman: auto-resolve after 60s if not both answered
+            if (challenge.gameType === 'trivia' || challenge.gameType === 'hangman') {
+              setTimeout(async function() {
+                if (game.winner || game._ended) return;
+                // Whoever answered/guessed more wins; both idle = draw
+                if (challenge.gameType === 'trivia') {
+                  if (game.triviaP1Answer !== null && game.triviaP2Answer === null) game.winner = game.player1;
+                  else if (game.triviaP2Answer !== null && game.triviaP1Answer === null) game.winner = game.player2;
+                  else game.winner = 'draw';
+                } else {
+                  // Hangman: more correct letters = winner
+                  var p1c = (game.hangmanP1Guesses || []).filter(function(l) { return game.hangmanWord.includes(l); }).length;
+                  var p2c = (game.hangmanP2Guesses || []).filter(function(l) { return game.hangmanWord.includes(l); }).length;
+                  if (p1c > p2c) game.winner = game.player1;
+                  else if (p2c > p1c) game.winner = game.player2;
+                  else game.winner = 'draw';
+                }
+                await self.endGame(game, 'timeout');
+              }, 60000);
             }
             self.sendToPlayer(challenge.challengerName, { type: "gameStarted", game: self.sanitizeGame(game, challenge.challengerName) });
             self.sendToPlayer(challenge.targetName, { type: "gameStarted", game: self.sanitizeGame(game, challenge.targetName) });
@@ -2231,9 +2277,9 @@ export class LiveVisitors {
                   game.winner = opponent;
                   self.endGame(game, 'forfeit');
                 }
-                self.forfeitTimers.delete(pLower);
+                self.forfeitTimers.delete(gameId);
               }, 30000);
-              this.forfeitTimers.set(pLower, { timer, gameId });
+              this.forfeitTimers.set(gameId, { timer, playerName: pName });
             }
           }
         }

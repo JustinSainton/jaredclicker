@@ -2751,6 +2751,7 @@
     <div class="game-overlay-vs" id="gameOverlayVs"></div>
     <div class="game-overlay-wager" id="gameOverlayWager"></div>
     <div id="gameOverlayContent"></div>
+    <button id="gameOverlayLeave" style="position:absolute;top:12px;right:12px;background:none;border:2px solid #555;border-radius:8px;color:#888;padding:6px 12px;font-family:Fredoka One,cursive;font-size:11px;cursor:pointer;">Leave</button>
   </div>
 
   <!-- Challenge Received Popup -->
@@ -7631,12 +7632,16 @@
       gameOverlayEl.classList.remove('active');
       activeGameId = null;
       activeGameState = null;
+      watchingGameId = null;
     }
+    document.getElementById('gameOverlayLeave').addEventListener('click', function() {
+      if (confirm('Leave this game? You may forfeit if you disconnect.')) hideGameOverlay();
+    });
 
     function renderGameContent(game) {
       var content = gameOverlayContentEl;
       content.textContent = '';
-      if (game.winner) return;
+      if (game.winner && game.type !== 'coinflip') return;
       if (game.type === 'rps') renderRpsGame(game, content);
       else if (game.type === 'ttt') renderTttGame(game, content);
       else if (game.type === 'trivia') renderTriviaGame(game, content);
@@ -8026,6 +8031,14 @@
         flipIcon.style.cssText = 'font-size:48px;margin-bottom:8px;';
         flipIcon.textContent = game.coinFlipResult === 'heads' ? '\uD83D\uDC51' : '\uD83E\uDE99';
         result.insertBefore(flipIcon, text);
+      }
+      if (game.type === 'rps' && game.rpsResults && game.rpsResults.length > 0) {
+        var lastRound = game.rpsResults[game.rpsResults.length - 1];
+        var moveEmojis = { rock: '\uD83E\uDEA8', paper: '\uD83D\uDCC4', scissors: '\u2702\uFE0F', carried: '\u2714\uFE0F' };
+        var rpsDiv = document.createElement('div');
+        rpsDiv.style.cssText = 'font-size:36px;margin-bottom:8px;';
+        rpsDiv.textContent = (moveEmojis[lastRound.p1Move] || '?') + ' vs ' + (moveEmojis[lastRound.p2Move] || '?');
+        result.insertBefore(rpsDiv, text);
       }
       if (game.type === 'reaction' && game.reactionP1Time !== undefined) {
         var rtDiv = document.createElement('div');
