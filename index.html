@@ -5084,24 +5084,38 @@
                 payBtn.disabled = false;
                 payBtn.textContent = 'Pay ' + priceStr;
               } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
-                fetch(apiBase + '/freeze', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    attackerName: playerName,
-                    targetName: sabotageTargetName,
-                    durationMin: durationMin,
-                  }),
-                }).then(function() {
-                  var frozenLabel = durationMin >= 60 ? (durationMin / 60) + ' hr' : durationMin + ' min';
-                  paymentStatus.textContent = sabotageTargetName + ' has been FROZEN for ' + frozenLabel + '!';
-                  paymentStatus.style.color = '#60a5fa';
-                  payBtn.textContent = 'Done!';
-                  hapticSabotage();
-                  setTimeout(function() {
-                    closeSabotagePayment();
-                  }, 2000);
-                });
+                // Apply freeze with retry — payment succeeded, we MUST apply it
+                function applyFreeze(attempt) {
+                  fetch(apiBase + '/freeze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      attackerName: playerName,
+                      targetName: sabotageTargetName,
+                      durationMin: durationMin,
+                    }),
+                  }).then(function(res) {
+                    if (!res.ok) throw new Error('Server error');
+                    var frozenLabel = durationMin >= 60 ? (durationMin / 60) + ' hr' : durationMin + ' min';
+                    paymentStatus.textContent = sabotageTargetName + ' has been FROZEN for ' + frozenLabel + '!';
+                    paymentStatus.style.color = '#60a5fa';
+                    payBtn.textContent = 'Done!';
+                    hapticSabotage();
+                    setTimeout(function() {
+                      closeSabotagePayment();
+                    }, 2000);
+                  }).catch(function() {
+                    if (attempt < 3) {
+                      paymentStatus.textContent = 'Applying freeze... (retry ' + (attempt + 1) + ')';
+                      setTimeout(function() { applyFreeze(attempt + 1); }, 2000);
+                    } else {
+                      paymentStatus.textContent = 'Freeze failed to apply! Payment received. Contact admin for help.';
+                      paymentStatus.style.color = '#ef4444';
+                      payBtn.textContent = 'Error';
+                    }
+                  });
+                }
+                applyFreeze(0);
               }
             });
           };
