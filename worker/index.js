@@ -141,7 +141,7 @@ export class LiveVisitors {
     }
 
     // If a server-side cut happened in the last 60s, don't let the client restore a higher score
-    if (existing && existing.serverCutAt && (Date.now() - existing.serverCutAt) < 60000 && score > existing.score) {
+    if (existing && existing.serverCutAt && (Date.now() - existing.serverCutAt) < 300000 && score > existing.score) {
       existing.stats = s;
       this.persistedScores = scores;
       await this.state.storage.put("scores", scores);
@@ -413,6 +413,52 @@ export class LiveVisitors {
       // 7. Broadcast clean state
       this.broadcast();
       return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Admin: reset individual player score
+    if (url.pathname === "/admin/reset-player" && request.method === "POST") {
+      const body = await request.json();
+      const targetName = String(body.playerName || "").trim();
+      if (!targetName) {
+        return new Response(JSON.stringify({ error: "playerName required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const targetKey = targetName.toLowerCase();
+
+      // 1. Zero persisted score + set serverCutAt to block re-uploads
+      const scores = await this.loadScores();
+      if (scores[targetKey]) {
+        scores[targetKey].score = 0;
+        scores[targetKey].serverCutAt = Date.now();
+        scores[targetKey].stats = { smellyLevel: "" };
+      }
+      this.persistedScores = scores;
+      await this.state.storage.put("scores", scores);
+
+      // 2. Zero all connected clients with this name + send them resetAll
+      const svrEpoch = await this.loadScoreEpoch();
+      const resetMsg = JSON.stringify({ type: "resetAll", scoreEpoch: svrEpoch });
+      for (const [ws, info] of this.connections) {
+        if (info.name && info.name.toLowerCase() === targetKey) {
+          info.score = 0;
+          info.stats = {};
+          try { ws.send(resetMsg); } catch (e) {}
+        }
+      }
+
+      // 3. Clear account gameState for this player
+      const accounts = await this.loadAccounts();
+      if (accounts[targetKey] && accounts[targetKey].gameState) {
+        accounts[targetKey].gameState = null;
+        accounts[targetKey].gameStateUpdatedAt = null;
+        this.accounts = accounts;
+        await this.saveAccounts();
+      }
+
+      await this.addSystemChat("ADMIN reset " + targetName + "'s score!");
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true, player: targetName }), {
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -2953,7 +2999,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "49" }), {
+      return corsResponse(JSON.stringify({ version: "50" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -2977,6 +3023,26 @@ export default {
       const id = env.LIVE_VISITORS.idFromName("global");
       const obj = env.LIVE_VISITORS.get(id);
       const res = await obj.fetch(new Request("https://dummy/admin/reset-scores", { method: "POST" }));
+      const body = await res.text();
+      return corsResponse(body, {
+        status: res.status, headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Admin: reset individual player
+    if (url.pathname === "/admin/reset-player" && request.method === "POST") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const reqBody = await request.json();
+      const id = env.LIVE_VISITORS.idFromName("global");
+      const obj = env.LIVE_VISITORS.get(id);
+      const res = await obj.fetch(new Request("https://dummy/admin/reset-player", {
+        method: "POST",
+        body: JSON.stringify({ playerName: reqBody.playerName }),
+      }));
       const body = await res.text();
       return corsResponse(body, {
         status: res.status, headers: { "Content-Type": "application/json" },
