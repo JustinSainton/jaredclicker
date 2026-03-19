@@ -4169,18 +4169,8 @@
           }
 
           // Refresh battle section only when online player list changes
-          if (currentTab === 'battle' && typeof renderBattleSection === 'function') {
-            var newPlayerKey = (data.players || []).filter(function(p) { return p.hasName; }).map(function(p) { return p.name; }).sort().join(',');
-            var newGamesKey = (data.activeGames || []).map(function(g) { return g.id; }).join(',');
-            var fullKey = newPlayerKey + '|' + newGamesKey;
-            if (fullKey !== _lastBattlePlayerKey) {
-              _lastBattlePlayerKey = fullKey;
-              // Save scroll position and restore after re-render
-              var scrollY = window.scrollY;
-              renderBattleSection();
-              window.scrollTo(0, scrollY);
-            }
-          }
+          // Don't re-render battle tab from broadcasts — only on tab switch
+          // This prevents scroll snap-back and UI interruption
 
           // Score recovery: if server has a higher score for us, sync up (prevents localStorage loss)
           if (data.leaderboard && playerName) {
