@@ -303,6 +303,32 @@ export class LiveVisitors {
       game.triviaP2Answer = null; game.triviaP2Time = null;
       game.triviaStartedAt = Date.now();
     }
+    if (challenge.gameType === 'coinflip') {
+      game.coinFlipResult = Math.random() < 0.5 ? 'heads' : 'tails';
+      game.winner = Math.random() < 0.5 ? game.player1 : game.player2;
+    } else if (challenge.gameType === 'reaction') {
+      game.reactionDelay = 2000 + Math.floor(Math.random() * 6000);
+      game.reactionGoAt = Date.now() + game.reactionDelay;
+      game.reactionP1Tap = null;
+      game.reactionP2Tap = null;
+      game.reactionP1FalseStart = false;
+      game.reactionP2FalseStart = false;
+    } else if (challenge.gameType === 'connect4') {
+      game.c4Board = [];
+      for (var ci = 0; ci < 7; ci++) game.c4Board.push([null,null,null,null,null,null]);
+      game.c4CurrentTurn = Math.random() < 0.5 ? game.player1 : game.player2;
+      game.c4Symbols = {};
+      game.c4Symbols[game.player1] = 'R';
+      game.c4Symbols[game.player2] = 'Y';
+    } else if (challenge.gameType === 'hangman') {
+      var word = HANGMAN_WORDS[Math.floor(Math.random() * HANGMAN_WORDS.length)];
+      game.hangmanWord = word;
+      game.hangmanP1Guesses = [];
+      game.hangmanP2Guesses = [];
+      game.hangmanP1Wrong = 0;
+      game.hangmanP2Wrong = 0;
+      game.hangmanMaxWrong = 6;
+    }
     this.activeGames.set(gameId, game);
     return game;
   }
@@ -386,6 +412,83 @@ export class LiveVisitors {
         this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
         this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
       }
+    } else if (game.type === 'reaction') {
+      if (move !== 'tap') return;
+      const now = Date.now();
+      if (isP1 && game.reactionP1Tap !== null) return;
+      if (isP2 && game.reactionP2Tap !== null) return;
+      const isBeforeGo = now < game.reactionGoAt;
+      if (isP1) { game.reactionP1Tap = now; if (isBeforeGo) game.reactionP1FalseStart = true; }
+      if (isP2) { game.reactionP2Tap = now; if (isBeforeGo) game.reactionP2FalseStart = true; }
+      if (game.reactionP1FalseStart || game.reactionP2FalseStart) {
+        if (game.reactionP1FalseStart && game.reactionP2FalseStart) game.winner = 'draw';
+        else if (game.reactionP1FalseStart) game.winner = game.player2;
+        else game.winner = game.player1;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+        await this.endGame(game, 'completed');
+      } else if (game.reactionP1Tap && game.reactionP2Tap) {
+        game.reactionP1Time = game.reactionP1Tap - game.reactionGoAt;
+        game.reactionP2Time = game.reactionP2Tap - game.reactionGoAt;
+        game.winner = game.reactionP1Time <= game.reactionP2Time ? game.player1 : game.player2;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+        await this.endGame(game, 'completed');
+      } else {
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      }
+    } else if (game.type === 'connect4') {
+      const col = parseInt(move);
+      if (isNaN(col) || col < 0 || col > 6) return;
+      if (game.c4CurrentTurn.toLowerCase() !== playerName.toLowerCase()) return;
+      const column = game.c4Board[col];
+      let row = -1;
+      for (let r = 0; r < 6; r++) { if (column[r] === null) { row = r; break; } }
+      if (row === -1) return;
+      const c4sym = isP1 ? game.c4Symbols[game.player1] : game.c4Symbols[game.player2];
+      column[row] = c4sym;
+      const c4win = this.checkC4Winner(game.c4Board, col, row, c4sym);
+      if (c4win) {
+        game.winner = c4win === 'draw' ? 'draw' : playerName;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+        await this.endGame(game, 'completed');
+      } else {
+        game.c4CurrentTurn = isP1 ? game.player2 : game.player1;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      }
+    } else if (game.type === 'hangman') {
+      const letter = String(move).toUpperCase().charAt(0);
+      if (!/[A-Z]/.test(letter)) return;
+      const guesses = isP1 ? game.hangmanP1Guesses : game.hangmanP2Guesses;
+      if (guesses.includes(letter)) return;
+      guesses.push(letter);
+      if (!game.hangmanWord.includes(letter)) {
+        if (isP1) game.hangmanP1Wrong++;
+        else game.hangmanP2Wrong++;
+      }
+      // Check if this player completed the word
+      const wordLetters = game.hangmanWord.split('').filter(function(v, i, a) { return a.indexOf(v) === i; });
+      const p1Done = wordLetters.every(function(l) { return game.hangmanP1Guesses.includes(l); });
+      const p2Done = wordLetters.every(function(l) { return game.hangmanP2Guesses.includes(l); });
+      const p1Dead = game.hangmanP1Wrong >= game.hangmanMaxWrong;
+      const p2Dead = game.hangmanP2Wrong >= game.hangmanMaxWrong;
+      if (p1Done && !p2Done) game.winner = game.player1;
+      else if (p2Done && !p1Done) game.winner = game.player2;
+      else if (p1Done && p2Done) game.winner = 'draw';
+      else if (p1Dead && p2Dead) game.winner = 'draw';
+      else if (p1Dead) game.winner = game.player2;
+      else if (p2Dead) game.winner = game.player1;
+      if (game.winner) {
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: { ...game } });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: { ...game } });
+        await this.endGame(game, 'completed');
+      } else {
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      }
     }
   }
 
@@ -403,6 +506,19 @@ export class LiveVisitors {
     return board.every(cell => cell !== null) ? 'draw' : null;
   }
 
+  checkC4Winner(board, lastCol, lastRow, sym) {
+    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+    for (const [dc, dr] of dirs) {
+      let count = 1;
+      for (let i = 1; i < 4; i++) { const c = lastCol+dc*i, r = lastRow+dr*i; if (c<0||c>6||r<0||r>5||board[c][r]!==sym) break; count++; }
+      for (let i = 1; i < 4; i++) { const c = lastCol-dc*i, r = lastRow-dr*i; if (c<0||c>6||r<0||r>5||board[c][r]!==sym) break; count++; }
+      if (count >= 4) return sym;
+    }
+    let full = true;
+    for (let c = 0; c < 7; c++) { if (board[c][5] === null) { full = false; break; } }
+    return full ? 'draw' : null;
+  }
+
   async endGame(game, reason) {
     if (game.winner === 'draw') {
       // Refund each player to their chosen source
@@ -416,7 +532,7 @@ export class LiveVisitors {
       if (winSource === 'score') await this.awardWinnings(game.winner, game.wagerCoins * 2);
       else this.sendToPlayer(game.winner, { type: 'walletAward', amount: game.wagerCoins * 2 });
     }
-    const names = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia' };
+    const names = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman' };
     const tn = names[game.type] || game.type;
     if (game.winner === 'draw') {
       await this.addSystemChat('\u2694\uFE0F ' + game.player1 + ' vs ' + game.player2 + ' in ' + tn + ' \u2014 DRAW! Wagers refunded.');
@@ -451,6 +567,27 @@ export class LiveVisitors {
       } else {
         g.triviaP1Answer = game.triviaP1Answer !== null ? 'hidden' : null;
         g.triviaP1Time = undefined;
+      }
+    }
+    if (game.type === 'reaction' && !game.winner) {
+      if (forPlayer.toLowerCase() === game.player1.toLowerCase()) {
+        g.reactionP2Tap = game.reactionP2Tap !== null ? 'hidden' : null;
+      } else {
+        g.reactionP1Tap = game.reactionP1Tap !== null ? 'hidden' : null;
+      }
+    }
+    if (game.type === 'hangman') {
+      // Hide opponent's guesses so they can't piggyback
+      if (forPlayer.toLowerCase() === game.player1.toLowerCase()) {
+        g.hangmanP2Guesses = undefined; g.hangmanP2Wrong = undefined;
+      } else {
+        g.hangmanP1Guesses = undefined; g.hangmanP1Wrong = undefined;
+      }
+      // Send masked word showing only letters the player has guessed
+      if (!game.winner) {
+        var myGuesses = forPlayer.toLowerCase() === game.player1.toLowerCase() ? game.hangmanP1Guesses : game.hangmanP2Guesses;
+        g.hangmanMasked = game.hangmanWord.split('').map(function(ch) { return (myGuesses || []).includes(ch) ? ch : '_'; }).join('');
+        g.hangmanWord = undefined;
       }
     }
     return g;
@@ -1678,7 +1815,7 @@ export class LiveVisitors {
         if (msg.type === "challenge" && info.name && msg.targetName && msg.gameType && typeof msg.wagerCoins === "number") {
           const self = this;
           (async () => {
-            const validTypes = ['rps', 'ttt', 'trivia'];
+            const validTypes = ['rps', 'ttt', 'trivia', 'coinflip', 'reaction', 'connect4', 'hangman'];
             if (!validTypes.includes(msg.gameType)) return;
             const wager = Math.floor(msg.wagerCoins);
             if (wager < 100 || wager > 10000000) return;
@@ -1731,8 +1868,29 @@ export class LiveVisitors {
               return;
             }
             const game = self.createGame(challenge);
-            const typeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia' };
+            const typeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman' };
             await self.addSystemChat('\u2694\uFE0F ' + challenge.challengerName + ' vs ' + challenge.targetName + ' \u2014 ' + (typeNames[challenge.gameType] || challenge.gameType) + ' for ' + challenge.wagerCoins + ' coins!');
+            // Coin flip: resolve instantly (winner already set in createGame)
+            if (challenge.gameType === 'coinflip') {
+              self.sendToPlayer(challenge.challengerName, { type: "gameStarted", game: game });
+              self.sendToPlayer(challenge.targetName, { type: "gameStarted", game: game });
+              setTimeout(async function() { await self.endGame(game, 'completed'); }, 3500);
+              return;
+            }
+            // Reaction race: schedule GO transition + auto-timeout
+            if (challenge.gameType === 'reaction') {
+              setTimeout(function() {
+                if (game.winner) return;
+                // Auto-resolve 5s after GO if nobody taps
+                setTimeout(async function() {
+                  if (game.winner) return;
+                  if (!game.reactionP1Tap && !game.reactionP2Tap) game.winner = 'draw';
+                  else if (!game.reactionP1Tap) game.winner = game.player2;
+                  else if (!game.reactionP2Tap) game.winner = game.player1;
+                  await self.endGame(game, 'completed');
+                }, 5000);
+              }, game.reactionDelay);
+            }
             self.sendToPlayer(challenge.challengerName, { type: "gameStarted", game: self.sanitizeGame(game, challenge.challengerName) });
             self.sendToPlayer(challenge.targetName, { type: "gameStarted", game: self.sanitizeGame(game, challenge.targetName) });
           })();
@@ -2020,6 +2178,21 @@ const TRIVIA_BANK = [
   {q:"How many sides does a dodecagon have?",a:["12","10","8","14"],c:0},
   {q:"What country gifted the Statue of Liberty to the US?",a:["France","England","Germany","Spain"],c:0},
   {q:"What is the largest desert in the world?",a:["Antarctica","Sahara","Arabian","Gobi"],c:0},
+];
+
+// ===== HANGMAN WORD BANK =====
+const HANGMAN_WORDS = [
+  'PIANO','GLOBE','BEACH','FLAME','OCEAN','TIGER','CLOUD','DREAM','MAGIC','DANCE',
+  'STORM','LIGHT','MUSIC','RIVER','GHOST','STONE','QUEEN','TRAIN','SMILE','WORLD',
+  'BRAIN','CANDY','FAIRY','GRAPE','HONEY','LEMON','MELON','NINJA','OLIVE','PEARL',
+  'ROBOT','SNAKE','TOWER','VENUS','WHALE','YACHT','ZEBRA','ANGEL','BLOOM','CROWN',
+  'CRYSTAL','DOLPHIN','ECLIPSE','FIREFLY','GALAXY','HARMONY','ICEBERG','JOURNEY',
+  'KINGDOM','LANTERN','MYSTERY','NEPTUNE','COMPASS','PENGUIN','RAINBOW','SHELTER',
+  'THUNDER','VOLCANO','WARRIOR','PHANTOM','DIAMOND','EMERALD','FORTUNE','GIRAFFE',
+  'HORIZON','IMAGINE','JUSTICE','KNIGHTS','LIBRARY','MONSTER','NOTHING','OUTSIDE',
+  'PANTHER','QUANTUM','SILICON','TROUBLE','UNICORN','VILLAIN','WHISPER','BLANKET',
+  'CAPTAIN','ELEGANT','FEATHER','GENUINE','HABITAT','INSIGHT','JUKEBOX','LOYALTY',
+  'MIRACLE','DESTINY','PARADOX','SAPPHIRE','TROPICAL','MIDNIGHT','CHAMPION','ASTEROID',
 ];
 
 // Durable Object for leaderboard persistence
