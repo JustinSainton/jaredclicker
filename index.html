@@ -5137,7 +5137,9 @@
 
     // ===== PUSH NOTIFICATIONS =====
     var pushPromptShown = false;
-    var pushPromptDismissed = localStorage.getItem('jcPushDismissed') === '1';
+    localStorage.removeItem('jcPushDismissed'); // clear old permanent dismiss
+    var pushDismissedAt = parseInt(localStorage.getItem('jcPushDismissedAt') || '0', 10);
+    var pushPromptDismissed = pushDismissedAt > 0 && (Date.now() - pushDismissedAt) < 24 * 60 * 60 * 1000; // re-ask after 24h
     var pushSubscribed = localStorage.getItem('jcPushSubscribed') === '1';
 
     function urlBase64ToUint8Array(base64String) {
@@ -5215,7 +5217,7 @@
 
     document.getElementById('pushLaterBtn').addEventListener('click', function() {
       hidePushPrompt();
-      localStorage.setItem('jcPushDismissed', '1');
+      localStorage.setItem('jcPushDismissedAt', String(Date.now()));
       pushPromptDismissed = true;
     });
 
