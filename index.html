@@ -3059,7 +3059,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '46';
+    var CURRENT_VERSION = '47';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })

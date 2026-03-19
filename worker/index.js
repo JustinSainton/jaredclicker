@@ -1102,9 +1102,12 @@ export class LiveVisitors {
       }
     });
 
+    // Eagerly load epoch so it's cached for the sync message handler
+    this.loadScoreEpoch();
+
     this.broadcast();
 
-    server.addEventListener("message", async (event) => {
+    server.addEventListener("message", (event) => {
       try {
         const msg = JSON.parse(event.data);
         const info = this.connections.get(server);
@@ -1146,8 +1149,9 @@ export class LiveVisitors {
           info.name = String(msg.name).slice(0, 20);
 
           // Check epoch BEFORE accepting the score into memory
+          // Use cached epoch (loaded by broadcast on connection open) to avoid async
           var clientEpoch = typeof msg.scoreEpoch === "number" ? msg.scoreEpoch : undefined;
-          var svrEpoch = await this.loadScoreEpoch();
+          var svrEpoch = this.scoreEpoch || 0;
           if (svrEpoch > 0 && (typeof clientEpoch !== "number" || clientEpoch < svrEpoch)) {
             // Stale client — zero their in-memory score so broadcast doesn't show it
             info.score = 0;
@@ -1165,6 +1169,7 @@ export class LiveVisitors {
             coinsPerSecond: Math.floor(msg.coinsPerSecond || 0),
           };
           this.saveScore(info.name, info.score, info.stats, clientEpoch);
+          this.broadcast();
           // Save full game state for cross-device sync if authenticated
           if (msg.authToken && msg.gameState) {
             this.findAccountByToken(msg.authToken).then(found => {
@@ -2922,7 +2927,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "46" }), {
+      return corsResponse(JSON.stringify({ version: "47" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
