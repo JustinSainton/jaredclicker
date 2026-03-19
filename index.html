@@ -3938,8 +3938,14 @@
             window._equippedSkins = data.equippedSkins;
           }
 
-          // Refresh battle section with latest player data
-          if (currentTab === 'battle' && typeof renderBattleSection === 'function') renderBattleSection();
+          // Refresh battle section only when online player list changes
+          if (currentTab === 'battle' && typeof renderBattleSection === 'function') {
+            var newPlayerKey = (data.players || []).filter(function(p) { return p.hasName; }).map(function(p) { return p.name; }).sort().join(',');
+            if (newPlayerKey !== _lastBattlePlayerKey) {
+              _lastBattlePlayerKey = newPlayerKey;
+              renderBattleSection();
+            }
+          }
 
           // Check server-side Luke hidden status
           if (data.lukeHidden && playerName) {
@@ -7524,6 +7530,7 @@
     var battleSelectedPlayer = null;
     var battleGameType = 'rps';
     var battleWagerSource = 'score';
+    var _lastBattlePlayerKey = '';
 
     function renderBattleSection() {
       var battleContent = document.getElementById('battleContent');
