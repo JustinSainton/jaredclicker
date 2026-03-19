@@ -12,6 +12,7 @@ export class LiveVisitors {
     this.photoNames = null; // lazy-loaded: { [photoKey]: displayName }
     this.accounts = null; // lazy-loaded: { [name_lower]: { displayName, pinHash, tokens, createdAt } }
     this.skinData = null; // lazy-loaded: { owned: { [player]: [skinIds] }, custom: { [skinId]: metadata }, equipped: { [player]: skinId } }
+    this.lukeHidden = null; // lazy-loaded: { [playerNameLower]: expiresAt }
     this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
     this.activeGames = new Map();      // gameId → GameState
     this.pendingChallenges = new Map(); // chalId → ChallengeState
@@ -215,6 +216,24 @@ export class LiveVisitors {
 
   async saveAccounts() {
     await this.state.storage.put("accounts", this.accounts);
+  }
+
+  async loadLukeHidden() {
+    if (this.lukeHidden === null) {
+      this.lukeHidden = (await this.state.storage.get("lukeHidden")) || {};
+    }
+    // Prune expired
+    const now = Date.now();
+    let changed = false;
+    for (const key of Object.keys(this.lukeHidden)) {
+      if (this.lukeHidden[key] <= now) { delete this.lukeHidden[key]; changed = true; }
+    }
+    if (changed) await this.state.storage.put("lukeHidden", this.lukeHidden);
+    return this.lukeHidden;
+  }
+
+  async saveLukeHidden() {
+    await this.state.storage.put("lukeHidden", this.lukeHidden);
   }
 
   // ===== BATTLE SYSTEM METHODS =====
@@ -1475,6 +1494,24 @@ export class LiveVisitors {
       return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
     }
 
+    // Hide Luke (server-side tracking)
+    if (url.pathname === "/hide-luke" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const pName = String(body.playerName || "").slice(0, 20);
+        const durationMs = Math.min(body.durationMs || 3600000, 24 * 3600000); // max 24h, default 1h
+        if (!pName) return new Response(JSON.stringify({ error: "playerName required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        const lh = await this.loadLukeHidden();
+        lh[pName.toLowerCase()] = Date.now() + durationMs;
+        await this.saveLukeHidden();
+        // Notify the player
+        this.sendToPlayer(pName, { type: "lukeHiddenUpdate", hidden: true, expiresAt: lh[pName.toLowerCase()] });
+        return new Response(JSON.stringify({ ok: true, expiresAt: lh[pName.toLowerCase()] }), { headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
     // Rematch handler (forwarded from outer handler after payment verification)
     if (url.pathname === "/rematch" && request.method === "POST") {
       try {
@@ -1856,6 +1893,7 @@ export class LiveVisitors {
       credits: credits,
       campaigns: activeCampaigns,
       equippedSkins: equippedSkins,
+      lukeHidden: await this.loadLukeHidden(),
       podiumChanges: podiumChanges.length > 0 ? podiumChanges : undefined,
       scoreEpoch: currentEpoch,
     });
@@ -3670,6 +3708,35 @@ export default {
           status: 500, headers: { "Content-Type": "application/json" },
         });
       }
+    }
+
+    // Hide Luke (player calls after payment, or admin forwards)
+    if (url.pathname === "/hide-luke" && request.method === "POST") {
+      const reqBody = await request.json();
+      const id = env.LIVE_VISITORS.idFromName("global");
+      const obj = env.LIVE_VISITORS.get(id);
+      const res = await obj.fetch(new Request("https://dummy/hide-luke", {
+        method: "POST",
+        body: JSON.stringify(reqBody),
+      }));
+      const body = await res.text();
+      return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Admin: hide luke for a player
+    if (url.pathname === "/admin/hide-luke" && request.method === "POST") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      }
+      const reqBody = await request.json();
+      const id = env.LIVE_VISITORS.idFromName("global");
+      const obj = env.LIVE_VISITORS.get(id);
+      const res = await obj.fetch(new Request("https://dummy/hide-luke", {
+        method: "POST",
+        body: JSON.stringify({ playerName: reqBody.playerName, durationMs: (reqBody.durationMinutes || 60) * 60000 }),
+      }));
+      const body = await res.text();
+      return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
     }
 
     // ===== TAB ICON GENERATION (admin) =====

@@ -3357,7 +3357,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '52';
+    var CURRENT_VERSION = '53';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -3874,6 +3874,16 @@
             saveGame(); updateCounters();
             return;
           }
+          if (data.type === 'lukeHiddenUpdate') {
+            if (data.hidden) {
+              lukeHidden = true;
+              lukeHiddenUntil = data.expiresAt || (Date.now() + 3600000);
+              localStorage.setItem('jcLukeHiddenUntil', String(lukeHiddenUntil));
+              document.getElementById('hideLukeBtn').textContent = 'Luke is hidden!';
+              document.getElementById('hideLukeBtn').disabled = true;
+            }
+            return;
+          }
 
           // Epoch check: if server epoch is newer, this client missed a reset
           if (typeof data.scoreEpoch === 'number') {
@@ -3910,6 +3920,20 @@
           // Track equipped skins from broadcast
           if (data.equippedSkins) {
             window._equippedSkins = data.equippedSkins;
+          }
+
+          // Check server-side Luke hidden status
+          if (data.lukeHidden && playerName) {
+            var lhKey = playerName.toLowerCase();
+            if (data.lukeHidden[lhKey] && data.lukeHidden[lhKey] > Date.now()) {
+              if (!lukeHidden) {
+                lukeHidden = true;
+                lukeHiddenUntil = data.lukeHidden[lhKey];
+                localStorage.setItem('jcLukeHiddenUntil', String(lukeHiddenUntil));
+                document.getElementById('hideLukeBtn').textContent = 'Luke is hidden!';
+                document.getElementById('hideLukeBtn').disabled = true;
+              }
+            }
           }
 
           // Handle podium changes
@@ -4957,10 +4981,17 @@
           payBtn.disabled = false;
           payBtn.textContent = 'Pay $1.99';
         } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
-          // Success! Hide Luke for 1 hour
+          // Success! Hide Luke for 1 hour - save both locally AND server-side
           lukeHidden = true;
           lukeHiddenUntil = Date.now() + 60 * 60 * 1000;
           localStorage.setItem('jcLukeHiddenUntil', String(lukeHiddenUntil));
+          // Persist server-side so it survives page reloads / 3D Secure redirects
+          if (playerName) {
+            fetch(apiBase + '/hide-luke', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playerName: playerName, durationMs: 3600000 })
+            }).catch(function() {});
+          }
           paymentStatus.textContent = 'Luke has been banished for 1 hour!';
           paymentStatus.style.color = '#4ade80';
           payBtn.textContent = 'Done!';
