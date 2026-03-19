@@ -13,6 +13,7 @@ export class LiveVisitors {
     this.accounts = null; // lazy-loaded: { [name_lower]: { displayName, pinHash, tokens, createdAt } }
     this.skinData = null; // lazy-loaded: { owned: { [player]: [skinIds] }, custom: { [skinId]: metadata }, equipped: { [player]: skinId } }
     this.lukeHidden = null; // lazy-loaded: { [playerNameLower]: expiresAt }
+    this.pushSubscriptions = null; // lazy-loaded: { [playerNameLower]: [ { endpoint, keys } ] }
     this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
     this.activeGames = new Map();      // gameId → GameState
     this.pendingChallenges = new Map(); // chalId → ChallengeState
@@ -96,6 +97,7 @@ export class LiveVisitors {
     this.sabotages.push({ targetName, attackerName, expiresAt });
     await this.saveSabotages();
     await this.addSystemChat(attackerName + " slowed down " + targetName + "!");
+    this.sendPushToPlayer(targetName, "Sabotaged by " + attackerName + "!", "Half speed!", "sabotage");
     this.broadcast();
   }
 
@@ -236,6 +238,31 @@ export class LiveVisitors {
     await this.state.storage.put("lukeHidden", this.lukeHidden);
   }
 
+  async loadPushSubscriptions() {
+    if (this.pushSubscriptions === null) {
+      this.pushSubscriptions = (await this.state.storage.get("pushSubscriptions")) || {};
+    }
+    return this.pushSubscriptions;
+  }
+
+  async savePushSubscriptions() {
+    await this.state.storage.put("pushSubscriptions", this.pushSubscriptions);
+  }
+
+  // TODO: Implement full Web Push encryption (RFC 8291) using crypto.subtle.
+  // This requires: VAPID JWT signing with ECDSA P-256, ECDH key exchange with
+  // the subscription's p256dh key, HKDF key derivation, and AES-128-GCM content
+  // encryption. For now this is a stub that logs the notification details.
+  // The VAPID private key would come from env.VAPID_PRIVATE_KEY (Wrangler secret)
+  // and the public key from env.VAPID_PUBLIC_KEY (wrangler.toml var).
+  async sendPushToPlayer(name, title, body, tag, env) {
+    const subs = await this.loadPushSubscriptions();
+    const key = name.toLowerCase();
+    const playerSubs = subs[key];
+    if (!playerSubs || playerSubs.length === 0) return;
+    console.log("Push notification would be sent to " + name + ": " + title + " - " + body + " (tag: " + tag + ", " + playerSubs.length + " subscription(s))");
+  }
+
   // ===== BATTLE SYSTEM METHODS =====
   sendToPlayer(name, data) {
     const msg = typeof data === 'string' ? data : JSON.stringify(data);
@@ -328,6 +355,19 @@ export class LiveVisitors {
       game.hangmanP1Wrong = 0;
       game.hangmanP2Wrong = 0;
       game.hangmanMaxWrong = 6;
+    } else if (challenge.gameType === 'battleship') {
+      // 8x8 grids (simplified). Each player places 5 ships then fires shots.
+      // Ships: sizes 5,4,3,3,2. Auto-placed randomly by server.
+      game.bsSize = 8;
+      game.bsShips = { p1: this.randomShipPlacement(8), p2: this.randomShipPlacement(8) };
+      game.bsShots = { p1: [], p2: [] }; // [{x,y,hit}]
+      game.bsCurrentTurn = Math.random() < 0.5 ? game.player1 : game.player2;
+      game.bsSunk = { p1: 0, p2: 0 }; // count of sunk ships
+      game.bsTotalShips = 5;
+      // Spectator support
+      game.spectators = [];
+      game.spectatorChat = [];
+      game.spectatorBets = []; // {name, betOn, amount}
     }
     this.activeGames.set(gameId, game);
     return game;
@@ -489,6 +529,39 @@ export class LiveVisitors {
         this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
         this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
       }
+    } else if (game.type === 'battleship') {
+      if (game.bsCurrentTurn.toLowerCase() !== playerName.toLowerCase()) return;
+      const coords = String(move).split(',');
+      const x = parseInt(coords[0]), y = parseInt(coords[1]);
+      if (isNaN(x) || isNaN(y) || x < 0 || x >= game.bsSize || y < 0 || y >= game.bsSize) return;
+      const myShots = isP1 ? game.bsShots.p1 : game.bsShots.p2;
+      if (myShots.some(function(s) { return s.x === x && s.y === y; })) return; // already shot there
+      const enemyShips = isP1 ? game.bsShips.p2 : game.bsShips.p1;
+      const result = this.checkBsHit(enemyShips, x, y);
+      myShots.push({ x, y, hit: result.hit });
+      // Check if ship sunk
+      let sunkCount = 0;
+      for (const ship of enemyShips) {
+        if (this.checkBsShipSunk(ship, myShots)) sunkCount++;
+      }
+      if (isP1) game.bsSunk.p1 = sunkCount;
+      else game.bsSunk.p2 = sunkCount;
+      // Check win (all enemy ships sunk)
+      if (sunkCount >= game.bsTotalShips) {
+        game.winner = playerName;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+        // Notify spectators
+        this.broadcastToSpectators(game);
+        await this.endGame(game, 'completed');
+        // Resolve spectator bets
+        await this.resolveSpectatorBets(game);
+      } else {
+        game.bsCurrentTurn = isP1 ? game.player2 : game.player1;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+        this.broadcastToSpectators(game);
+      }
     }
   }
 
@@ -519,6 +592,119 @@ export class LiveVisitors {
     return full ? 'draw' : null;
   }
 
+  randomShipPlacement(size) {
+    const ships = [5, 4, 3, 3, 2];
+    const grid = [];
+    for (let i = 0; i < size; i++) { grid.push([]); for (let j = 0; j < size; j++) grid[i].push(false); }
+    const placed = [];
+    for (const len of ships) {
+      let attempts = 0;
+      while (attempts < 100) {
+        attempts++;
+        const horiz = Math.random() < 0.5;
+        const x = Math.floor(Math.random() * (horiz ? size - len + 1 : size));
+        const y = Math.floor(Math.random() * (horiz ? size : size - len + 1));
+        let ok = true;
+        const cells = [];
+        for (let i = 0; i < len; i++) {
+          const cx = horiz ? x + i : x;
+          const cy = horiz ? y : y + i;
+          if (grid[cx][cy]) { ok = false; break; }
+          cells.push({ x: cx, y: cy });
+        }
+        if (ok) {
+          for (const c of cells) grid[c.x][c.y] = true;
+          placed.push(cells);
+          break;
+        }
+      }
+    }
+    return placed; // array of ships, each ship is array of {x,y}
+  }
+
+  checkBsHit(ships, x, y) {
+    for (let si = 0; si < ships.length; si++) {
+      for (const cell of ships[si]) {
+        if (cell.x === x && cell.y === y) return { hit: true, shipIndex: si };
+      }
+    }
+    return { hit: false };
+  }
+
+  checkBsShipSunk(ship, shots) {
+    return ship.every(function(cell) {
+      return shots.some(function(s) { return s.x === cell.x && s.y === cell.y && s.hit; });
+    });
+  }
+
+  // ===== SPECTATOR SYSTEM =====
+  broadcastToSpectators(game) {
+    if (!game.spectators || game.spectators.length === 0) return;
+    const spectatorView = this.sanitizeGameForSpectator(game);
+    const msg = JSON.stringify({ type: "spectatorUpdate", game: spectatorView });
+    for (const specName of game.spectators) {
+      this.sendToPlayer(specName, { type: "spectatorUpdate", game: spectatorView });
+    }
+  }
+
+  sanitizeGameForSpectator(game) {
+    const g = { ...game };
+    // Hide both players' ship positions in battleship
+    if (game.type === 'battleship') {
+      g.bsShips = undefined;
+      // Show shots and sunk counts only
+    }
+    // Hide RPS moves until revealed
+    if (game.type === 'rps' && game.rpsRound) {
+      g.rpsRound = { p1Move: game.rpsRound.p1Move ? 'hidden' : null, p2Move: game.rpsRound.p2Move ? 'hidden' : null };
+    }
+    // Hide hangman guesses
+    if (game.type === 'hangman' && !game.winner) {
+      g.hangmanWord = (game.hangmanWord || '').length;
+      g.hangmanP1Guesses = undefined; g.hangmanP2Guesses = undefined;
+    }
+    // Hide trivia answers
+    if (game.type === 'trivia') {
+      g.triviaCorrectIndex = undefined;
+      g.triviaP1Answer = game.triviaP1Answer !== null ? 'hidden' : null;
+      g.triviaP2Answer = game.triviaP2Answer !== null ? 'hidden' : null;
+    }
+    g.spectatorChat = game.spectatorChat || [];
+    return g;
+  }
+
+  async resolveSpectatorBets(game) {
+    if (!game.spectatorBets || game.spectatorBets.length === 0) return;
+    if (!game.winner || game.winner === 'draw') {
+      // Refund all bets
+      for (const bet of game.spectatorBets) {
+        await this.awardWinnings(bet.name, bet.amount);
+      }
+      return;
+    }
+    // Separate winners and losers
+    const winners = game.spectatorBets.filter(function(b) { return b.betOn.toLowerCase() === game.winner.toLowerCase(); });
+    const losers = game.spectatorBets.filter(function(b) { return b.betOn.toLowerCase() !== game.winner.toLowerCase(); });
+    const totalPool = game.spectatorBets.reduce(function(s, b) { return s + b.amount; }, 0);
+    const winnerPool = winners.reduce(function(s, b) { return s + b.amount; }, 0);
+    if (winnerPool === 0) {
+      // No correct bets — refund everyone
+      for (const bet of game.spectatorBets) {
+        await this.awardWinnings(bet.name, bet.amount);
+      }
+      return;
+    }
+    // Distribute total pool proportionally to winners
+    for (const bet of winners) {
+      const payout = Math.floor(totalPool * (bet.amount / winnerPool));
+      if (payout > 0) await this.awardWinnings(bet.name, payout);
+      this.sendToPlayer(bet.name, { type: "spectatorBetResult", won: true, payout: payout, gameId: game.id });
+    }
+    for (const bet of losers) {
+      this.sendToPlayer(bet.name, { type: "spectatorBetResult", won: false, payout: 0, gameId: game.id });
+    }
+  }
+
   async endGame(game, reason) {
     if (game.winner === 'draw') {
       // Refund each player to their chosen source
@@ -532,7 +718,7 @@ export class LiveVisitors {
       if (winSource === 'score') await this.awardWinnings(game.winner, game.wagerCoins * 2);
       else this.sendToPlayer(game.winner, { type: 'walletAward', amount: game.wagerCoins * 2 });
     }
-    const names = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman' };
+    const names = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
     const tn = names[game.type] || game.type;
     if (game.winner === 'draw') {
       await this.addSystemChat('\u2694\uFE0F ' + game.player1 + ' vs ' + game.player2 + ' in ' + tn + ' \u2014 DRAW! Wagers refunded.');
@@ -544,6 +730,11 @@ export class LiveVisitors {
     }
     this.sendToPlayer(game.player1, { type: "gameEnded", game: game, reason });
     this.sendToPlayer(game.player2, { type: "gameEnded", game: game, reason });
+    // Push notify the loser
+    if (game.winner && game.winner !== 'draw') {
+      const loser = game.winner === game.player1 ? game.player2 : game.player1;
+      this.sendPushToPlayer(loser, "Lost to " + game.winner + "!", "-" + game.wagerCoins + " coins", "game-result");
+    }
     const self = this;
     setTimeout(() => { self.activeGames.delete(game.id); }, 60000);
     this.scheduleBroadcast();
@@ -567,6 +758,14 @@ export class LiveVisitors {
       } else {
         g.triviaP1Answer = game.triviaP1Answer !== null ? 'hidden' : null;
         g.triviaP1Time = undefined;
+      }
+    }
+    if (game.type === 'battleship') {
+      // Hide opponent's ship positions, show only their shots against you
+      if (forPlayer.toLowerCase() === game.player1.toLowerCase()) {
+        g.bsShips = { p1: game.bsShips.p1, p2: undefined }; // see own ships only
+      } else {
+        g.bsShips = { p1: undefined, p2: game.bsShips.p2 };
       }
     }
     if (game.type === 'reaction' && !game.winner) {
@@ -966,6 +1165,7 @@ export class LiveVisitors {
       for (var [ws] of this.connections) {
         try { ws.send(cutEventData); ws.send(correctionMsg); } catch(e) { this.connections.delete(ws); }
       }
+      this.sendPushToPlayer(targetName, attackerName + " cut your coins by " + percentage + "%!", "You lost " + removed.toLocaleString() + " coins!", "coincut");
       this.broadcast();
       return new Response(JSON.stringify({ ok: true, removed, newScore }), {
         headers: { "Content-Type": "application/json" },
@@ -1691,6 +1891,46 @@ export class LiveVisitors {
       }
     }
 
+    // Push: subscribe
+    if (url.pathname === "/push/subscribe" && request.method === "POST") {
+      const body = await request.json();
+      const playerName = String(body.playerName || "").slice(0, 20);
+      const subscription = body.subscription;
+      if (!playerName || !subscription || !subscription.endpoint) {
+        return new Response(JSON.stringify({ error: "playerName and subscription required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const subs = await this.loadPushSubscriptions();
+      const key = playerName.toLowerCase();
+      if (!subs[key]) subs[key] = [];
+      // Deduplicate by endpoint
+      subs[key] = subs[key].filter(function(s) { return s.endpoint !== subscription.endpoint; });
+      subs[key].push(subscription);
+      // Keep max 5 subscriptions per player (multiple devices)
+      if (subs[key].length > 5) subs[key] = subs[key].slice(-5);
+      this.pushSubscriptions = subs;
+      await this.savePushSubscriptions();
+      return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+    }
+
+    // Push: unsubscribe
+    if (url.pathname === "/push/unsubscribe" && request.method === "POST") {
+      const body = await request.json();
+      const playerName = String(body.playerName || "").slice(0, 20);
+      const endpoint = String(body.endpoint || "");
+      if (!playerName || !endpoint) {
+        return new Response(JSON.stringify({ error: "playerName and endpoint required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const subs = await this.loadPushSubscriptions();
+      const key = playerName.toLowerCase();
+      if (subs[key]) {
+        subs[key] = subs[key].filter(function(s) { return s.endpoint !== endpoint; });
+        if (subs[key].length === 0) delete subs[key];
+        this.pushSubscriptions = subs;
+        await this.savePushSubscriptions();
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+    }
+
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected WebSocket", { status: 426 });
     }
@@ -1815,7 +2055,7 @@ export class LiveVisitors {
         if (msg.type === "challenge" && info.name && msg.targetName && msg.gameType && typeof msg.wagerCoins === "number") {
           const self = this;
           (async () => {
-            const validTypes = ['rps', 'ttt', 'trivia', 'coinflip', 'reaction', 'connect4', 'hangman'];
+            const validTypes = ['rps', 'ttt', 'trivia', 'coinflip', 'reaction', 'connect4', 'hangman', 'battleship'];
             if (!validTypes.includes(msg.gameType)) return;
             const wager = Math.floor(msg.wagerCoins);
             if (wager < 100 || wager > 10000000) return;
@@ -1841,6 +2081,8 @@ export class LiveVisitors {
             }, 60000);
             self.sendToPlayer(msg.targetName, { type: "challengeReceived", challenge });
             self.sendToPlayer(info.name, { type: "challengeSent", challenge });
+            var typeLabel = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman' };
+            self.sendPushToPlayer(msg.targetName, "Battle from " + info.name + "!", (typeLabel[msg.gameType] || msg.gameType) + " for " + wager + " coins", "challenge");
           })();
           return;
         }
@@ -1868,7 +2110,7 @@ export class LiveVisitors {
               return;
             }
             const game = self.createGame(challenge);
-            const typeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman' };
+            const typeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
             await self.addSystemChat('\u2694\uFE0F ' + challenge.challengerName + ' vs ' + challenge.targetName + ' \u2014 ' + (typeNames[challenge.gameType] || challenge.gameType) + ' for ' + challenge.wagerCoins + ' coins!');
             // Coin flip: resolve instantly (winner already set in createGame)
             if (challenge.gameType === 'coinflip') {
@@ -1903,6 +2145,57 @@ export class LiveVisitors {
           if (info.name.toLowerCase() !== challenge.targetName.toLowerCase()) return;
           this.pendingChallenges.delete(msg.challengeId);
           this.sendToPlayer(challenge.challengerName, { type: "challengeDeclined", challengeId: msg.challengeId });
+          return;
+        }
+
+        if (msg.type === "watchGame" && msg.gameId && info.name) {
+          const wGame = this.activeGames.get(msg.gameId);
+          if (wGame) {
+            if (!wGame.spectators) wGame.spectators = [];
+            if (!wGame.spectators.includes(info.name)) wGame.spectators.push(info.name);
+            this.sendToPlayer(info.name, { type: "spectatorUpdate", game: this.sanitizeGameForSpectator(wGame) });
+          }
+          return;
+        }
+
+        if (msg.type === "spectatorChat" && msg.gameId && info.name && msg.message) {
+          const scGame = this.activeGames.get(msg.gameId);
+          if (scGame) {
+            if (!scGame.spectatorChat) scGame.spectatorChat = [];
+            var scMsg = { name: info.name, message: String(msg.message).slice(0, 100), timestamp: Date.now() };
+            scGame.spectatorChat.push(scMsg);
+            if (scGame.spectatorChat.length > 50) scGame.spectatorChat = scGame.spectatorChat.slice(-50);
+            // Broadcast to all spectators + players
+            var chatData = { type: "spectatorChatMsg", gameId: msg.gameId, chat: scMsg };
+            this.sendToPlayer(scGame.player1, chatData);
+            this.sendToPlayer(scGame.player2, chatData);
+            for (var si = 0; si < (scGame.spectators || []).length; si++) {
+              this.sendToPlayer(scGame.spectators[si], chatData);
+            }
+          }
+          return;
+        }
+
+        if (msg.type === "spectatorBet" && msg.gameId && info.name && typeof msg.amount === "number" && msg.betOn) {
+          const self = this;
+          (async () => {
+            const bGame = self.activeGames.get(msg.gameId);
+            if (!bGame || bGame.winner) return;
+            const betAmount = Math.floor(msg.amount);
+            if (betAmount < 100 || betAmount > 1000000) return;
+            // Can't bet on your own game
+            if (info.name.toLowerCase() === bGame.player1.toLowerCase() || info.name.toLowerCase() === bGame.player2.toLowerCase()) return;
+            // Already bet?
+            if (!bGame.spectatorBets) bGame.spectatorBets = [];
+            if (bGame.spectatorBets.some(function(b) { return b.name.toLowerCase() === info.name.toLowerCase(); })) return;
+            // Deduct from score
+            const ok = await self.deductWager(info.name, betAmount);
+            if (!ok) return;
+            bGame.spectatorBets.push({ name: info.name, betOn: msg.betOn, amount: betAmount });
+            self.sendToPlayer(info.name, { type: "spectatorBetPlaced", gameId: msg.gameId, betOn: msg.betOn, amount: betAmount });
+            // Announce to spectators
+            self.broadcastToSpectators(bGame);
+          })();
           return;
         }
 
@@ -2062,6 +2355,9 @@ export class LiveVisitors {
       campaigns: activeCampaigns,
       equippedSkins: equippedSkins,
       lukeHidden: await this.loadLukeHidden(),
+      activeGames: Array.from(this.activeGames.values()).filter(function(g) { return !g.winner; }).map(function(g) {
+        return { id: g.id, type: g.type, player1: g.player1, player2: g.player2, wagerCoins: g.wagerCoins, spectatorCount: (g.spectators || []).length, betPool: (g.spectatorBets || []).reduce(function(s,b) { return s+b.amount; }, 0) };
+      }),
       podiumChanges: podiumChanges.length > 0 ? podiumChanges : undefined,
       scoreEpoch: currentEpoch,
     });
@@ -3922,6 +4218,23 @@ export default {
       return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
     }
 
+    // ===== GAME MONETIZATION =====
+    // Double or Nothing: after losing, pay $0.99 to replay with 2x wager
+    if (url.pathname === "/create-double-intent" && request.method === "POST") {
+      try {
+        const stripeRes = await fetch("https://api.stripe.com/v1/payment_intents", {
+          method: "POST",
+          headers: { Authorization: "Basic " + btoa(env.STRIPE_SECRET_KEY + ":"), "Content-Type": "application/x-www-form-urlencoded" },
+          body: "amount=99&currency=usd&description=" + encodeURIComponent("Double or Nothing") + "&metadata[type]=double_or_nothing",
+        });
+        const intent = await stripeRes.json();
+        if (intent.error) return corsResponse(JSON.stringify({ error: intent.error.message }), { status: 400, headers: { "Content-Type": "application/json" } });
+        return corsResponse(JSON.stringify({ clientSecret: intent.client_secret }), { headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
     // ===== TAB ICON GENERATION (admin) =====
     if (url.pathname === "/generate-tab-icons" && request.method === "POST") {
       if (!(await verifyAdmin(request, env))) {
@@ -3996,6 +4309,39 @@ export default {
         const res = await lvObj.fetch(new Request("https://dummy/rematch", {
           method: "POST",
           body: JSON.stringify({ gameId, paymentIntentId }),
+        }));
+        const body = await res.text();
+        return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
+    // Push notification subscribe/unsubscribe (forward to DO)
+    if (url.pathname === "/push/subscribe" && request.method === "POST") {
+      try {
+        const reqBody = await request.json();
+        const id = env.LIVE_VISITORS.idFromName("global");
+        const obj = env.LIVE_VISITORS.get(id);
+        const res = await obj.fetch(new Request("https://dummy/push/subscribe", {
+          method: "POST",
+          body: JSON.stringify(reqBody),
+        }));
+        const body = await res.text();
+        return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
+    if (url.pathname === "/push/unsubscribe" && request.method === "POST") {
+      try {
+        const reqBody = await request.json();
+        const id = env.LIVE_VISITORS.idFromName("global");
+        const obj = env.LIVE_VISITORS.get(id);
+        const res = await obj.fetch(new Request("https://dummy/push/unsubscribe", {
+          method: "POST",
+          body: JSON.stringify(reqBody),
         }));
         const body = await res.text();
         return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });

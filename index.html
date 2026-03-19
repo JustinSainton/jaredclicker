@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jared Clicker - Click the Coin!</title>
   <link rel="icon" type="image/png" href="jared-coin.png">
+  <meta name="vapid-public-key" content="VAPID_PUBLIC_KEY_HERE">
   <script src="https://js.stripe.com/v3/"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Press+Start+2P&display=swap');
@@ -2322,6 +2323,100 @@
     .hangman-key.wrong { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #ef4444; opacity: 0.5; }
     .hangman-key:disabled { cursor: default; }
     .hangman-lives { color: #ef4444; font-size: 24px; margin-bottom: 12px; text-align: center; }
+
+    /* Push notification permission prompt */
+    .push-permission-prompt {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: linear-gradient(135deg, #2a2a4a, #1a1a3a);
+      border: 2px solid #ffd700;
+      border-radius: 14px;
+      padding: 16px 24px;
+      z-index: 400;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+      max-width: 340px;
+      width: 90vw;
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      font-family: 'Fredoka One', cursive;
+    }
+    .push-permission-prompt.show {
+      transform: translateX(-50%) translateY(0);
+    }
+    .push-permission-prompt .push-title {
+      font-size: 18px;
+      color: #ffd700;
+      margin-bottom: 6px;
+      text-shadow: 1px 1px 0 #b8860b;
+    }
+    .push-permission-prompt .push-desc {
+      font-size: 13px;
+      color: #daa520;
+      margin-bottom: 14px;
+    }
+    .push-permission-prompt .push-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .push-permission-prompt .push-btn {
+      padding: 8px 20px;
+      border-radius: 10px;
+      font-family: 'Fredoka One', cursive;
+      font-size: 14px;
+      cursor: pointer;
+      border: 2px solid #ffd700;
+      transition: all 0.2s;
+    }
+    .push-permission-prompt .push-btn-enable {
+      background: rgba(255, 215, 0, 0.25);
+      color: #ffd700;
+    }
+    .push-permission-prompt .push-btn-enable:hover {
+      background: rgba(255, 215, 0, 0.45);
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    }
+    .push-permission-prompt .push-btn-later {
+      background: transparent;
+      color: #888;
+      border-color: #555;
+    }
+    .push-permission-prompt .push-btn-later:hover {
+      border-color: #888;
+      color: #aaa;
+    }
+
+    /* Battleship */
+    .bs-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; max-width: 320px; width: 100%; margin: 0 auto; }
+    .bs-cell {
+      aspect-ratio: 1; border-radius: 4px; background: rgba(30,58,138,0.6);
+      border: 1px solid rgba(59,130,246,0.3); display: flex; align-items: center;
+      justify-content: center; font-size: 14px; transition: background 0.2s;
+    }
+    .bs-cell.bs-target { cursor: pointer; }
+    .bs-cell.bs-target:hover { background: rgba(59,130,246,0.4); border-color: #60a5fa; }
+    .bs-cell.bs-hit { background: rgba(239,68,68,0.4); border-color: #ef4444; }
+    .bs-cell.bs-miss { background: rgba(100,100,100,0.3); color: #666; }
+    .bs-grid-small { max-width: 200px; }
+    .bs-cell-small {
+      aspect-ratio: 1; border-radius: 3px; background: rgba(30,58,138,0.3);
+      border: 1px solid rgba(59,130,246,0.2);
+    }
+    .bs-ship-small { background: rgba(59,130,246,0.5); border-color: #3b82f6; }
+    .bs-hit-small { background: rgba(239,68,68,0.5); border-color: #ef4444; }
+    .bs-miss-small { background: rgba(100,100,100,0.3); }
+
+    /* Spectator */
+    .spectator-section { margin-top: 16px; border-top: 1px solid rgba(168,85,247,0.3); padding-top: 12px; }
+    .spectator-game-card {
+      background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3);
+      border-radius: 10px; padding: 12px; margin-bottom: 8px; cursor: pointer;
+      transition: background 0.2s; font-family: 'Fredoka One', cursive;
+    }
+    .spectator-game-card:hover { background: rgba(168,85,247,0.2); }
+    .spectator-badge { color: #a855f7; font-size: 10px; }
   </style>
 </head>
 <body class="has-banner">
@@ -2674,6 +2769,16 @@
     <div class="challenge-popup-actions">
       <button class="challenge-accept" id="challengeAcceptBtn" style="padding:10px 24px;font-size:16px;">Accept</button>
       <button class="challenge-decline" id="challengeDeclineBtn" style="padding:10px 24px;font-size:16px;">Decline</button>
+    </div>
+  </div>
+
+  <!-- Push notification permission prompt -->
+  <div class="push-permission-prompt" id="pushPermissionPrompt">
+    <div class="push-title">Get Challenge Alerts?</div>
+    <div class="push-desc">Get notified when someone battles or sabotages you</div>
+    <div class="push-buttons">
+      <button class="push-btn push-btn-enable" id="pushEnableBtn">Enable</button>
+      <button class="push-btn push-btn-later" id="pushLaterBtn">Maybe Later</button>
     </div>
   </div>
 
@@ -3982,6 +4087,17 @@
             _lastBattlePlayerKey = ''; // force battle section refresh on next view
             return;
           }
+          if (data.type === 'spectatorUpdate') {
+            if (data.game && data.game.id === watchingGameId) renderSpectatorView(data.game);
+            return;
+          }
+          if (data.type === 'spectatorChatMsg') { return; /* handled in spectator view */ }
+          if (data.type === 'spectatorBetPlaced') { return; }
+          if (data.type === 'spectatorBetResult') {
+            if (data.won) alert('You won your spectator bet! +' + formatNumber(data.payout) + ' coins!');
+            else alert('You lost your spectator bet.');
+            return;
+          }
           if (data.type === 'walletDeduct') {
             state.coins = Math.max(0, state.coins - data.amount);
             saveGame(); updateCounters();
@@ -5041,6 +5157,114 @@
     });
 
     // Score updates happen via WebSocket every 5 seconds (see above)
+
+    // ===== PUSH NOTIFICATIONS =====
+    var pushPromptShown = false;
+    var pushPromptDismissed = localStorage.getItem('jcPushDismissed') === '1';
+    var pushSubscribed = localStorage.getItem('jcPushSubscribed') === '1';
+
+    function urlBase64ToUint8Array(base64String) {
+      var padding = '='.repeat((4 - base64String.length % 4) % 4);
+      var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      var rawData = atob(base64);
+      var outputArray = new Uint8Array(rawData.length);
+      for (var i = 0; i < rawData.length; i++) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      navigator.serviceWorker.register('/service-worker.js').catch(function(err) {
+        console.log('SW registration failed:', err);
+      });
+    }
+
+    function showPushPrompt() {
+      if (pushPromptShown || pushPromptDismissed || pushSubscribed) return;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      if (Notification.permission === 'granted') {
+        // Already granted, just subscribe silently
+        subscribeToPush();
+        return;
+      }
+      if (Notification.permission === 'denied') return;
+      pushPromptShown = true;
+      var prompt = document.getElementById('pushPermissionPrompt');
+      setTimeout(function() { prompt.classList.add('show'); }, 100);
+    }
+
+    function hidePushPrompt() {
+      var prompt = document.getElementById('pushPermissionPrompt');
+      prompt.classList.remove('show');
+    }
+
+    function subscribeToPush() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      var vapidKey = document.querySelector('meta[name="vapid-public-key"]');
+      if (!vapidKey || !vapidKey.content || vapidKey.content === 'VAPID_PUBLIC_KEY_HERE') return;
+      navigator.serviceWorker.ready.then(function(registration) {
+        return registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey.content)
+        });
+      }).then(function(subscription) {
+        // Send subscription to server
+        return fetch(apiBase + '/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            playerName: playerName,
+            subscription: subscription.toJSON()
+          })
+        });
+      }).then(function() {
+        localStorage.setItem('jcPushSubscribed', '1');
+        pushSubscribed = true;
+      }).catch(function(err) {
+        console.log('Push subscribe failed:', err);
+      });
+    }
+
+    document.getElementById('pushEnableBtn').addEventListener('click', function() {
+      hidePushPrompt();
+      Notification.requestPermission().then(function(result) {
+        if (result === 'granted') {
+          subscribeToPush();
+        }
+      });
+    });
+
+    document.getElementById('pushLaterBtn').addEventListener('click', function() {
+      hidePushPrompt();
+      localStorage.setItem('jcPushDismissed', '1');
+      pushPromptDismissed = true;
+    });
+
+    // Register service worker when player has a name
+    if (playerName) {
+      registerServiceWorker();
+    }
+
+    // Check push prompt after clicks (hook into handleCoinClick)
+    var _origHandleCoinClick = handleCoinClick;
+    handleCoinClick = function(x, y) {
+      _origHandleCoinClick(x, y);
+      if (!pushPromptShown && !pushPromptDismissed && !pushSubscribed && playerName && state.totalClicks === 5) {
+        registerServiceWorker();
+        showPushPrompt();
+      }
+    };
+
+    // Also register SW on name submit
+    var _origSubmitScore = submitScore;
+    submitScore = function(nameValue) {
+      _origSubmitScore(nameValue);
+      if (playerName) {
+        registerServiceWorker();
+      }
+    };
 
     // ===== HIDE LUKE (Stripe) =====
 
@@ -7334,7 +7558,7 @@
     var challengePopupInfoEl = document.getElementById('challengePopupInfo');
     var challengePopupWagerEl = document.getElementById('challengePopupWager');
     var challengePopupTimerEl = document.getElementById('challengePopupTimer');
-    var gameTypeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman' };
+    var gameTypeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia', coinflip: 'Coin Flip', reaction: 'Reaction Race', connect4: 'Connect 4', hangman: 'Hangman', battleship: 'Battleship' };
     var allGameTypes = [
       { type: 'rps', emoji: '\u270A', label: 'RPS', desc: 'Best of 1' },
       { type: 'ttt', emoji: '\u274C', label: 'Tic-Tac-Toe', desc: 'Classic grid' },
@@ -7342,7 +7566,8 @@
       { type: 'coinflip', emoji: '\uD83E\uDE99', label: 'Coin Flip', desc: 'Pure luck' },
       { type: 'reaction', emoji: '\u26A1', label: 'Reaction', desc: 'Fastest tap' },
       { type: 'connect4', emoji: '\uD83D\uDD34', label: 'Connect 4', desc: 'Drop to win' },
-      { type: 'hangman', emoji: '\uD83D\uDCDD', label: 'Hangman', desc: 'Guess the word' }
+      { type: 'hangman', emoji: '\uD83D\uDCDD', label: 'Hangman', desc: 'Guess the word' },
+      { type: 'battleship', emoji: '\uD83D\uDEA2', label: 'Battleship', desc: 'Sink the fleet' }
     ];
 
     function sendChallenge(targetName, gameType, wagerCoins, wagerSource) {
@@ -7449,6 +7674,7 @@
       else if (game.type === 'reaction') renderReactionGame(game, content);
       else if (game.type === 'connect4') renderConnect4Game(game, content);
       else if (game.type === 'hangman') renderHangmanGame(game, content);
+      else if (game.type === 'battleship') renderBattleshipGame(game, content);
     }
 
     function renderRpsGame(game, container) {
@@ -7725,6 +7951,87 @@
       container.appendChild(keyboard);
     }
 
+    function renderBattleshipGame(game, container) {
+      var isP1 = playerName && playerName.toLowerCase() === game.player1.toLowerCase();
+      var myShips = isP1 ? (game.bsShips && game.bsShips.p1) : (game.bsShips && game.bsShips.p2);
+      var myShots = isP1 ? game.bsShots.p1 : game.bsShots.p2;
+      var enemyShots = isP1 ? game.bsShots.p2 : game.bsShots.p1;
+      var isMyTurn = game.bsCurrentTurn && game.bsCurrentTurn.toLowerCase() === (playerName || '').toLowerCase();
+      var mySunk = isP1 ? game.bsSunk.p1 : game.bsSunk.p2;
+      // Turn indicator
+      var turnDiv = document.createElement('div');
+      turnDiv.style.cssText = 'text-align:center;color:#daa520;margin-bottom:8px;font-size:14px;font-family:Fredoka One,cursive;';
+      turnDiv.textContent = isMyTurn ? 'Your turn! Fire a shot!' : game.bsCurrentTurn + "'s turn...";
+      container.appendChild(turnDiv);
+      // Sunk counter
+      var sunkDiv = document.createElement('div');
+      sunkDiv.style.cssText = 'text-align:center;color:#4ade80;font-size:12px;margin-bottom:12px;font-family:Fredoka One,cursive;';
+      sunkDiv.textContent = 'Ships sunk: ' + mySunk + '/' + game.bsTotalShips;
+      container.appendChild(sunkDiv);
+      // Attack grid (where you fire shots)
+      var attackLabel = document.createElement('div');
+      attackLabel.style.cssText = 'color:#ef4444;font-size:11px;margin-bottom:4px;text-align:center;font-family:Fredoka One,cursive;';
+      attackLabel.textContent = 'Enemy Waters';
+      container.appendChild(attackLabel);
+      var attackGrid = document.createElement('div');
+      attackGrid.className = 'bs-grid';
+      for (var ay = game.bsSize - 1; ay >= 0; ay--) {
+        for (var ax = 0; ax < game.bsSize; ax++) {
+          (function(x, y) {
+            var cell = document.createElement('div');
+            cell.className = 'bs-cell';
+            var shot = myShots.find(function(s) { return s.x === x && s.y === y; });
+            if (shot) {
+              cell.classList.add(shot.hit ? 'bs-hit' : 'bs-miss');
+              cell.textContent = shot.hit ? '\uD83D\uDD25' : '\u2022';
+            } else if (isMyTurn) {
+              cell.classList.add('bs-target');
+              cell.addEventListener('click', function() {
+                liveWs.send(JSON.stringify({ type: 'gameMove', gameId: game.id, move: x + ',' + y }));
+              });
+            }
+            attackGrid.appendChild(cell);
+          })(ax, ay);
+        }
+      }
+      container.appendChild(attackGrid);
+      // Defense grid (your ships)
+      var defLabel = document.createElement('div');
+      defLabel.style.cssText = 'color:#3b82f6;font-size:11px;margin:8px 0 4px;text-align:center;font-family:Fredoka One,cursive;';
+      defLabel.textContent = 'Your Fleet';
+      container.appendChild(defLabel);
+      var defGrid = document.createElement('div');
+      defGrid.className = 'bs-grid bs-grid-small';
+      var shipCells = {};
+      if (myShips) {
+        for (var si = 0; si < myShips.length; si++) {
+          for (var sci = 0; sci < myShips[si].length; sci++) {
+            shipCells[myShips[si][sci].x + ',' + myShips[si][sci].y] = true;
+          }
+        }
+      }
+      for (var dy = game.bsSize - 1; dy >= 0; dy--) {
+        for (var dx = 0; dx < game.bsSize; dx++) {
+          var dCell = document.createElement('div');
+          dCell.className = 'bs-cell-small';
+          var hasShip = shipCells[dx + ',' + dy];
+          var enemyShot = enemyShots.find(function(s) { return s.x === dx && s.y === dy; });
+          if (enemyShot && enemyShot.hit) dCell.classList.add('bs-hit-small');
+          else if (enemyShot) dCell.classList.add('bs-miss-small');
+          else if (hasShip) dCell.classList.add('bs-ship-small');
+          defGrid.appendChild(dCell);
+        }
+      }
+      container.appendChild(defGrid);
+      // Spectator count
+      if (game.spectators && game.spectators.length > 0) {
+        var specDiv = document.createElement('div');
+        specDiv.style.cssText = 'text-align:center;color:#a855f7;font-size:11px;margin-top:8px;font-family:Fredoka One,cursive;';
+        specDiv.textContent = '\uD83D\uDC41 ' + game.spectators.length + ' watching';
+        container.appendChild(specDiv);
+      }
+    }
+
     function showGameResult(game) {
       var content = gameOverlayContentEl;
       content.textContent = '';
@@ -7779,8 +8086,120 @@
         rematchBtn.textContent = 'Best 2 of 3 \u2014 $1.99';
         rematchBtn.addEventListener('click', function() { startRematch(game); });
         result.appendChild(rematchBtn);
+        // Double or Nothing ($0.99)
+        var doubleBtn = document.createElement('button');
+        doubleBtn.className = 'game-result-rematch';
+        doubleBtn.style.borderColor = '#ef4444';
+        doubleBtn.style.background = 'linear-gradient(135deg, #991b1b, #dc2626)';
+        doubleBtn.textContent = 'Double or Nothing \u2014 $0.99';
+        doubleBtn.addEventListener('click', function() {
+          fetch(apiBase + '/create-double-intent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d.error) { alert(d.error); return; }
+            // Reuse the payment modal
+            processRematchPayment(d.clientSecret, game.id);
+          });
+        });
+        result.appendChild(doubleBtn);
       }
       content.appendChild(result);
+    }
+
+    // ===== SPECTATOR MODE =====
+    var watchingGameId = null;
+    function watchGame(gameId, p1, p2, gameType, wager) {
+      watchingGameId = gameId;
+      liveWs.send(JSON.stringify({ type: 'watchGame', gameId: gameId }));
+      // Show spectator overlay
+      gameOverlayTitleEl.textContent = '\uD83D\uDC41 Spectating: ' + (gameTypeNames[gameType] || gameType);
+      gameOverlayVsEl.textContent = p1 + ' vs ' + p2;
+      gameOverlayWagerEl.textContent = formatNumber(wager) + ' coins at stake';
+      gameOverlayContentEl.textContent = '';
+      var waitMsg = document.createElement('div');
+      waitMsg.className = 'game-waiting';
+      waitMsg.textContent = 'Loading game...';
+      gameOverlayContentEl.appendChild(waitMsg);
+      gameOverlayEl.classList.add('active');
+    }
+
+    function renderSpectatorView(game) {
+      var content = gameOverlayContentEl;
+      content.textContent = '';
+      // Render appropriate game view (read-only)
+      if (game.type === 'battleship') {
+        var infoDiv = document.createElement('div');
+        infoDiv.style.cssText = 'text-align:center;color:#daa520;font-size:14px;margin-bottom:12px;font-family:Fredoka One,cursive;';
+        infoDiv.textContent = (game.bsCurrentTurn || 'Unknown') + "'s turn \u2022 P1 sunk: " + (game.bsSunk && game.bsSunk.p1 || 0) + ' \u2022 P2 sunk: ' + (game.bsSunk && game.bsSunk.p2 || 0);
+        content.appendChild(infoDiv);
+      } else if (game.type === 'connect4' && game.c4Board) {
+        var turnD = document.createElement('div');
+        turnD.style.cssText = 'text-align:center;color:#daa520;font-size:14px;margin-bottom:12px;font-family:Fredoka One,cursive;';
+        turnD.textContent = (game.c4CurrentTurn || '') + "'s turn";
+        content.appendChild(turnD);
+        var grid = document.createElement('div');
+        grid.className = 'c4-grid';
+        for (var row = 5; row >= 0; row--) {
+          for (var col = 0; col < 7; col++) {
+            var cell = document.createElement('div');
+            cell.className = 'c4-cell';
+            var val = game.c4Board[col][row];
+            if (val === 'R') cell.classList.add('c4-red');
+            else if (val === 'Y') cell.classList.add('c4-yellow');
+            grid.appendChild(cell);
+          }
+        }
+        content.appendChild(grid);
+      } else if (game.type === 'ttt' && game.tttBoard) {
+        var grid2 = document.createElement('div');
+        grid2.className = 'ttt-grid';
+        for (var i = 0; i < 9; i++) {
+          var cell2 = document.createElement('div');
+          cell2.className = 'ttt-cell taken';
+          cell2.textContent = game.tttBoard[i] || '';
+          grid2.appendChild(cell2);
+        }
+        content.appendChild(grid2);
+      } else {
+        var genMsg = document.createElement('div');
+        genMsg.style.cssText = 'text-align:center;color:#daa520;font-size:14px;font-family:Fredoka One,cursive;';
+        genMsg.textContent = 'Game in progress...';
+        content.appendChild(genMsg);
+      }
+      // Bet buttons (if not already bet)
+      var betDiv = document.createElement('div');
+      betDiv.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:16px;';
+      var betP1 = document.createElement('button');
+      betP1.className = 'game-result-btn';
+      betP1.style.cssText += 'font-size:12px;padding:8px 16px;';
+      betP1.textContent = 'Bet on ' + game.player1;
+      betP1.addEventListener('click', function() {
+        var amt = prompt('Bet how many coins on ' + game.player1 + '? (min 100)');
+        if (!amt) return;
+        liveWs.send(JSON.stringify({ type: 'spectatorBet', gameId: game.id, betOn: game.player1, amount: parseInt(amt) }));
+      });
+      betDiv.appendChild(betP1);
+      var betP2 = document.createElement('button');
+      betP2.className = 'game-result-btn';
+      betP2.style.cssText += 'font-size:12px;padding:8px 16px;';
+      betP2.textContent = 'Bet on ' + game.player2;
+      betP2.addEventListener('click', function() {
+        var amt = prompt('Bet how many coins on ' + game.player2 + '? (min 100)');
+        if (!amt) return;
+        liveWs.send(JSON.stringify({ type: 'spectatorBet', gameId: game.id, betOn: game.player2, amount: parseInt(amt) }));
+      });
+      betDiv.appendChild(betP2);
+      content.appendChild(betDiv);
+      // Close button
+      var closeBtn = document.createElement('button');
+      closeBtn.className = 'game-result-btn';
+      closeBtn.style.cssText += 'margin-top:12px;background:rgba(255,255,255,0.1);border-color:#888;color:#aaa;';
+      closeBtn.textContent = 'Stop Watching';
+      closeBtn.addEventListener('click', function() {
+        watchingGameId = null;
+        gameOverlayEl.classList.remove('active');
+      });
+      content.appendChild(closeBtn);
     }
 
     function startRematch(game) {
@@ -8051,6 +8470,42 @@
       chalSection.appendChild(sendBtn);
 
       battleContent.appendChild(chalSection);
+
+      // ===== LIVE GAMES (spectator) =====
+      var liveGames = (lastLiveData && lastLiveData.activeGames) ? lastLiveData.activeGames : [];
+      if (liveGames.length > 0) {
+        var specSection = document.createElement('div');
+        specSection.className = 'spectator-section';
+        var specLabel = document.createElement('div');
+        specLabel.style.cssText = 'color:#a855f7;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:10px;';
+        specLabel.textContent = '\uD83D\uDC41 LIVE GAMES';
+        specSection.appendChild(specLabel);
+        for (var lgi = 0; lgi < liveGames.length; lgi++) {
+          (function(lg) {
+            var card = document.createElement('div');
+            card.className = 'spectator-game-card';
+            var title = document.createElement('div');
+            title.style.cssText = 'color:#ffd700;font-size:14px;margin-bottom:4px;';
+            title.textContent = lg.player1 + ' vs ' + lg.player2;
+            card.appendChild(title);
+            var detail = document.createElement('div');
+            detail.style.cssText = 'color:#daa520;font-size:12px;';
+            detail.textContent = (gameTypeNames[lg.type] || lg.type) + ' \u2014 ' + formatNumber(lg.wagerCoins) + ' coins';
+            card.appendChild(detail);
+            if (lg.spectatorCount > 0 || lg.betPool > 0) {
+              var specInfo = document.createElement('div');
+              specInfo.className = 'spectator-badge';
+              specInfo.textContent = '\uD83D\uDC41 ' + lg.spectatorCount + ' watching' + (lg.betPool > 0 ? ' \u2022 ' + formatNumber(lg.betPool) + ' in bets' : '');
+              card.appendChild(specInfo);
+            }
+            card.addEventListener('click', function() {
+              watchGame(lg.id, lg.player1, lg.player2, lg.type, lg.wagerCoins);
+            });
+            specSection.appendChild(card);
+          })(liveGames[lgi]);
+        }
+        battleContent.appendChild(specSection);
+      }
     }
 
   </script>
