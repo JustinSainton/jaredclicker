@@ -2389,17 +2389,17 @@
     }
 
     /* Battleship */
-    .bs-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; max-width: 320px; width: 100%; margin: 0 auto; }
+    .bs-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; max-width: 280px; width: 100%; margin: 0 auto; padding: 6px; background: rgba(30,58,138,0.3); border-radius: 8px; border: 2px solid rgba(59,130,246,0.3); }
     .bs-cell {
       aspect-ratio: 1; border-radius: 4px; background: rgba(30,58,138,0.6);
       border: 1px solid rgba(59,130,246,0.3); display: flex; align-items: center;
-      justify-content: center; font-size: 14px; transition: background 0.2s;
+      justify-content: center; font-size: 12px; transition: background 0.2s;
     }
     .bs-cell.bs-target { cursor: pointer; }
     .bs-cell.bs-target:hover { background: rgba(59,130,246,0.4); border-color: #60a5fa; }
     .bs-cell.bs-hit { background: rgba(239,68,68,0.4); border-color: #ef4444; }
     .bs-cell.bs-miss { background: rgba(100,100,100,0.3); color: #666; }
-    .bs-grid-small { max-width: 200px; }
+    .bs-grid-small { max-width: 180px; margin-top: 16px; }
     .bs-cell-small {
       aspect-ratio: 1; border-radius: 3px; background: rgba(30,58,138,0.3);
       border: 1px solid rgba(59,130,246,0.2);
@@ -7974,7 +7974,7 @@
       container.appendChild(attackGrid);
       // Defense grid (your ships)
       var defLabel = document.createElement('div');
-      defLabel.style.cssText = 'color:#3b82f6;font-size:11px;margin:8px 0 4px;text-align:center;font-family:Fredoka One,cursive;';
+      defLabel.style.cssText = 'color:#3b82f6;font-size:11px;margin:16px 0 6px;text-align:center;font-family:Fredoka One,cursive;';
       defLabel.textContent = 'Your Fleet';
       container.appendChild(defLabel);
       var defGrid = document.createElement('div');

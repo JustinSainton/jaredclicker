@@ -537,27 +537,27 @@ export class LiveVisitors {
       const x = parseInt(coords[0]), y = parseInt(coords[1]);
       if (isNaN(x) || isNaN(y) || x < 0 || x >= game.bsSize || y < 0 || y >= game.bsSize) return;
       const myShots = isP1 ? game.bsShots.p1 : game.bsShots.p2;
-      if (myShots.some(function(s) { return s.x === x && s.y === y; })) return; // already shot there
+      if (myShots.some(function(s) { return s.x === x && s.y === y; })) return;
       const enemyShips = isP1 ? game.bsShips.p2 : game.bsShips.p1;
-      const result = this.checkBsHit(enemyShips, x, y);
-      myShots.push({ x, y, hit: result.hit });
-      // Check if ship sunk
+      const hitResult = this.checkBsHit(enemyShips, x, y);
+      myShots.push({ x, y, hit: hitResult.hit });
       let sunkCount = 0;
       for (const ship of enemyShips) {
         if (this.checkBsShipSunk(ship, myShots)) sunkCount++;
       }
       if (isP1) game.bsSunk.p1 = sunkCount;
       else game.bsSunk.p2 = sunkCount;
-      // Check win (all enemy ships sunk)
       if (sunkCount >= game.bsTotalShips) {
         game.winner = playerName;
         this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
         this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
-        // Notify spectators
         this.broadcastToSpectators(game);
         await this.endGame(game, 'completed');
       } else {
-        game.bsCurrentTurn = isP1 ? game.player2 : game.player1;
+        // Hit = keep your turn (classic Battleship rules); miss = switch
+        if (!hitResult.hit) {
+          game.bsCurrentTurn = isP1 ? game.player2 : game.player1;
+        }
         this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
         this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
         this.broadcastToSpectators(game);
