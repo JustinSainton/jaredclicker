@@ -188,7 +188,13 @@
 
     .action-cell {
       text-align: center;
-      width: 80px;
+      width: 160px;
+    }
+
+    .action-cell .btn-group {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
     }
 
     .delete-btn {
@@ -202,6 +208,19 @@
     .delete-btn:hover {
       background: linear-gradient(135deg, #cc0000, #ff4444);
       box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
+    }
+
+    .reset-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      background: linear-gradient(135deg, #b45309, #d97706);
+      border-color: #fbbf24;
+      color: #fff;
+    }
+
+    .reset-btn:hover {
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
     }
 
     .empty-state {
@@ -414,6 +433,19 @@
 
       var actionTd = document.createElement('td');
       actionTd.className = 'action-cell';
+      var btnGroup = document.createElement('div');
+      btnGroup.className = 'btn-group';
+
+      var resetBtn = document.createElement('button');
+      resetBtn.className = 'reset-btn';
+      resetBtn.textContent = 'Reset';
+      resetBtn.setAttribute('data-name', scores[i].name);
+      resetBtn.addEventListener('click', function() {
+        var name = this.getAttribute('data-name');
+        resetPlayer(name);
+      });
+      btnGroup.appendChild(resetBtn);
+
       var btn = document.createElement('button');
       btn.className = 'delete-btn';
       btn.textContent = 'Delete';
@@ -422,11 +454,36 @@
         var name = this.getAttribute('data-name');
         deleteScore(name);
       });
-      actionTd.appendChild(btn);
+      btnGroup.appendChild(btn);
+
+      actionTd.appendChild(btnGroup);
       row.appendChild(actionTd);
 
       tbody.appendChild(row);
     }
+  }
+
+  function resetPlayer(name) {
+    if (!confirm('Reset "' + name + '" to 0 coins? This wipes their score, upgrades, and all progress. Their browser will be force-wiped too.')) return;
+
+    fetch(API_BASE + '/admin/reset-player', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + adminPassword,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ playerName: name })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed to reset');
+      return res.json();
+    })
+    .then(function() {
+      loadScores();
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+    });
   }
 
   function deleteScore(name) {
