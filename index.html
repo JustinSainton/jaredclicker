@@ -2094,8 +2094,7 @@
       body.tab-nav-active .achievement-toast { bottom: 80px; }
       body.tab-nav-active .achievement-toast.show { transform: translateX(-50%) translateY(0); }
       body.tab-nav-active .sabotage-banner { bottom: 70px; }
-      body.tab-nav-active .live-visitors { display: none !important; }
-      body.tab-nav-active .live-visitors.tab-visible { display: flex !important; bottom: 80px; }
+      body.tab-nav-active .live-visitors { bottom: 80px; }
       /* Push game-container below fixed coin counter bar on all tabs */
       body.tab-nav-active .game-container { padding-top: 55px; }
       /* On Click tab, header already provides spacing — reduce the extra gap */
@@ -2218,15 +2217,16 @@
       padding: 8px 14px; border-radius: 10px; border: 2px solid #555;
       background: rgba(255,255,255,0.05); color: #aaa;
       font-size: 20px; cursor: pointer; transition: all 0.2s;
+      font-family: 'Fredoka One', cursive;
     }
     .challenge-type-btn.selected { border-color: #ffd700; background: rgba(255,215,0,0.15); color: #ffd700; }
-    .challenge-wager-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .challenge-wager-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .challenge-wager-label { color: #daa520; font-size: 13px; font-family: 'Fredoka One', cursive; }
     .challenge-wager-input {
-      flex: 1; padding: 8px 12px; border-radius: 8px; border: 2px solid #ffd700;
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid #ffd700;
       background: rgba(0,0,0,0.5); color: #ffd700; font-family: 'Press Start 2P', monospace;
-      font-size: 11px; text-align: center;
+      font-size: 13px; text-align: center;
     }
-    .challenge-wager-label { color: #daa520; font-size: 11px; white-space: nowrap; }
     .challenge-send-btn {
       width: 100%; padding: 10px; border-radius: 10px;
       border: 2px solid #ef4444; background: linear-gradient(135deg, #991b1b, #dc2626);
@@ -7129,13 +7129,13 @@
 
     // ===== MOBILE FOOTER NAV =====
     var tabSections = {
-      'click': ['.header', '.click-area', '#statsPanel', '#liveVisitors'],
+      'click': ['.header', '.click-area', '#statsPanel'],
       'shop': ['#shop'],
       'board': ['#leaderboardPanel', '#campaignsSection'],
       'battle': ['#battleSection'],
       'skins': ['#skinShopSection']
     };
-    var allTabSelectors = ['.header', '.click-area', '#shop', '#statsPanel', '#leaderboardPanel', '#campaignsSection', '#battleSection', '#skinShopSection', '#liveVisitors'];
+    var allTabSelectors = ['.header', '.click-area', '#shop', '#statsPanel', '#leaderboardPanel', '#campaignsSection', '#battleSection', '#skinShopSection'];
     var currentTab = 'click';
 
     function switchTab(tabName) {
@@ -7687,9 +7687,9 @@
       // Wager input
       var wagerRow = document.createElement('div');
       wagerRow.className = 'challenge-wager-row';
-      var wl = document.createElement('span');
+      var wl = document.createElement('div');
       wl.className = 'challenge-wager-label';
-      wl.textContent = 'Wager:';
+      wl.textContent = 'Wager (coins):';
       wagerRow.appendChild(wl);
       var wi = document.createElement('input');
       wi.className = 'challenge-wager-input';
@@ -7700,11 +7700,8 @@
       var bMaxWager = Math.min(10000000, myPool, targetScore || 999999999);
       wi.max = String(bMaxWager);
       wi.value = String(Math.min(1000, bMaxWager));
+      wi.placeholder = 'Min 100';
       wagerRow.appendChild(wi);
-      var wc = document.createElement('span');
-      wc.className = 'challenge-wager-label';
-      wc.textContent = 'coins';
-      wagerRow.appendChild(wc);
       chalSection.appendChild(wagerRow);
 
       // Send button
