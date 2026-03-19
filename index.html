@@ -2088,6 +2088,11 @@
       body.tab-nav-active .achievement-toast.show { transform: translateX(-50%) translateY(0); }
       body.tab-nav-active .sabotage-banner { bottom: 70px; }
       body.tab-nav-active .chat-panel { bottom: 70px; }
+      body.tab-nav-active .live-visitors { bottom: 80px; }
+      /* Push game-container below fixed coin counter bar on all tabs */
+      body.tab-nav-active .game-container { padding-top: 55px; }
+      /* On Click tab, header already provides spacing — reduce the extra gap */
+      body.tab-nav-active .header.tab-visible { padding-top: 10px; margin-top: 55px; }
     }
 
     /* ===== BATTLE SECTION ===== */
