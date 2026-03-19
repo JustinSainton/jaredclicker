@@ -658,11 +658,6 @@ export class LiveVisitors {
     if (game.type === 'rps' && game.rpsRound) {
       g.rpsRound = { p1Move: game.rpsRound.p1Move ? 'hidden' : null, p2Move: game.rpsRound.p2Move ? 'hidden' : null };
     }
-    // Hide hangman guesses
-    if (game.type === 'hangman' && !game.winner) {
-      g.hangmanWord = (game.hangmanWord || '').length;
-      g.hangmanP1Guesses = undefined; g.hangmanP2Guesses = undefined;
-    }
     // Hide trivia answers
     if (game.type === 'trivia') {
       g.triviaCorrectIndex = undefined;
