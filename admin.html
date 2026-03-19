@@ -732,14 +732,18 @@
     ws.onmessage = function(e) {
       try {
         var data = JSON.parse(e.data);
-        if (data.campaigns) {
-          renderAdminCampaigns(data.campaigns);
+        // Wait for the broadcast message (has leaderboard/campaigns), not chatHistory
+        if (data.leaderboard || data.campaigns !== undefined) {
+          renderAdminCampaigns(data.campaigns || []);
+          ws.close();
         }
       } catch(err) {}
-      ws.close();
     };
     ws.onerror = function() { el.textContent = 'Failed to load campaigns.'; };
-    setTimeout(function() { try { ws.close(); } catch(e) {} }, 5000);
+    setTimeout(function() {
+      try { ws.close(); } catch(e) {}
+      if (el.textContent === 'Loading...') el.textContent = 'No active campaigns.';
+    }, 5000);
   }
 
   function renderAdminCampaigns(campaigns) {
