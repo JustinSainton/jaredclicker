@@ -2560,6 +2560,91 @@
     var achievementToast = document.getElementById('achievementToast');
     var achNameEl = document.getElementById('achName');
 
+    // ===== ANTI-AUTOCLICKER =====
+    // Rotate button ID so getElementById('coinBtn').click() scripts go stale
+    var _coinIdChars = 'abcdefghijklmnopqrstuvwxyz';
+    function _rotateCoinId() {
+      var newId = '_c' + Math.random().toString(36).slice(2, 10);
+      coinBtn.id = newId;
+    }
+    setInterval(_rotateCoinId, 3000 + Math.random() * 4000);
+
+    // Override .click() on the coin button so programmatic calls do nothing
+    coinBtn.click = function() { /* noop — use real clicks */ };
+
+    // Click rate limiter — sliding window, max 10 clicks/sec
+    var _clickTimes = [];
+    var _maxClicksPerSec = 10;
+    var _botPenalty = 0; // clicks to silently drop when bot detected
+    var _syntheticStreak = 0; // consecutive suspicious clicks
+    var _lastClickPositions = []; // track position variance
+
+    function _isClickAllowed(e, isTouch) {
+      var now = Date.now();
+
+      // If in penalty, silently eat clicks
+      if (_botPenalty > 0) {
+        _botPenalty--;
+        return false;
+      }
+
+      // Rate limit: sliding window of 1 second
+      _clickTimes.push(now);
+      while (_clickTimes.length > 0 && _clickTimes[0] < now - 1000) {
+        _clickTimes.shift();
+      }
+      if (_clickTimes.length > _maxClicksPerSec) {
+        _syntheticStreak++;
+        if (_syntheticStreak > 20) {
+          // Sustained superhuman clicking — apply penalty
+          _botPenalty = 50; // next 50 clicks are silently dropped
+          _syntheticStreak = 0;
+        }
+        return false;
+      }
+
+      // Detect synthetic/programmatic clicks
+      if (!isTouch && e) {
+        var suspicious = 0;
+
+        // isTrusted is false for script-generated events
+        if (e.isTrusted === false) suspicious += 3;
+
+        // Programmatic .click() has clientX/clientY = 0
+        if (e.clientX === 0 && e.clientY === 0) suspicious += 2;
+
+        // Track position variance — humans move the mouse slightly
+        _lastClickPositions.push({ x: e.clientX, y: e.clientY });
+        if (_lastClickPositions.length > 20) _lastClickPositions.shift();
+        if (_lastClickPositions.length >= 10) {
+          var allSame = true;
+          for (var p = 1; p < _lastClickPositions.length; p++) {
+            if (_lastClickPositions[p].x !== _lastClickPositions[0].x ||
+                _lastClickPositions[p].y !== _lastClickPositions[0].y) {
+              allSame = false;
+              break;
+            }
+          }
+          if (allSame) suspicious += 2;
+        }
+
+        if (suspicious >= 3) {
+          _syntheticStreak++;
+          if (_syntheticStreak > 5) {
+            _botPenalty = 100;
+            _syntheticStreak = 0;
+          }
+          return false;
+        }
+      }
+
+      // Good click — reset streak
+      if (_clickTimes.length <= _maxClicksPerSec) {
+        _syntheticStreak = Math.max(0, _syntheticStreak - 1);
+      }
+      return true;
+    }
+
     // ===== CLICK HANDLER =====
     function handleCoinClick(x, y) {
       var mult = (typeof sabotageMultiplier !== 'undefined' ? sabotageMultiplier : 1);
@@ -2590,6 +2675,7 @@
     var coinTouched = false;
     coinBtn.addEventListener('touchstart', function(e) {
       e.preventDefault(); // prevents zoom and ghost click
+      if (!_isClickAllowed(e, true)) return;
       coinTouched = true;
       var touch = e.touches[0];
       handleCoinClick(touch.clientX, touch.clientY);
@@ -2598,6 +2684,7 @@
     // Fallback click for desktop
     coinBtn.addEventListener('click', function(e) {
       if (coinTouched) { coinTouched = false; return; } // skip if already handled by touch
+      if (!_isClickAllowed(e, false)) return;
       handleCoinClick(e.clientX, e.clientY);
     });
 
@@ -2972,7 +3059,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '43';
+    var CURRENT_VERSION = '44';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
