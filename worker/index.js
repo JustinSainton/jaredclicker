@@ -632,6 +632,44 @@ export class LiveVisitors {
       });
     }
 
+    // Campaign: create a TOTAL WIPE campaign ($100 pooled)
+    if (url.pathname === "/campaign/create-wipe" && request.method === "POST") {
+      const body = await request.json();
+      const attackerName = String(body.attackerName || "").slice(0, 20);
+      const targetName = String(body.targetName || "").slice(0, 20);
+      if (!attackerName || !targetName) {
+        return new Response(JSON.stringify({ error: "attackerName and targetName required" }), { status: 400 });
+      }
+      const campaigns = await this.loadCampaigns();
+      // Check if there's already an active wipe campaign against this player
+      for (const key of Object.keys(campaigns)) {
+        const c = campaigns[key];
+        if (c.status === "active" && c.type === "wipe" && c.targetName.toLowerCase() === targetName.toLowerCase()) {
+          return new Response(JSON.stringify({ error: "A wipe campaign against " + targetName + " is already active!" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        }
+      }
+      const totalPriceCents = 10000; // $100
+      const id = "wipe_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+      campaigns[id] = {
+        id: id,
+        type: "wipe",
+        creatorName: attackerName,
+        targetName: targetName,
+        totalPriceCents: totalPriceCents,
+        contributedCents: 0,
+        contributors: [],
+        createdAt: Date.now(),
+        status: "active",
+      };
+      this.campaigns = campaigns;
+      await this.saveCampaigns();
+      await this.addSystemChat("\uD83D\uDCA3 " + attackerName + " started a TOTAL WIPE campaign against " + targetName + "! $100 needed to obliterate ALL their coins, upgrades, and progress!");
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true, campaign: campaigns[id] }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Campaign: contribute to a campaign
     if (url.pathname === "/campaign/contribute" && request.method === "POST") {
       const body = await request.json();
@@ -651,62 +689,96 @@ export class LiveVisitors {
       campaign.contributors.push({ name: contributorName, cents: cents, premiumCents: premiumCents });
       var completed = false;
       if (campaign.contributedCents >= campaign.totalPriceCents) {
-        // Auto-execute the coin cut
         campaign.status = "completed";
         campaign.completedAt = Date.now();
-        const scores = await this.loadScores();
-        const targetKey = campaign.targetName.toLowerCase();
-        if (scores[targetKey]) {
-          const oldScore = scores[targetKey].score;
-          const removed = Math.floor(oldScore * (campaign.percentage / 100));
-          const newScore = oldScore - removed;
-          scores[targetKey].score = newScore;
-          scores[targetKey].serverCutAt = Date.now();
-          this.persistedScores = scores;
 
-          // Distribute looted coins to premium payers proportionally
-          const totalPremium = campaign.contributors.reduce(function(sum, c) { return sum + (c.premiumCents || 0); }, 0);
-          var lootMessages = [];
-          if (totalPremium > 0 && removed > 0) {
-            for (var ci = 0; ci < campaign.contributors.length; ci++) {
-              var contrib = campaign.contributors[ci];
-              if (contrib.premiumCents > 0) {
-                var share = Math.floor(removed * (contrib.premiumCents / totalPremium));
-                if (share > 0) {
-                  var contribKey = contrib.name.toLowerCase();
-                  if (!scores[contribKey]) {
-                    scores[contribKey] = { name: contrib.name, score: 0, stats: {} };
+        if (campaign.type === "wipe") {
+          // TOTAL WIPE: reset everything — score, upgrades, wallet, all of it
+          const targetKey = campaign.targetName.toLowerCase();
+          const scores = await this.loadScores();
+          if (scores[targetKey]) {
+            scores[targetKey].score = 0;
+            scores[targetKey].serverCutAt = Date.now();
+            scores[targetKey].stats = { smellyLevel: "" };
+          }
+          this.persistedScores = scores;
+          await this.state.storage.put("scores", scores);
+
+          // Zero all connected clients with this name + send resetAll to wipe their browser
+          const svrEpoch = await this.loadScoreEpoch();
+          const wipeMsg = JSON.stringify({ type: "resetAll", scoreEpoch: svrEpoch });
+          for (const [ws, info] of this.connections) {
+            if (info.name && info.name.toLowerCase() === targetKey) {
+              info.score = 0;
+              info.stats = {};
+              try { ws.send(wipeMsg); } catch (e) {}
+            }
+          }
+
+          // Clear account gameState
+          const accounts = await this.loadAccounts();
+          if (accounts[targetKey] && accounts[targetKey].gameState) {
+            accounts[targetKey].gameState = null;
+            accounts[targetKey].gameStateUpdatedAt = null;
+            this.accounts = accounts;
+            await this.saveAccounts();
+          }
+
+          await this.addSystemChat("\uD83D\uDCA3\uD83D\uDCA5 TOTAL WIPE COMPLETE! " + campaign.targetName + " has been OBLITERATED! All coins, upgrades, and progress — GONE! See you, buddy!");
+        } else {
+          // Regular coin cut campaign
+          const scores = await this.loadScores();
+          const targetKey = campaign.targetName.toLowerCase();
+          if (scores[targetKey]) {
+            const oldScore = scores[targetKey].score;
+            const removed = Math.floor(oldScore * (campaign.percentage / 100));
+            const newScore = oldScore - removed;
+            scores[targetKey].score = newScore;
+            scores[targetKey].serverCutAt = Date.now();
+            this.persistedScores = scores;
+
+            // Distribute looted coins to premium payers proportionally
+            const totalPremium = campaign.contributors.reduce(function(sum, c) { return sum + (c.premiumCents || 0); }, 0);
+            var lootMessages = [];
+            if (totalPremium > 0 && removed > 0) {
+              for (var ci = 0; ci < campaign.contributors.length; ci++) {
+                var contrib = campaign.contributors[ci];
+                if (contrib.premiumCents > 0) {
+                  var share = Math.floor(removed * (contrib.premiumCents / totalPremium));
+                  if (share > 0) {
+                    var contribKey = contrib.name.toLowerCase();
+                    if (!scores[contribKey]) {
+                      scores[contribKey] = { name: contrib.name, score: 0, stats: {} };
+                    }
+                    scores[contribKey].score += share;
+                    lootMessages.push({ name: contrib.name, share: share });
                   }
-                  scores[contribKey].score += share;
-                  lootMessages.push({ name: contrib.name, share: share });
                 }
               }
             }
-          }
 
-          await this.state.storage.put("scores", scores);
+            await this.state.storage.put("scores", scores);
 
-          // Build completion chat message
-          var lootSummary = "";
-          if (lootMessages.length > 0) {
-            var lootParts = [];
-            for (var li = 0; li < lootMessages.length; li++) {
-              lootParts.push(lootMessages[li].name + " +" + lootMessages[li].share.toLocaleString());
+            var lootSummary = "";
+            if (lootMessages.length > 0) {
+              var lootParts = [];
+              for (var li = 0; li < lootMessages.length; li++) {
+                lootParts.push(lootMessages[li].name + " +" + lootMessages[li].share.toLocaleString());
+              }
+              lootSummary = " Loot: " + lootParts.join(", ") + "!";
             }
-            lootSummary = " Loot: " + lootParts.join(", ") + "!";
-          }
-          await this.addSystemChat("Campaign complete! " + campaign.targetName + "'s coins were cut by " + campaign.percentage + "%! They lost " + removed.toLocaleString() + " coins!" + lootSummary);
+            await this.addSystemChat("Campaign complete! " + campaign.targetName + "'s coins were cut by " + campaign.percentage + "%! They lost " + removed.toLocaleString() + " coins!" + lootSummary);
 
-          // Send score corrections: target gets reduced, premium payers get increased
-          var campCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: campaign.targetName, newScore: newScore });
-          for (var [ws] of this.connections) {
-            try { ws.send(campCorrectionMsg); } catch(e) { this.connections.delete(ws); }
-          }
-          for (var lmi = 0; lmi < lootMessages.length; lmi++) {
-            var lootKey = lootMessages[lmi].name.toLowerCase();
-            var lootCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: lootMessages[lmi].name, newScore: scores[lootKey].score });
-            for (var [ws2] of this.connections) {
-              try { ws2.send(lootCorrectionMsg); } catch(e) { this.connections.delete(ws2); }
+            var campCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: campaign.targetName, newScore: newScore });
+            for (var [ws] of this.connections) {
+              try { ws.send(campCorrectionMsg); } catch(e) { this.connections.delete(ws); }
+            }
+            for (var lmi = 0; lmi < lootMessages.length; lmi++) {
+              var lootKey = lootMessages[lmi].name.toLowerCase();
+              var lootCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: lootMessages[lmi].name, newScore: scores[lootKey].score });
+              for (var [ws2] of this.connections) {
+                try { ws2.send(lootCorrectionMsg); } catch(e) { this.connections.delete(ws2); }
+              }
             }
           }
         }
@@ -715,7 +787,8 @@ export class LiveVisitors {
         var contribDollars = (cents / 100).toFixed(2);
         var remaining = ((campaign.totalPriceCents - campaign.contributedCents) / 100).toFixed(2);
         var lootNote = premiumCents > 0 ? " (with loot premium)" : "";
-        await this.addSystemChat(contributorName + " chipped in $" + contribDollars + lootNote + " to cut " + campaign.targetName + "'s coins! $" + remaining + " to go.");
+        var campaignTypeLabel = campaign.type === "wipe" ? " to WIPE " + campaign.targetName + "!" : " to cut " + campaign.targetName + "'s coins!";
+        await this.addSystemChat(contributorName + " chipped in $" + contribDollars + lootNote + campaignTypeLabel + " $" + remaining + " to go.");
       }
       this.campaigns = campaigns;
       await this.saveCampaigns();
@@ -738,7 +811,7 @@ export class LiveVisitors {
       if (!campaign) {
         return new Response(JSON.stringify({ error: "Campaign not found" }), { status: 404 });
       }
-      if (campaign.creatorName && campaign.creatorName.toLowerCase() !== requesterName.toLowerCase()) {
+      if (requesterName !== "ADMIN" && campaign.creatorName && campaign.creatorName.toLowerCase() !== requesterName.toLowerCase()) {
         return new Response(JSON.stringify({ error: "Only the creator can cancel this campaign" }), { status: 403 });
       }
       if (campaign.status !== "active") {
@@ -1973,6 +2046,34 @@ export default {
     }
 
     // Create a pooled coin cut campaign
+    // Create a TOTAL WIPE campaign
+    if (url.pathname === "/create-wipe-campaign" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const attackerName = String(body.attackerName || "").slice(0, 20);
+        const targetName = String(body.targetName || "").slice(0, 20);
+        if (!attackerName || !targetName) {
+          return corsResponse(JSON.stringify({ error: "Invalid parameters" }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        const id = env.LIVE_VISITORS.idFromName("global");
+        const obj = env.LIVE_VISITORS.get(id);
+        const res = await obj.fetch(new Request("https://dummy/campaign/create-wipe", {
+          method: "POST",
+          body: JSON.stringify({ attackerName, targetName }),
+        }));
+        const result = await res.text();
+        return corsResponse(result, {
+          status: res.status, headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
     if (url.pathname === "/create-campaign" && request.method === "POST") {
       try {
         const body = await request.json();
@@ -3109,7 +3210,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "51" }), {
+      return corsResponse(JSON.stringify({ version: "52" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

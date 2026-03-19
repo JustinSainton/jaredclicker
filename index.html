@@ -3130,7 +3130,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '51';
+    var CURRENT_VERSION = '52';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -3939,6 +3939,24 @@
           openDaySabotagePayment(entry.name);
         });
         detailCard.appendChild(dayBtn);
+
+        // TOTAL WIPE - $100 campaignable
+        var wipeBtn = document.createElement('button');
+        wipeBtn.className = 'sabotage-btn';
+        wipeBtn.style.background = 'linear-gradient(135deg, #000, #450a0a)';
+        wipeBtn.style.borderColor = '#ff0000';
+        wipeBtn.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.4)';
+        var wipeText = document.createTextNode('\uD83D\uDCA3 TOTAL WIPE: Obliterate Everything');
+        wipeBtn.appendChild(wipeText);
+        var wipeSub = document.createElement('div');
+        wipeSub.className = 'sabotage-btn-sub';
+        wipeSub.textContent = '$100 campaign — rally others to wipe ALL coins, upgrades & progress';
+        wipeBtn.appendChild(wipeSub);
+        wipeBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          startWipeCampaign(entry.name);
+        });
+        detailCard.appendChild(wipeBtn);
 
         // Buy 5 credits (show if no credits)
         if (myCredits <= 0) {
@@ -5657,6 +5675,34 @@
     var campaignsSection = document.getElementById('campaignsSection');
     var campaignsList = document.getElementById('campaignsList');
 
+    function startWipeCampaign(targetName) {
+      if (!playerName) {
+        document.getElementById('inlineNameInput').focus();
+        return;
+      }
+      if (!confirm('Start a TOTAL WIPE campaign against ' + targetName + '?\n\n$100 needed (pooled from multiple players).\nThis will obliterate ALL their coins, upgrades, and progress!')) return;
+      hidePlayerDetail();
+
+      fetch(apiBase + '/create-wipe-campaign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attackerName: playerName, targetName: targetName }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            var errToast = document.createElement('div');
+            errToast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#7f1d1d;border:2px solid #ef4444;border-radius:12px;padding:16px 24px;color:#ef4444;font-family:Fredoka One,cursive;z-index:700;';
+            errToast.textContent = data.error;
+            document.body.appendChild(errToast);
+            setTimeout(function() { if (errToast.parentNode) errToast.parentNode.removeChild(errToast); }, 3000);
+            return;
+          }
+          hapticSuccess();
+        })
+        .catch(function() {});
+    }
+
     function startCoinCutCampaign(targetName, percentage, targetScore) {
       if (!playerName) {
         document.getElementById('inlineNameInput').focus();
@@ -5706,21 +5752,33 @@
 
           var target = document.createElement('div');
           target.className = 'campaign-target';
-          target.textContent = 'Cut ' + campaign.targetName + "'s Coins";
+          if (campaign.type === 'wipe') {
+            target.textContent = '\uD83D\uDCA3 TOTAL WIPE: ' + campaign.targetName;
+            target.style.color = '#ff4444';
+            card.style.borderColor = '#ff0000';
+            card.style.boxShadow = '0 0 20px rgba(255, 0, 0, 0.2)';
+          } else {
+            target.textContent = 'Cut ' + campaign.targetName + "'s Coins";
+          }
           card.appendChild(target);
 
           var pctInfo = document.createElement('div');
           pctInfo.className = 'campaign-pct';
-          // Use current score from leaderboard, not the score at campaign creation
-          var currentTargetScore = campaign.targetScore;
-          for (var li = 0; li < lastLeaderboardData.length; li++) {
-            if (lastLeaderboardData[li].name.toLowerCase() === campaign.targetName.toLowerCase()) {
-              currentTargetScore = lastLeaderboardData[li].score;
-              break;
+          if (campaign.type === 'wipe') {
+            pctInfo.textContent = 'Obliterate ALL coins, upgrades & progress';
+            pctInfo.style.color = '#ff8888';
+          } else {
+            // Use current score from leaderboard, not the score at campaign creation
+            var currentTargetScore = campaign.targetScore;
+            for (var li = 0; li < lastLeaderboardData.length; li++) {
+              if (lastLeaderboardData[li].name.toLowerCase() === campaign.targetName.toLowerCase()) {
+                currentTargetScore = lastLeaderboardData[li].score;
+                break;
+              }
             }
+            var removed = Math.floor(currentTargetScore * (campaign.percentage / 100));
+            pctInfo.textContent = campaign.percentage + '% cut (' + formatNumber(removed) + ' coins from ' + formatNumber(currentTargetScore) + ')';
           }
-          var removed = Math.floor(currentTargetScore * (campaign.percentage / 100));
-          pctInfo.textContent = campaign.percentage + '% cut (' + formatNumber(removed) + ' coins from ' + formatNumber(currentTargetScore) + ')';
           card.appendChild(pctInfo);
 
           // Progress bar

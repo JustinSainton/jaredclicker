@@ -313,6 +313,9 @@
       </table>
     </div>
     <!-- Photo Management -->
+    <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Active Campaigns</h2>
+    <div id="adminCampaignsList" style="margin-bottom: 16px; color: #888; font-size: 13px;">Loading...</div>
+
     <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Random Photos</h2>
     <p style="color: #aaa; font-size: 13px; margin-bottom: 16px;">These photos pop up randomly while playing.</p>
 
@@ -384,6 +387,7 @@
       document.getElementById('dashboardSection').style.display = 'block';
       renderScores(data);
       loadPhotos();
+      loadAdminCampaigns();
     })
     .catch(function(err) {
       adminPassword = '';
@@ -637,6 +641,86 @@
       statusEl.style.color = '#ff6b6b';
     });
   });
+
+  // ===== CAMPAIGN MANAGEMENT =====
+  function loadCampaigns() {
+    // Campaigns come from the live WebSocket broadcast data, but admin can fetch via a quick WS connect
+    // Simpler: just fetch the debug-state endpoint which has the broadcast data
+    fetch(API_BASE + '/debug-state')
+      .then(function(r) { return r.json(); })
+      .catch(function() { return {}; });
+
+    // Actually, campaigns are in the broadcast. Let's use a simple fetch approach:
+    // Connect briefly to WS to get campaign data, or add an admin endpoint.
+    // For now, use a lightweight polling approach via the leaderboard data.
+    // The simplest: add campaigns to the admin leaderboard response.
+    // But let's just render from the existing active campaigns list.
+  }
+
+  function loadAdminCampaigns() {
+    var el = document.getElementById('adminCampaignsList');
+    // Fetch campaigns from debug-state (includes sabotages which have campaign data indirectly)
+    // Actually we need a proper endpoint. Let's poll the WS broadcast once.
+    // Simplest approach: temporary WS connection
+    var ws = new WebSocket(API_BASE.replace('https://', 'wss://') + '/ws');
+    ws.onmessage = function(e) {
+      try {
+        var data = JSON.parse(e.data);
+        if (data.campaigns) {
+          renderAdminCampaigns(data.campaigns);
+        }
+      } catch(err) {}
+      ws.close();
+    };
+    ws.onerror = function() { el.textContent = 'Failed to load campaigns.'; };
+    setTimeout(function() { try { ws.close(); } catch(e) {} }, 5000);
+  }
+
+  function renderAdminCampaigns(campaigns) {
+    var el = document.getElementById('adminCampaignsList');
+    el.textContent = '';
+    var active = campaigns.filter(function(c) { return c.status === 'active'; });
+    if (active.length === 0) {
+      el.textContent = 'No active campaigns.';
+      el.style.color = '#888';
+      return;
+    }
+    for (var i = 0; i < active.length; i++) {
+      (function(c) {
+        var card = document.createElement('div');
+        card.style.cssText = 'background:rgba(0,0,0,0.4);border:1px solid ' + (c.type === 'wipe' ? '#ff0000' : '#ffd700') + ';border-radius:10px;padding:12px;margin-bottom:8px;';
+
+        var title = document.createElement('div');
+        title.style.cssText = 'font-size:15px;color:' + (c.type === 'wipe' ? '#ff4444' : '#ffd700') + ';margin-bottom:4px;';
+        title.textContent = (c.type === 'wipe' ? '\uD83D\uDCA3 WIPE: ' : 'Cut ') + c.targetName + (c.type !== 'wipe' ? ' (' + c.percentage + '%)' : '');
+        card.appendChild(title);
+
+        var progress = document.createElement('div');
+        progress.style.cssText = 'font-size:12px;color:#aaa;margin-bottom:6px;';
+        progress.textContent = '$' + (c.contributedCents / 100).toFixed(2) + ' / $' + (c.totalPriceCents / 100).toFixed(2) + ' — by ' + c.creatorName;
+        card.appendChild(progress);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.className = 'delete-btn';
+        cancelBtn.textContent = 'Cancel Campaign';
+        cancelBtn.style.cssText += 'padding:6px 14px;font-size:12px;';
+        cancelBtn.addEventListener('click', function() {
+          if (!confirm('Cancel this campaign against ' + c.targetName + '?')) return;
+          fetch(API_BASE + '/cancel-campaign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaignId: c.id, requesterName: 'ADMIN' }),
+          })
+          .then(function(r) { return r.json(); })
+          .then(function() { loadAdminCampaigns(); })
+          .catch(function(err) { alert('Error: ' + err.message); });
+        });
+        card.appendChild(cancelBtn);
+
+        el.appendChild(card);
+      })(active[i]);
+    }
+  }
 
   // ===== PHOTO MANAGEMENT =====
   document.getElementById('uploadPhotoBtn').addEventListener('click', function() {
