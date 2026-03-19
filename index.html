@@ -7498,14 +7498,20 @@
       };
     }
 
+    var battleSelectedPlayer = null;
+    var battleGameType = 'rps';
+    var battleWagerSource = 'score';
+
     function renderBattleSection() {
       var battleContent = document.getElementById('battleContent');
       if (!battleContent) return;
       battleContent.textContent = '';
+
+      // --- Incoming challenges ---
       if (receivedChallenges.length > 0) {
         var recH = document.createElement('div');
-        recH.style.cssText = 'color:#ef4444;font-size:14px;margin-bottom:8px;';
-        recH.textContent = 'Incoming Challenges';
+        recH.style.cssText = 'color:#ef4444;font-size:14px;margin-bottom:8px;font-family:Press Start 2P,monospace;font-size:10px;';
+        recH.textContent = 'INCOMING';
         battleContent.appendChild(recH);
         for (var ri = 0; ri < receivedChallenges.length; ri++) {
           var rc = receivedChallenges[ri];
@@ -7536,10 +7542,12 @@
           battleContent.appendChild(rcard);
         }
       }
+
+      // --- Sent challenges ---
       if (sentChallenges.length > 0) {
         var sentH = document.createElement('div');
-        sentH.style.cssText = 'color:#daa520;font-size:14px;margin-bottom:8px;margin-top:12px;';
-        sentH.textContent = 'Sent Challenges';
+        sentH.style.cssText = 'color:#daa520;font-size:10px;margin-bottom:8px;margin-top:12px;font-family:Press Start 2P,monospace;';
+        sentH.textContent = 'WAITING';
         battleContent.appendChild(sentH);
         for (var si = 0; si < sentChallenges.length; si++) {
           var sc = sentChallenges[si];
@@ -7557,12 +7565,147 @@
           battleContent.appendChild(scard);
         }
       }
-      if (receivedChallenges.length === 0 && sentChallenges.length === 0) {
-        var empty = document.createElement('div');
-        empty.className = 'battle-empty';
-        empty.textContent = 'Challenge players from the leaderboard to wager coins!';
-        battleContent.appendChild(empty);
+
+      // --- New Challenge UI ---
+      var chalSection = document.createElement('div');
+      chalSection.style.cssText = 'margin-top:16px;';
+
+      var chalLabel = document.createElement('div');
+      chalLabel.style.cssText = 'color:#ef4444;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:12px;';
+      chalLabel.textContent = 'NEW CHALLENGE';
+      chalSection.appendChild(chalLabel);
+
+      // Player picker
+      var pickerLabel = document.createElement('div');
+      pickerLabel.style.cssText = 'color:#daa520;font-size:13px;margin-bottom:6px;';
+      pickerLabel.textContent = 'Pick your opponent:';
+      chalSection.appendChild(pickerLabel);
+
+      var playerList = document.createElement('div');
+      playerList.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;max-height:160px;overflow-y:auto;';
+      var opponents = (lastLeaderboardData || []).filter(function(e) {
+        return playerName && e.name.toLowerCase() !== playerName.toLowerCase();
+      });
+      if (opponents.length === 0) {
+        var noPlayers = document.createElement('div');
+        noPlayers.style.cssText = 'color:#888;font-size:13px;';
+        noPlayers.textContent = playerName ? 'No other players on the leaderboard yet.' : 'Set your name first to challenge players!';
+        playerList.appendChild(noPlayers);
       }
+      for (var pi = 0; pi < opponents.length; pi++) {
+        (function(opp) {
+          var chip = document.createElement('button');
+          chip.style.cssText = 'padding:6px 14px;border-radius:20px;border:2px solid ' + (battleSelectedPlayer === opp.name ? '#ffd700' : '#555') + ';background:' + (battleSelectedPlayer === opp.name ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.05)') + ';color:' + (battleSelectedPlayer === opp.name ? '#ffd700' : '#aaa') + ';font-family:Fredoka One,cursive;font-size:13px;cursor:pointer;transition:all 0.15s;';
+          chip.textContent = opp.name;
+          chip.addEventListener('click', function() {
+            battleSelectedPlayer = opp.name;
+            renderBattleSection();
+          });
+          playerList.appendChild(chip);
+        })(opponents[pi]);
+      }
+      chalSection.appendChild(playerList);
+
+      // Game type row
+      var typeLabel = document.createElement('div');
+      typeLabel.style.cssText = 'color:#daa520;font-size:13px;margin-bottom:6px;';
+      typeLabel.textContent = 'Game:';
+      chalSection.appendChild(typeLabel);
+      var typeRow = document.createElement('div');
+      typeRow.style.cssText = 'display:flex;gap:8px;margin-bottom:14px;';
+      var btypes = [
+        { type: 'rps', emoji: '\u270A', label: 'Rock Paper Scissors' },
+        { type: 'ttt', emoji: '\u274C', label: 'Tic-Tac-Toe' },
+        { type: 'trivia', emoji: '\uD83E\uDDE0', label: 'Trivia' }
+      ];
+      for (var ti = 0; ti < btypes.length; ti++) {
+        (function(bt) {
+          var tb = document.createElement('button');
+          tb.className = 'challenge-type-btn' + (battleGameType === bt.type ? ' selected' : '');
+          tb.textContent = bt.emoji;
+          tb.title = bt.label;
+          tb.addEventListener('click', function() { battleGameType = bt.type; renderBattleSection(); });
+          typeRow.appendChild(tb);
+          // Label next to emoji
+          var tl = document.createElement('span');
+          tl.style.cssText = 'color:' + (battleGameType === bt.type ? '#ffd700' : '#888') + ';font-size:12px;align-self:center;margin-right:8px;';
+          tl.textContent = bt.label;
+          typeRow.appendChild(tl);
+        })(btypes[ti]);
+      }
+      chalSection.appendChild(typeRow);
+
+      // Source toggle
+      var srcLabel = document.createElement('div');
+      srcLabel.style.cssText = 'color:#daa520;font-size:13px;margin-bottom:6px;';
+      srcLabel.textContent = 'Wager from:';
+      chalSection.appendChild(srcLabel);
+      var srcRow = document.createElement('div');
+      srcRow.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;';
+      var srcOpts = [
+        { src: 'wallet', label: '\uD83D\uDCB0 Wallet', tip: 'Spendable coins' },
+        { src: 'score', label: '\uD83C\uDFC6 Score', tip: 'Leaderboard rank' }
+      ];
+      for (var si2 = 0; si2 < srcOpts.length; si2++) {
+        (function(so) {
+          var sb = document.createElement('button');
+          sb.className = 'challenge-type-btn' + (battleWagerSource === so.src ? ' selected' : '');
+          sb.textContent = so.label;
+          sb.style.fontSize = '12px';
+          sb.addEventListener('click', function() { battleWagerSource = so.src; renderBattleSection(); });
+          srcRow.appendChild(sb);
+        })(srcOpts[si2]);
+      }
+      chalSection.appendChild(srcRow);
+      var srcHint = document.createElement('div');
+      srcHint.style.cssText = 'color:#666;font-size:10px;margin-bottom:14px;';
+      srcHint.textContent = 'Wallet = spendable coins | Score = leaderboard rank';
+      chalSection.appendChild(srcHint);
+
+      // Wager input
+      var wagerRow = document.createElement('div');
+      wagerRow.className = 'challenge-wager-row';
+      var wl = document.createElement('span');
+      wl.className = 'challenge-wager-label';
+      wl.textContent = 'Wager:';
+      wagerRow.appendChild(wl);
+      var wi = document.createElement('input');
+      wi.className = 'challenge-wager-input';
+      wi.type = 'number'; wi.min = '100';
+      var targetEntry = battleSelectedPlayer ? (lastLeaderboardData || []).find(function(e) { return e.name === battleSelectedPlayer; }) : null;
+      var targetScore = targetEntry ? targetEntry.score : 0;
+      var myPool = battleWagerSource === 'wallet' ? state.coins : state.totalCoins;
+      var bMaxWager = Math.min(10000000, myPool, targetScore || 999999999);
+      wi.max = String(bMaxWager);
+      wi.value = String(Math.min(1000, bMaxWager));
+      wagerRow.appendChild(wi);
+      var wc = document.createElement('span');
+      wc.className = 'challenge-wager-label';
+      wc.textContent = 'coins';
+      wagerRow.appendChild(wc);
+      chalSection.appendChild(wagerRow);
+
+      // Send button
+      var sendBtn = document.createElement('button');
+      sendBtn.className = 'challenge-send-btn';
+      sendBtn.style.marginTop = '8px';
+      var canSend = battleSelectedPlayer && playerName && bMaxWager >= 100;
+      if (!canSend) {
+        sendBtn.disabled = true;
+        sendBtn.textContent = !playerName ? 'Set your name first' : (!battleSelectedPlayer ? 'Pick an opponent above' : 'Not enough coins');
+      } else {
+        sendBtn.textContent = 'Challenge ' + battleSelectedPlayer;
+      }
+      sendBtn.addEventListener('click', function() {
+        var wager = parseInt(wi.value);
+        if (isNaN(wager) || wager < 100 || wager > bMaxWager) { wi.style.borderColor = '#ef4444'; return; }
+        sendChallenge(battleSelectedPlayer, battleGameType, wager, battleWagerSource);
+        battleSelectedPlayer = null;
+        renderBattleSection();
+      });
+      chalSection.appendChild(sendBtn);
+
+      battleContent.appendChild(chalSection);
     }
 
   </script>
