@@ -171,7 +171,7 @@
 
     /* Floating numbers */
     .float-number {
-      position: absolute;
+      position: fixed;
       pointer-events: none;
       font-family: 'Press Start 2P', monospace;
       font-size: 24px;
@@ -2087,7 +2087,6 @@
       body.tab-nav-active .achievement-toast { bottom: 80px; }
       body.tab-nav-active .achievement-toast.show { transform: translateX(-50%) translateY(0); }
       body.tab-nav-active .sabotage-banner { bottom: 70px; }
-      body.tab-nav-active .chat-panel { bottom: 70px; }
       body.tab-nav-active .live-visitors { bottom: 80px; }
       /* Push game-container below fixed coin counter bar on all tabs */
       body.tab-nav-active .game-container { padding-top: 55px; }
@@ -7119,8 +7118,8 @@
 
     // ===== MOBILE FOOTER NAV =====
     var tabSections = {
-      'click': ['.header', '.click-area'],
-      'shop': ['#shop', '#statsPanel'],
+      'click': ['.header', '.click-area', '#statsPanel'],
+      'shop': ['#shop'],
       'board': ['#leaderboardPanel', '#campaignsSection'],
       'battle': ['#battleSection'],
       'skins': ['#skinShopSection']
