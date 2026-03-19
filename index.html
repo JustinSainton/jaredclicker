@@ -3409,6 +3409,7 @@
 
     // ===== PLAYER NAME =====
     var playerName = localStorage.getItem('jcPlayerName') || '';
+    var lastLiveData = null; // broadcast data, used by renderBattleSection
     var lbNameInput = document.getElementById('lbNameInput');
     if (playerName) lbNameInput.value = playerName;
 
@@ -3698,7 +3699,7 @@
 
       var pendingChatMessages = [];
       var livePlayersExpanded = false;
-      var lastLiveData = null;
+      lastLiveData = null; // declared at outer scope so renderBattleSection can access it
 
       function renderLivePlayers(data, expanded) {
         var players = data.players || [];
