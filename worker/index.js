@@ -476,7 +476,7 @@ export class LiveVisitors {
     await this.loadChat();
     var entry = { type: "chat", name: "SYSTEM", message: message, timestamp: Date.now() };
     this.chatMessages.push(entry);
-    if (this.chatMessages.length > 50) this.chatMessages = this.chatMessages.slice(-50);
+    if (this.chatMessages.length > 500) this.chatMessages = this.chatMessages.slice(-500);
     await this.saveChat();
     this.broadcastChat(entry);
   }
@@ -727,7 +727,7 @@ export class LiveVisitors {
       await this.state.storage.put("scores", scores);
 
       // 2. Update connected clients + send scoreCorrection so their local state updates
-      var correctionMsg = JSON.stringify({ type: "scoreCorrection", targetName: targetName, newScore: scores[targetKey].score });
+      var correctionMsg = JSON.stringify({ type: "scoreCorrection", targetName: targetName, newScore: scores[targetKey].score, delta: amount });
       for (const [ws, info] of this.connections) {
         if (info.name && info.name.toLowerCase() === targetKey) {
           info.score = scores[targetKey].score;
@@ -1011,13 +1011,13 @@ export class LiveVisitors {
             }
             await this.addSystemChat("Campaign complete! " + campaign.targetName + "'s coins were cut by " + campaign.percentage + "%! They lost " + removed.toLocaleString() + " coins!" + lootSummary);
 
-            var campCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: campaign.targetName, newScore: newScore });
+            var campCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: campaign.targetName, newScore: newScore, delta: -removed });
             for (var [ws] of this.connections) {
               try { ws.send(campCorrectionMsg); } catch(e) { this.connections.delete(ws); }
             }
             for (var lmi = 0; lmi < lootMessages.length; lmi++) {
               var lootKey = lootMessages[lmi].name.toLowerCase();
-              var lootCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: lootMessages[lmi].name, newScore: scores[lootKey].score });
+              var lootCorrectionMsg = JSON.stringify({ type: "scoreCorrection", targetName: lootMessages[lmi].name, newScore: scores[lootKey].score, delta: lootMessages[lmi].share });
               for (var [ws2] of this.connections) {
                 try { ws2.send(lootCorrectionMsg); } catch(e) { this.connections.delete(ws2); }
               }
@@ -1667,7 +1667,7 @@ export class LiveVisitors {
           var chatEntry = { type: "chat", name: info.name, message: cleanMsg, timestamp: Date.now() };
           this.loadChat().then(() => {
             this.chatMessages.push(chatEntry);
-            if (this.chatMessages.length > 50) this.chatMessages = this.chatMessages.slice(-50);
+            if (this.chatMessages.length > 500) this.chatMessages = this.chatMessages.slice(-500);
             this.saveChat();
             this.broadcastChat(chatEntry);
           });

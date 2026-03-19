@@ -3692,6 +3692,8 @@
       liveWs.onopen = function() {
         wsReconnectDelay = 1000;
         sendPlayerName();
+        // Immediately sync score on reconnect so server has latest
+        setTimeout(sendScoreUpdate, 500);
         if (wsHeartbeatId) clearInterval(wsHeartbeatId);
         wsHeartbeatId = setInterval(function() {
           if (liveWs && liveWs.readyState === WebSocket.OPEN) {
@@ -3958,6 +3960,23 @@
             if (newPlayerKey !== _lastBattlePlayerKey) {
               _lastBattlePlayerKey = newPlayerKey;
               renderBattleSection();
+            }
+          }
+
+          // Score recovery: if server has a higher score for us, sync up (prevents localStorage loss)
+          if (data.leaderboard && playerName) {
+            for (var lri = 0; lri < data.leaderboard.length; lri++) {
+              if (data.leaderboard[lri].name.toLowerCase() === playerName.toLowerCase()) {
+                var serverScore = data.leaderboard[lri].score;
+                if (serverScore > state.totalCoins) {
+                  var gained = serverScore - state.totalCoins;
+                  state.totalCoins = serverScore;
+                  state.coins += gained;
+                  saveGame();
+                  updateCounters();
+                }
+                break;
+              }
             }
           }
 
