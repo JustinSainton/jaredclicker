@@ -327,6 +327,21 @@
 
     <div id="photoGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;"></div>
 
+    <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Hide Luke</h2>
+    <p style="color: #aaa; font-size: 13px; margin-bottom: 12px;">Manually hide Luke for a player (e.g. if their $1.99 payment failed to apply).</p>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+      <input type="text" id="hideLukeNameInput" placeholder="Player name" maxlength="20" style="padding:10px 14px;border:2px solid #ffd700;border-radius:8px;background:rgba(0,0,0,0.6);color:#ffd700;font-family:'Fredoka One',cursive;font-size:14px;outline:none;flex:1;min-width:140px;">
+      <select id="hideLukeDuration" style="padding:10px 14px;border:2px solid #ffd700;border-radius:8px;background:rgba(0,0,0,0.6);color:#ffd700;font-family:'Fredoka One',cursive;font-size:14px;outline:none;">
+        <option value="60">1 hour</option>
+        <option value="120">2 hours</option>
+        <option value="360">6 hours</option>
+        <option value="720">12 hours</option>
+        <option value="1440">24 hours</option>
+      </select>
+      <button id="hideLukeBtn" style="padding:10px 20px;font-size:14px;">Hide Luke</button>
+    </div>
+    <div id="hideLukeStatus" style="font-size: 13px; margin-bottom: 12px;"></div>
+
     <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Danger Zone</h2>
     <button id="resetScoresBtn" class="delete-btn" style="padding: 12px 24px; font-size: 14px; margin-top: 12px;">Reset All Scores</button>
     <div id="resetStatus" style="margin-top: 8px; font-size: 13px;"></div>
@@ -496,6 +511,20 @@
       });
       btnGroup.appendChild(resetBtn);
 
+      var lukeBtn = document.createElement('button');
+      lukeBtn.className = 'give-btn';
+      lukeBtn.textContent = 'Luke';
+      lukeBtn.style.background = 'linear-gradient(135deg, #6b21a8, #9333ea)';
+      lukeBtn.style.borderColor = '#a855f7';
+      lukeBtn.setAttribute('data-name', scores[i].name);
+      lukeBtn.addEventListener('click', function() {
+        var name = this.getAttribute('data-name');
+        var mins = prompt('Hide Luke for "' + name + '" for how many minutes?\n\n60 = 1 hour, 1440 = 24 hours', '60');
+        if (!mins) return;
+        adminHideLuke(name, parseInt(mins) || 60);
+      });
+      btnGroup.appendChild(lukeBtn);
+
       var btn = document.createElement('button');
       btn.className = 'delete-btn';
       btn.textContent = 'Delete';
@@ -641,6 +670,43 @@
       statusEl.style.color = '#ff6b6b';
     });
   });
+
+  // ===== HIDE LUKE =====
+  document.getElementById('hideLukeBtn').addEventListener('click', function() {
+    var name = document.getElementById('hideLukeNameInput').value.trim();
+    if (!name) { alert('Enter a player name.'); return; }
+    var mins = parseInt(document.getElementById('hideLukeDuration').value);
+    adminHideLuke(name, mins);
+  });
+
+  function adminHideLuke(name, durationMinutes) {
+    var statusEl = document.getElementById('hideLukeStatus');
+    statusEl.textContent = 'Hiding Luke for ' + name + '...';
+    statusEl.style.color = '#ffd700';
+
+    fetch(API_BASE + '/admin/hide-luke', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + adminPassword,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ playerName: name, durationMinutes: durationMinutes || 60 })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    })
+    .then(function(data) {
+      var expires = new Date(data.expiresAt);
+      statusEl.textContent = 'Luke hidden for "' + name + '" until ' + expires.toLocaleTimeString() + '!';
+      statusEl.style.color = '#4ade80';
+      document.getElementById('hideLukeNameInput').value = '';
+    })
+    .catch(function(err) {
+      statusEl.textContent = 'Error: ' + err.message;
+      statusEl.style.color = '#ff6b6b';
+    });
+  }
 
   // ===== CAMPAIGN MANAGEMENT =====
   function loadCampaigns() {
