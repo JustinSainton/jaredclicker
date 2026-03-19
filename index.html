@@ -3059,7 +3059,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '45';
+    var CURRENT_VERSION = '46';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -3923,10 +3923,28 @@
       return 'jared-coin.png';
     }
 
+    var _podiumCacheKey = '';
+
     function renderPodium(scores) {
       var podiumEl = document.getElementById('podiumStage');
       if (!podiumEl) return;
       var top3 = (scores || []).slice(0, 3);
+
+      // Build a cache key from names + scores to skip unnecessary rebuilds (prevents image flashing)
+      var eqSkins = window._equippedSkins || {};
+      var newKey = top3.map(function(e) {
+        return e.name + ':' + e.score + ':' + (eqSkins[e.name.toLowerCase()] || '');
+      }).join('|');
+      if (newKey === _podiumCacheKey && podiumEl.childNodes.length > 0) {
+        // Only update score text in-place
+        for (var u = 0; u < top3.length; u++) {
+          var scoreEls = podiumEl.querySelectorAll('.podium-slot .podium-score');
+          if (scoreEls[u]) scoreEls[u].textContent = formatNumber(top3[u].score);
+        }
+        window._lastPodiumState = top3.map(function(e) { return e ? e.name : null; });
+        return;
+      }
+      _podiumCacheKey = newKey;
 
       // Clear emoji timers
       for (var t = 0; t < _podiumEmojiTimers.length; t++) clearInterval(_podiumEmojiTimers[t]);
@@ -4261,12 +4279,18 @@
           rankEl.textContent = '#' + rank;
           row.appendChild(rankEl);
 
-          // Show equipped skin coin next to name
+          // Show equipped skin coin next to name (clone cached image to avoid flash)
           var eqSkins = window._equippedSkins || {};
           var eqSkinId = eqSkins[entry.name.toLowerCase()];
           if (eqSkinId) {
-            var skinIcon = document.createElement('img');
-            skinIcon.src = apiBase + '/skins/' + eqSkinId + '/coin.png';
+            var skinUrl = apiBase + '/skins/' + eqSkinId + '/coin.png';
+            if (!window._skinImgCache) window._skinImgCache = {};
+            if (!window._skinImgCache[skinUrl]) {
+              var cached = new Image();
+              cached.src = skinUrl;
+              window._skinImgCache[skinUrl] = cached;
+            }
+            var skinIcon = window._skinImgCache[skinUrl].cloneNode(false);
             skinIcon.style.cssText = 'width:20px;height:20px;border-radius:50%;margin-right:6px;vertical-align:middle;object-fit:cover;';
             skinIcon.alt = '';
             row.appendChild(skinIcon);
