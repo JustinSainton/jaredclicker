@@ -4346,34 +4346,41 @@
         sourceHint.style.cssText = 'color:#888;font-size:10px;text-align:center;margin-bottom:8px;';
         sourceHint.textContent = 'Wallet = spendable coins | Score = leaderboard rank';
         challengeBox.appendChild(sourceHint);
+        var maxWager = Math.max(100, Math.min(10000000, selectedWagerSource === 'wallet' ? state.coins : state.totalCoins, entry.score));
         var wagerRow = document.createElement('div');
         wagerRow.className = 'challenge-wager-row';
-        var wagerLabel = document.createElement('span');
+        var wagerLabel = document.createElement('div');
         wagerLabel.className = 'challenge-wager-label';
         wagerLabel.textContent = 'Wager:';
         wagerRow.appendChild(wagerLabel);
+        var wagerDisplay = document.createElement('div');
+        wagerDisplay.style.cssText = 'color:#ffd700;font-family:Press Start 2P,monospace;font-size:16px;text-align:center;margin-bottom:4px;';
+        wagerDisplay.textContent = formatNumber(Math.min(1000, maxWager));
+        wagerRow.appendChild(wagerDisplay);
         var wagerInput = document.createElement('input');
-        wagerInput.className = 'challenge-wager-input';
-        wagerInput.type = 'number';
-        wagerInput.min = '100';
-        var maxWager = Math.min(10000000, state.totalCoins, entry.score);
-        wagerInput.max = String(maxWager);
+        wagerInput.type = 'range'; wagerInput.min = '100'; wagerInput.max = String(maxWager);
         wagerInput.value = String(Math.min(1000, maxWager));
-        wagerInput.placeholder = '100 - ' + formatNumber(maxWager);
+        wagerInput.step = String(Math.max(1, Math.floor(maxWager / 200)));
+        wagerInput.style.cssText = 'width:100%;accent-color:#ffd700;height:32px;cursor:pointer;';
+        wagerInput.addEventListener('input', function() {
+          wagerDisplay.textContent = formatNumber(parseInt(wagerInput.value));
+        });
         wagerRow.appendChild(wagerInput);
-        var coinsLbl = document.createElement('span');
-        coinsLbl.className = 'challenge-wager-label';
-        coinsLbl.textContent = 'coins';
-        wagerRow.appendChild(coinsLbl);
+        var wagerRange = document.createElement('div');
+        wagerRange.style.cssText = 'display:flex;justify-content:space-between;color:#888;font-size:10px;font-family:Fredoka One,cursive;';
+        var wrMin = document.createElement('span'); wrMin.textContent = '100';
+        var wrMax = document.createElement('span'); wrMax.textContent = formatNumber(maxWager);
+        wagerRange.appendChild(wrMin); wagerRange.appendChild(wrMax);
+        wagerRow.appendChild(wagerRange);
         challengeBox.appendChild(wagerRow);
         var sendChalBtn = document.createElement('button');
         sendChalBtn.className = 'challenge-send-btn';
         sendChalBtn.textContent = 'Send Challenge';
-        if (maxWager < 100) { sendChalBtn.disabled = true; sendChalBtn.textContent = 'Not enough coins'; }
+        if (maxWager < 100 || (selectedWagerSource === 'wallet' ? state.coins : state.totalCoins) < 100) { sendChalBtn.disabled = true; sendChalBtn.textContent = 'Not enough coins'; }
         sendChalBtn.addEventListener('click', function(ev) {
           ev.stopPropagation();
           var wager = parseInt(wagerInput.value);
-          if (isNaN(wager) || wager < 100 || wager > maxWager) { wagerInput.style.borderColor = '#ef4444'; return; }
+          if (isNaN(wager) || wager < 100 || wager > maxWager) return;
           sendChallenge(entry.name, selectedGameType, wager, selectedWagerSource);
           hidePlayerDetail();
           if (typeof mobileQuery !== 'undefined' && mobileQuery.matches) switchTab('battle');
@@ -7685,31 +7692,43 @@
       srcHint.textContent = 'Wallet = spendable coins | Score = leaderboard rank';
       chalSection.appendChild(srcHint);
 
-      // Wager input
+      // Wager slider
+      var targetEntry = battleSelectedPlayer ? (lastLeaderboardData || []).find(function(e) { return e.name.toLowerCase() === battleSelectedPlayer.toLowerCase(); }) : null;
+      var targetScore = targetEntry ? targetEntry.score : 0;
+      var myPool = battleWagerSource === 'wallet' ? state.coins : state.totalCoins;
+      var bMaxWager = Math.max(100, Math.min(10000000, myPool, targetScore || 999999999));
       var wagerRow = document.createElement('div');
       wagerRow.className = 'challenge-wager-row';
       var wl = document.createElement('div');
       wl.className = 'challenge-wager-label';
-      wl.textContent = 'Wager (coins):';
+      wl.textContent = 'Wager:';
       wagerRow.appendChild(wl);
+      var wagerDisplay = document.createElement('div');
+      wagerDisplay.style.cssText = 'color:#ffd700;font-family:Press Start 2P,monospace;font-size:16px;text-align:center;margin-bottom:4px;';
+      wagerDisplay.textContent = formatNumber(Math.min(1000, bMaxWager));
+      wagerRow.appendChild(wagerDisplay);
       var wi = document.createElement('input');
-      wi.className = 'challenge-wager-input';
-      wi.type = 'number'; wi.min = '100';
-      var targetEntry = battleSelectedPlayer ? (lastLeaderboardData || []).find(function(e) { return e.name.toLowerCase() === battleSelectedPlayer.toLowerCase(); }) : null;
-      var targetScore = targetEntry ? targetEntry.score : 0;
-      var myPool = battleWagerSource === 'wallet' ? state.coins : state.totalCoins;
-      var bMaxWager = Math.min(10000000, myPool, targetScore || 999999999);
-      wi.max = String(bMaxWager);
+      wi.type = 'range'; wi.min = '100'; wi.max = String(bMaxWager);
       wi.value = String(Math.min(1000, bMaxWager));
-      wi.placeholder = 'Min 100';
+      wi.step = String(Math.max(1, Math.floor(bMaxWager / 200)));
+      wi.style.cssText = 'width:100%;accent-color:#ffd700;height:32px;cursor:pointer;';
+      wi.addEventListener('input', function() {
+        wagerDisplay.textContent = formatNumber(parseInt(wi.value));
+      });
       wagerRow.appendChild(wi);
+      var wagerRange = document.createElement('div');
+      wagerRange.style.cssText = 'display:flex;justify-content:space-between;color:#888;font-size:10px;font-family:Fredoka One,cursive;';
+      var wMin = document.createElement('span'); wMin.textContent = '100';
+      var wMax = document.createElement('span'); wMax.textContent = formatNumber(bMaxWager);
+      wagerRange.appendChild(wMin); wagerRange.appendChild(wMax);
+      wagerRow.appendChild(wagerRange);
       chalSection.appendChild(wagerRow);
 
       // Send button
       var sendBtn = document.createElement('button');
       sendBtn.className = 'challenge-send-btn';
       sendBtn.style.marginTop = '8px';
-      var canSend = battleSelectedPlayer && playerName && bMaxWager >= 100;
+      var canSend = battleSelectedPlayer && playerName && bMaxWager >= 100 && myPool >= 100;
       if (!canSend) {
         sendBtn.disabled = true;
         sendBtn.textContent = !playerName ? 'Set your name first' : (!battleSelectedPlayer ? 'Pick an opponent above' : 'Not enough coins');
@@ -7718,7 +7737,7 @@
       }
       sendBtn.addEventListener('click', function() {
         var wager = parseInt(wi.value);
-        if (isNaN(wager) || wager < 100 || wager > bMaxWager) { wi.style.borderColor = '#ef4444'; return; }
+        if (isNaN(wager) || wager < 100 || wager > bMaxWager) return;
         sendChallenge(battleSelectedPlayer, battleGameType, wager, battleWagerSource);
         battleSelectedPlayer = null;
         renderBattleSection();
