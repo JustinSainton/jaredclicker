@@ -3193,14 +3193,16 @@
     // Use touchstart for instant response on mobile (no 300ms delay)
     var coinTouched = false;
     coinBtn.addEventListener('touchstart', function(e) {
-      // Fire haptic BEFORE preventDefault — iOS requires user gesture context
-      hapticMedium();
       e.preventDefault(); // prevents zoom and ghost click
       if (!_isClickAllowed(e, true)) return;
       coinTouched = true;
       var touch = e.touches[0];
       handleCoinClick(touch.clientX, touch.clientY);
     }, { passive: false });
+    // Separate touchend for haptics — touchstart preventDefault kills the gesture context
+    coinBtn.addEventListener('touchend', function() {
+      hapticMedium();
+    });
 
     // Fallback click for desktop
     coinBtn.addEventListener('click', function(e) {
