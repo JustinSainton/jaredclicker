@@ -3896,11 +3896,20 @@
       lastLiveData = null; // declared at outer scope so renderBattleSection can access it
 
       function renderLivePlayers(data, expanded) {
-        var players = data.players || [];
-
+        var rawPlayers = data.players || [];
         liveCountriesEl.textContent = '';
 
-        // Every connection now has a name (real or "Anonymous Sniffer #N")
+        // Deduplicate by name (keep first city seen)
+        var seen = {};
+        var players = [];
+        for (var di = 0; di < rawPlayers.length; di++) {
+          var key = rawPlayers[di].name.toLowerCase();
+          if (!seen[key]) {
+            seen[key] = true;
+            players.push(rawPlayers[di]);
+          }
+        }
+
         var maxVisible = expanded ? players.length : Math.min(players.length, 6);
         var lines = [];
         for (var i = 0; i < maxVisible; i++) {
