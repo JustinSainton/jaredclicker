@@ -223,6 +223,19 @@
       box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
     }
 
+    .freeze-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      background: linear-gradient(135deg, #1e40af, #2563eb);
+      border-color: #60a5fa;
+      color: #fff;
+    }
+
+    .freeze-btn:hover {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+    }
+
     .give-btn {
       padding: 6px 14px;
       font-size: 12px;
@@ -449,6 +462,16 @@
       var btnGroup = document.createElement('div');
       btnGroup.className = 'btn-group';
 
+      var freezeBtn = document.createElement('button');
+      freezeBtn.className = 'freeze-btn';
+      freezeBtn.textContent = 'Freeze';
+      freezeBtn.setAttribute('data-name', scores[i].name);
+      freezeBtn.addEventListener('click', function() {
+        var name = this.getAttribute('data-name');
+        adminFreeze(name);
+      });
+      btnGroup.appendChild(freezeBtn);
+
       var giveBtn = document.createElement('button');
       giveBtn.className = 'give-btn';
       giveBtn.textContent = '+Coins';
@@ -484,6 +507,34 @@
 
       tbody.appendChild(row);
     }
+  }
+
+  function adminFreeze(name) {
+    var input = prompt('Freeze "' + name + '" for how many minutes?\n\nPresets: 2, 5, 10, 15, 30, 60, 120, 180, 240, 360');
+    if (!input) return;
+    var mins = Math.floor(Number(input));
+    if (!mins || mins <= 0) { alert('Invalid duration.'); return; }
+    var label = mins >= 60 ? (mins / 60) + ' hour(s)' : mins + ' minutes';
+    if (!confirm('Freeze "' + name + '" for ' + label + '? (0 coins earned)')) return;
+
+    fetch(API_BASE + '/freeze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ attackerName: 'ADMIN', targetName: name, durationMin: mins })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed to freeze');
+      return res.json();
+    })
+    .then(function() {
+      alert(name + ' has been FROZEN for ' + label + '!');
+      loadScores();
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+    });
   }
 
   function giveCoins(name) {
