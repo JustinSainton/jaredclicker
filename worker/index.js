@@ -122,9 +122,12 @@ export class LiveVisitors {
     const existing = scores[key];
 
     // Reject scores from clients running a stale epoch (pre-reset scores)
+    // Also reject if client doesn't send an epoch at all and a reset has happened
     const serverEpoch = await this.loadScoreEpoch();
-    if (typeof clientEpoch === "number" && clientEpoch < serverEpoch) {
-      return; // stale client, ignore entirely
+    if (serverEpoch > 0) {
+      if (typeof clientEpoch !== "number" || clientEpoch < serverEpoch) {
+        return; // stale or epoch-unaware client, reject
+      }
     }
 
     // If a server-side cut happened in the last 60s, don't let the client restore a higher score
@@ -1101,7 +1104,7 @@ export class LiveVisitors {
 
     this.broadcast();
 
-    server.addEventListener("message", (event) => {
+    server.addEventListener("message", async (event) => {
       try {
         const msg = JSON.parse(event.data);
         const info = this.connections.get(server);
@@ -1141,6 +1144,18 @@ export class LiveVisitors {
 
         if (msg.type === "scoreUpdate" && msg.name && typeof msg.score === "number") {
           info.name = String(msg.name).slice(0, 20);
+
+          // Check epoch BEFORE accepting the score into memory
+          var clientEpoch = typeof msg.scoreEpoch === "number" ? msg.scoreEpoch : undefined;
+          var svrEpoch = await this.loadScoreEpoch();
+          if (svrEpoch > 0 && (typeof clientEpoch !== "number" || clientEpoch < svrEpoch)) {
+            // Stale client — zero their in-memory score so broadcast doesn't show it
+            info.score = 0;
+            // Tell this client to reset
+            try { server.send(JSON.stringify({ type: "resetAll", scoreEpoch: svrEpoch })); } catch(e) {}
+            return;
+          }
+
           info.score = Math.floor(msg.score);
           info.stats = {
             smellyLevel: msg.smellyLevel || "",
@@ -1149,7 +1164,6 @@ export class LiveVisitors {
             coinsPerClick: Math.floor(msg.coinsPerClick || 0),
             coinsPerSecond: Math.floor(msg.coinsPerSecond || 0),
           };
-          var clientEpoch = typeof msg.scoreEpoch === "number" ? msg.scoreEpoch : undefined;
           this.saveScore(info.name, info.score, info.stats, clientEpoch);
           // Save full game state for cross-device sync if authenticated
           if (msg.authToken && msg.gameState) {
@@ -2908,7 +2922,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "44" }), {
+      return corsResponse(JSON.stringify({ version: "45" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
