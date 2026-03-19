@@ -2094,7 +2094,8 @@
       body.tab-nav-active .achievement-toast { bottom: 80px; }
       body.tab-nav-active .achievement-toast.show { transform: translateX(-50%) translateY(0); }
       body.tab-nav-active .sabotage-banner { bottom: 70px; }
-      body.tab-nav-active .live-visitors { bottom: 80px; }
+      body.tab-nav-active .live-visitors { display: none !important; }
+      body.tab-nav-active .live-visitors.tab-visible { display: flex !important; bottom: 80px; }
       /* Push game-container below fixed coin counter bar on all tabs */
       body.tab-nav-active .game-container { padding-top: 55px; }
       /* On Click tab, header already provides spacing — reduce the extra gap */
@@ -7128,13 +7129,13 @@
 
     // ===== MOBILE FOOTER NAV =====
     var tabSections = {
-      'click': ['.header', '.click-area', '#statsPanel'],
+      'click': ['.header', '.click-area', '#statsPanel', '#liveVisitors'],
       'shop': ['#shop'],
       'board': ['#leaderboardPanel', '#campaignsSection'],
       'battle': ['#battleSection'],
       'skins': ['#skinShopSection']
     };
-    var allTabSelectors = ['.header', '.click-area', '#shop', '#statsPanel', '#leaderboardPanel', '#campaignsSection', '#battleSection', '#skinShopSection'];
+    var allTabSelectors = ['.header', '.click-area', '#shop', '#statsPanel', '#leaderboardPanel', '#campaignsSection', '#battleSection', '#skinShopSection', '#liveVisitors'];
     var currentTab = 'click';
 
     function switchTab(tabName) {
@@ -7594,13 +7595,23 @@
 
       var playerList = document.createElement('div');
       playerList.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;max-height:160px;overflow-y:auto;';
-      var opponents = (lastLeaderboardData || []).filter(function(e) {
-        return playerName && e.name.toLowerCase() !== playerName.toLowerCase();
-      });
+      // Use online players (from broadcast), deduplicated
+      var onlinePlayers = (lastLiveData && lastLiveData.players) ? lastLiveData.players : [];
+      var seenNames = {};
+      var opponents = [];
+      for (var oi = 0; oi < onlinePlayers.length; oi++) {
+        var op = onlinePlayers[oi];
+        if (!op.hasName) continue;
+        var opLower = op.name.toLowerCase();
+        if (playerName && opLower === playerName.toLowerCase()) continue;
+        if (seenNames[opLower]) continue;
+        seenNames[opLower] = true;
+        opponents.push(op);
+      }
       if (opponents.length === 0) {
         var noPlayers = document.createElement('div');
         noPlayers.style.cssText = 'color:#888;font-size:13px;';
-        noPlayers.textContent = playerName ? 'No other players on the leaderboard yet.' : 'Set your name first to challenge players!';
+        noPlayers.textContent = playerName ? 'No other players online right now.' : 'Set your name first to challenge players!';
         playerList.appendChild(noPlayers);
       }
       for (var pi = 0; pi < opponents.length; pi++) {
@@ -7648,7 +7659,7 @@
 
       // Source toggle
       var srcLabel = document.createElement('div');
-      srcLabel.style.cssText = 'color:#daa520;font-size:13px;margin-bottom:6px;';
+      srcLabel.style.cssText = 'color:#daa520;font-size:13px;margin-bottom:6px;font-family:Fredoka One,cursive;';
       srcLabel.textContent = 'Wager from:';
       chalSection.appendChild(srcLabel);
       var srcRow = document.createElement('div');
@@ -7683,7 +7694,7 @@
       var wi = document.createElement('input');
       wi.className = 'challenge-wager-input';
       wi.type = 'number'; wi.min = '100';
-      var targetEntry = battleSelectedPlayer ? (lastLeaderboardData || []).find(function(e) { return e.name === battleSelectedPlayer; }) : null;
+      var targetEntry = battleSelectedPlayer ? (lastLeaderboardData || []).find(function(e) { return e.name.toLowerCase() === battleSelectedPlayer.toLowerCase(); }) : null;
       var targetScore = targetEntry ? targetEntry.score : 0;
       var myPool = battleWagerSource === 'wallet' ? state.coins : state.totalCoins;
       var bMaxWager = Math.min(10000000, myPool, targetScore || 999999999);
