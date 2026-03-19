@@ -13,6 +13,17 @@ export class LiveVisitors {
     this.accounts = null; // lazy-loaded: { [name_lower]: { displayName, pinHash, tokens, createdAt } }
     this.skinData = null; // lazy-loaded: { owned: { [player]: [skinIds] }, custom: { [skinId]: metadata }, equipped: { [player]: skinId } }
     this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
+    this._broadcastPending = false;
+  }
+
+  // Throttled broadcast: coalesces rapid calls into one broadcast every 2 seconds
+  scheduleBroadcast() {
+    if (this._broadcastPending) return;
+    this._broadcastPending = true;
+    setTimeout(() => {
+      this._broadcastPending = false;
+      this.broadcast();
+    }, 2000);
   }
 
   async loadScoreEpoch() {
@@ -1169,7 +1180,7 @@ export class LiveVisitors {
             coinsPerSecond: Math.floor(msg.coinsPerSecond || 0),
           };
           this.saveScore(info.name, info.score, info.stats, clientEpoch);
-          this.broadcast();
+          this.scheduleBroadcast();
           // Save full game state for cross-device sync if authenticated
           if (msg.authToken && msg.gameState) {
             this.findAccountByToken(msg.authToken).then(found => {
@@ -2927,7 +2938,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "47" }), {
+      return corsResponse(JSON.stringify({ version: "48" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
