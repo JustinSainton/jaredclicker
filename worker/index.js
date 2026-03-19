@@ -347,7 +347,8 @@ export class LiveVisitors {
       }
       const scoreKeys = Object.keys(scores);
       const topScores = Object.values(scores).sort((a,b) => b.score - a.score).slice(0, 10);
-      return new Response(JSON.stringify({ epoch, connCount, connScores: connScores.slice(0, 20), persistedScoreCount: scoreKeys.length, topPersistedScores: topScores, broadcastPending: this._broadcastPending, debug: this._debugCounters }), {
+      const activeSabs = await this.loadSabotages();
+      return new Response(JSON.stringify({ epoch, connCount, connScores: connScores.slice(0, 20), persistedScoreCount: scoreKeys.length, topPersistedScores: topScores, broadcastPending: this._broadcastPending, debug: this._debugCounters, sabotages: activeSabs }), {
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -1669,6 +1670,79 @@ export default {
         return corsResponse(JSON.stringify({ error: e.message }), {
           status: 500,
           headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Stripe: Create Payment Intent for Coin Packs
+    if (url.pathname === "/create-coinpack-intent" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const packId = String(body.packId || "");
+        const playerName = String(body.playerName || "").slice(0, 20);
+        const coins = Math.floor(Number(body.coins) || 0);
+        const packPrices = { starter: 199, grinder: 499, baller: 999, whale: 1999 };
+        const packLabels = { starter: "Starter Pack", grinder: "Grinder Pack", baller: "Baller Pack", whale: "Whale Pack" };
+        const priceCents = packPrices[packId];
+        if (!priceCents || !playerName || coins <= 0) {
+          return corsResponse(JSON.stringify({ error: "Valid packId, playerName, and coins required" }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        const label = packLabels[packId] + " (" + coins.toLocaleString() + " coins)";
+        const stripeRes = await fetch("https://api.stripe.com/v1/payment_intents", {
+          method: "POST",
+          headers: {
+            Authorization: "Basic " + btoa(env.STRIPE_SECRET_KEY + ":"),
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            amount: String(priceCents), currency: "usd",
+            "automatic_payment_methods[enabled]": "true",
+            description: label + " for " + playerName + " - Jared Clicker",
+            "metadata[playerName]": playerName, "metadata[type]": "coinpack", "metadata[packId]": packId, "metadata[coins]": String(coins),
+          }).toString(),
+        });
+        const intent = await stripeRes.json();
+        if (intent.error) {
+          return corsResponse(JSON.stringify({ error: intent.error.message }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        return corsResponse(JSON.stringify({ clientSecret: intent.client_secret, coins: pack.coins }), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Redeem coin pack (called after payment succeeds)
+    if (url.pathname === "/redeem-coinpack" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const playerName = String(body.playerName || "").slice(0, 20);
+        const coins = Math.floor(Number(body.coins) || 0);
+        if (!playerName || coins <= 0) {
+          return corsResponse(JSON.stringify({ error: "playerName and coins required" }), {
+            status: 400, headers: { "Content-Type": "application/json" },
+          });
+        }
+        const id = env.LIVE_VISITORS.idFromName("global");
+        const obj = env.LIVE_VISITORS.get(id);
+        const res = await obj.fetch(new Request("https://dummy/admin/add-coins", {
+          method: "POST",
+          body: JSON.stringify({ playerName, amount: coins }),
+        }));
+        const result = await res.text();
+        return corsResponse(result, {
+          status: res.status, headers: { "Content-Type": "application/json" },
+        });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { "Content-Type": "application/json" },
         });
       }
     }
@@ -3035,7 +3109,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "50" }), {
+      return corsResponse(JSON.stringify({ version: "51" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

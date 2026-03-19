@@ -666,6 +666,50 @@
       margin-top: 2px;
     }
 
+    /* Coin Packs */
+    .coin-packs-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .coin-pack-btn {
+      background: linear-gradient(135deg, #1a1a3a, #2a2a5a);
+      border: 2px solid #ffd700;
+      border-radius: 12px;
+      padding: 14px 10px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .coin-pack-btn:hover {
+      background: linear-gradient(135deg, #2a2a5a, #3a3a7a);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+    }
+    .coin-pack-btn:active { transform: translateY(0); }
+    .coin-pack-emoji { font-size: 28px; }
+    .coin-pack-name {
+      font-family: 'Fredoka One', cursive;
+      font-size: 13px;
+      color: #ffd700;
+    }
+    .coin-pack-amount {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: #4ade80;
+    }
+    .coin-pack-price {
+      font-family: 'Fredoka One', cursive;
+      font-size: 16px;
+      color: #fff;
+      margin-top: 2px;
+    }
+
     /* Leaderboard */
     .leaderboard {
       background: rgba(0,0,0,0.5);
@@ -2098,6 +2142,33 @@
         Hide Luke for 1 Hour
         <div class="hide-luke-sub">$1.99 - no more surprise selfies</div>
       </button>
+      <h2 style="margin-top: 20px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Coin Packs</h2>
+      <div class="coin-packs-grid" id="coinPacksGrid">
+        <button class="coin-pack-btn" data-pack="starter" data-coins="50000" data-price="199">
+          <div class="coin-pack-emoji">💰</div>
+          <div class="coin-pack-name">Starter Pack</div>
+          <div class="coin-pack-amount">50,000 coins</div>
+          <div class="coin-pack-price">$1.99</div>
+        </button>
+        <button class="coin-pack-btn" data-pack="grinder" data-coins="500000" data-price="499">
+          <div class="coin-pack-emoji">💎</div>
+          <div class="coin-pack-name">Grinder Pack</div>
+          <div class="coin-pack-amount">500,000 coins</div>
+          <div class="coin-pack-price">$4.99</div>
+        </button>
+        <button class="coin-pack-btn" data-pack="baller" data-coins="5000000" data-price="999">
+          <div class="coin-pack-emoji">👑</div>
+          <div class="coin-pack-name">Baller Pack</div>
+          <div class="coin-pack-amount">5,000,000 coins</div>
+          <div class="coin-pack-price">$9.99</div>
+        </button>
+        <button class="coin-pack-btn" data-pack="whale" data-coins="100000000" data-price="1999">
+          <div class="coin-pack-emoji">🐋</div>
+          <div class="coin-pack-name">Whale Pack</div>
+          <div class="coin-pack-amount">100,000,000 coins</div>
+          <div class="coin-pack-price">$19.99</div>
+        </button>
+      </div>
     </div>
 
     <!-- Leaderboard -->
@@ -3059,7 +3130,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '50';
+    var CURRENT_VERSION = '51';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -4251,6 +4322,9 @@
     function renderLeaderboard(scores) {
       lastLeaderboardData = scores || [];
 
+      // Update coin pack amounts based on leaderboard
+      if (typeof updateCoinPackDisplay === 'function') updateCoinPackDisplay();
+
       // Render podium for top 3
       renderPodium(scores);
 
@@ -4519,6 +4593,135 @@
       document.getElementById('hideLukeBtn').textContent = 'Luke is hidden!';
       document.getElementById('hideLukeBtn').disabled = true;
       document.getElementById('hideLukeOverlayBtn').style.display = 'none';
+    }
+
+    // ===== COIN PACKS =====
+    function getCoinPackAmounts() {
+      // Scale coin packs relative to the top score on the leaderboard
+      var topScore = 0;
+      if (lastLeaderboardData && lastLeaderboardData.length > 0) {
+        topScore = lastLeaderboardData[0].score || 0;
+      }
+      // Base amounts when leaderboard is small (< 100K top score)
+      if (topScore < 100000) {
+        return { starter: 50000, grinder: 500000, baller: 5000000, whale: 100000000 };
+      }
+      // Scale: starter=0.5% of top, grinder=2%, baller=10%, whale=50%
+      return {
+        starter: Math.max(50000, Math.floor(topScore * 0.005)),
+        grinder: Math.max(500000, Math.floor(topScore * 0.02)),
+        baller:  Math.max(5000000, Math.floor(topScore * 0.1)),
+        whale:   Math.max(100000000, Math.floor(topScore * 0.5)),
+      };
+    }
+
+    function updateCoinPackDisplay() {
+      var amounts = getCoinPackAmounts();
+      var packs = document.querySelectorAll('.coin-pack-btn');
+      for (var p = 0; p < packs.length; p++) {
+        var packId = packs[p].getAttribute('data-pack');
+        if (amounts[packId]) {
+          packs[p].setAttribute('data-coins', amounts[packId]);
+          var amountEl = packs[p].querySelector('.coin-pack-amount');
+          if (amountEl) amountEl.textContent = formatNumber(amounts[packId]) + ' coins';
+        }
+      }
+    }
+
+    var coinPackBtns = document.querySelectorAll('.coin-pack-btn');
+    for (var cpi = 0; cpi < coinPackBtns.length; cpi++) {
+      coinPackBtns[cpi].addEventListener('click', function() {
+        if (!playerName) { inlineNameInput.focus(); return; }
+        var packId = this.getAttribute('data-pack');
+        var coins = Number(this.getAttribute('data-coins'));
+        var priceCents = Number(this.getAttribute('data-price'));
+        var priceStr = '$' + (priceCents / 100).toFixed(2);
+        openCoinPackPayment(packId, coins, priceStr);
+      });
+    }
+
+    function openCoinPackPayment(packId, coins, priceStr) {
+      var packNames = { starter: 'Starter Pack', grinder: 'Grinder Pack', baller: 'Baller Pack', whale: 'Whale Pack' };
+      var modal = document.getElementById('paymentModal');
+      var h3 = modal.querySelector('h3');
+      var priceDiv = modal.querySelector('.price');
+      var descDiv = modal.querySelector('.payment-desc');
+      h3.textContent = packNames[packId] || 'Coin Pack';
+      priceDiv.textContent = priceStr;
+      descDiv.textContent = formatNumber(coins) + ' coins added instantly to your score.';
+      payBtn.textContent = 'Pay ' + priceStr;
+      payBtn.disabled = true;
+      paymentStatus.textContent = '';
+      modal.classList.add('active');
+
+      fetch(apiBase + '/create-coinpack-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packId: packId, playerName: playerName, coins: coins }),
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) {
+          paymentStatus.textContent = data.error;
+          paymentStatus.style.color = '#ef4444';
+          return;
+        }
+        var cpElements = stripe.elements({ clientSecret: data.clientSecret, appearance: { theme: 'night', variables: { colorPrimary: '#ffd700' } } });
+        var cpPayEl = cpElements.create('payment', { layout: 'tabs' });
+        cpPayEl.mount('#payment-element');
+        cpPayEl.on('ready', function() { payBtn.disabled = false; });
+
+        // Override pay button for this flow
+        var cpCoins = data.coins;
+        payBtn.onclick = function() {
+          payBtn.disabled = true;
+          payBtn.textContent = 'Processing...';
+          stripe.confirmPayment({
+            elements: cpElements,
+            confirmParams: { return_url: window.location.href },
+            redirect: 'if_required',
+          }).then(function(result) {
+            if (result.error) {
+              paymentStatus.textContent = result.error.message;
+              paymentStatus.style.color = '#ef4444';
+              payBtn.disabled = false;
+              payBtn.textContent = 'Pay ' + priceStr;
+            } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+              function redeemCoins(attempt) {
+                fetch(apiBase + '/redeem-coinpack', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ playerName: playerName, coins: cpCoins }),
+                }).then(function(res) {
+                  if (!res.ok) throw new Error('Server error');
+                  state.coins += cpCoins;
+                  state.totalCoins += cpCoins;
+                  saveGame();
+                  updateUI();
+                  paymentStatus.textContent = '+' + formatNumber(cpCoins) + ' coins added!';
+                  paymentStatus.style.color = '#4ade80';
+                  payBtn.textContent = 'Done!';
+                  hapticSuccess();
+                  setTimeout(function() { modal.classList.remove('active'); }, 2000);
+                }).catch(function() {
+                  if (attempt < 3) {
+                    paymentStatus.textContent = 'Adding coins... (retry ' + (attempt + 1) + ')';
+                    setTimeout(function() { redeemCoins(attempt + 1); }, 2000);
+                  } else {
+                    paymentStatus.textContent = 'Failed to add coins! Payment received. Contact admin.';
+                    paymentStatus.style.color = '#ef4444';
+                  }
+                });
+              }
+              redeemCoins(0);
+            }
+          });
+        };
+      })
+      .catch(function() {
+        paymentStatus.textContent = 'Failed to load payment. Try again.';
+        paymentStatus.style.color = '#ef4444';
+      });
     }
 
     // ===== SABOTAGE SYSTEM =====
