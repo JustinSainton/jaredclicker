@@ -24,4 +24,4 @@ binding = "PHOTOS"
 [vars]
 # Generate with: npx web-push generate-vapid-keys
 # Then set VAPID_PRIVATE_KEY as a secret: wrangler secret put VAPID_PRIVATE_KEY
-VAPID_PUBLIC_KEY = "VAPID_PUBLIC_KEY_HERE"
+VAPID_PUBLIC_KEY = "BGS5EOARBez5A0Kp0uuWfHcuUPOsd80yu1ppugdfnVoOT9eE9X_tnnBKetonvysZMhda7K8-efxECKXQdj2BHms"

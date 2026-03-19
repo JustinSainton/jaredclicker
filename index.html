@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jared Clicker - Click the Coin!</title>
   <link rel="icon" type="image/png" href="jared-coin.png">
-  <meta name="vapid-public-key" content="VAPID_PUBLIC_KEY_HERE">
+  <meta name="vapid-public-key" content="BGS5EOARBez5A0Kp0uuWfHcuUPOsd80yu1ppugdfnVoOT9eE9X_tnnBKetonvysZMhda7K8-efxECKXQdj2BHms">
   <script src="https://js.stripe.com/v3/"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Press+Start+2P&display=swap');
@@ -4049,6 +4049,7 @@
             sentChallenges = sentChallenges.filter(function(c) { return c.id !== data.challengeId; });
             renderBattleSection();
             if (data.reason === 'insufficient_coins') alert('Challenge failed: not enough coins!');
+            if (data.reason === 'in_game') alert('Challenge failed: one of you is already in a game!');
             return;
           }
           if (data.type === 'challengeExpired') {
@@ -5203,7 +5204,7 @@
     function subscribeToPush() {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
       var vapidKey = document.querySelector('meta[name="vapid-public-key"]');
-      if (!vapidKey || !vapidKey.content || vapidKey.content === 'VAPID_PUBLIC_KEY_HERE') return;
+      if (!vapidKey || !vapidKey.content || vapidKey.content === 'BGS5EOARBez5A0Kp0uuWfHcuUPOsd80yu1ppugdfnVoOT9eE9X_tnnBKetonvysZMhda7K8-efxECKXQdj2BHms') return;
       navigator.serviceWorker.ready.then(function(registration) {
         return registration.pushManager.subscribe({
           userVisibleOnly: true,
@@ -8223,11 +8224,36 @@
     function renderSpectatorView(game) {
       var content = gameOverlayContentEl;
       content.textContent = '';
-      // Render appropriate game view (read-only)
-      if (game.type === 'battleship') {
+      // Show winner if game ended
+      if (game.winner) {
+        var winDiv = document.createElement('div');
+        winDiv.style.cssText = 'text-align:center;margin-bottom:16px;';
+        var winText = document.createElement('div');
+        winText.style.cssText = 'font-size:24px;color:#ffd700;font-family:Fredoka One,cursive;text-shadow:2px 2px 0 #b8860b;';
+        winText.textContent = game.winner === 'draw' ? 'DRAW!' : game.winner + ' WINS!';
+        winDiv.appendChild(winText);
+        content.appendChild(winDiv);
+      }
+      // Render game-specific spectator view
+      if (game.type === 'clickerduel') {
+        var cdDiv = document.createElement('div');
+        cdDiv.style.cssText = 'display:flex;justify-content:space-around;text-align:center;margin-bottom:16px;';
+        var p1Div = document.createElement('div');
+        p1Div.style.cssText = 'font-family:Fredoka One,cursive;';
+        var p1Name = document.createElement('div'); p1Name.style.color = '#4ade80'; p1Name.style.fontSize = '12px'; p1Name.textContent = game.player1; p1Div.appendChild(p1Name);
+        var p1Count = document.createElement('div'); p1Count.style.cssText = 'font-size:36px;color:#4ade80;font-family:Press Start 2P,monospace;'; p1Count.textContent = String(game.cdP1Taps || 0); p1Div.appendChild(p1Count);
+        cdDiv.appendChild(p1Div);
+        var vsD = document.createElement('div'); vsD.style.cssText = 'color:#888;font-size:20px;align-self:center;'; vsD.textContent = 'vs'; cdDiv.appendChild(vsD);
+        var p2Div = document.createElement('div');
+        p2Div.style.cssText = 'font-family:Fredoka One,cursive;';
+        var p2Name = document.createElement('div'); p2Name.style.color = '#ef4444'; p2Name.style.fontSize = '12px'; p2Name.textContent = game.player2; p2Div.appendChild(p2Name);
+        var p2Count = document.createElement('div'); p2Count.style.cssText = 'font-size:36px;color:#ef4444;font-family:Press Start 2P,monospace;'; p2Count.textContent = String(game.cdP2Taps || 0); p2Div.appendChild(p2Count);
+        cdDiv.appendChild(p2Div);
+        content.appendChild(cdDiv);
+      } else if (game.type === 'battleship') {
         var infoDiv = document.createElement('div');
         infoDiv.style.cssText = 'text-align:center;color:#daa520;font-size:14px;margin-bottom:12px;font-family:Fredoka One,cursive;';
-        infoDiv.textContent = (game.bsCurrentTurn || 'Unknown') + "'s turn \u2022 P1 sunk: " + (game.bsSunk && game.bsSunk.p1 || 0) + ' \u2022 P2 sunk: ' + (game.bsSunk && game.bsSunk.p2 || 0);
+        infoDiv.textContent = (game.bsCurrentTurn || '?') + "'s turn \u2022 Sunk: " + (game.bsSunk ? game.bsSunk.p1 : 0) + ' vs ' + (game.bsSunk ? game.bsSunk.p2 : 0);
         content.appendChild(infoDiv);
       } else if (game.type === 'connect4' && game.c4Board) {
         var turnD = document.createElement('div');
@@ -8257,10 +8283,22 @@
           grid2.appendChild(cell2);
         }
         content.appendChild(grid2);
+      } else if (game.type === 'rps') {
+        var rpsInfo = document.createElement('div');
+        rpsInfo.style.cssText = 'text-align:center;color:#daa520;font-size:14px;font-family:Fredoka One,cursive;';
+        var p1Picked = game.rpsRound && game.rpsRound.p1Move;
+        var p2Picked = game.rpsRound && game.rpsRound.p2Move;
+        rpsInfo.textContent = (p1Picked ? '\u2705' : '\u23F3') + ' ' + game.player1 + '  vs  ' + game.player2 + ' ' + (p2Picked ? '\u2705' : '\u23F3');
+        content.appendChild(rpsInfo);
+      } else if (game.type === 'hangman') {
+        var hmInfo = document.createElement('div');
+        hmInfo.style.cssText = 'text-align:center;color:#daa520;font-size:14px;font-family:Fredoka One,cursive;';
+        hmInfo.textContent = 'Both players guessing...';
+        content.appendChild(hmInfo);
       } else {
         var genMsg = document.createElement('div');
         genMsg.style.cssText = 'text-align:center;color:#daa520;font-size:14px;font-family:Fredoka One,cursive;';
-        genMsg.textContent = 'Game in progress...';
+        genMsg.textContent = (gameTypeNames[game.type] || 'Game') + ' in progress...';
         content.appendChild(genMsg);
       }
       // Bet buttons (if not already bet)

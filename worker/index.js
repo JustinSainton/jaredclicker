@@ -2141,14 +2141,15 @@ export class LiveVisitors {
               self.sendToPlayer(challenge.challengerName, { type: "challengeDeclined", challengeId: msg.challengeId, reason: "insufficient_coins" });
               return;
             }
-            // Prevent playing multiple games simultaneously
+            // Prevent playing multiple games simultaneously (skip finished games)
             for (const [, ag] of self.activeGames) {
-              if (!ag.winner && !ag._ended) {
-                if (ag.player1.toLowerCase() === challenge.challengerName.toLowerCase() || ag.player2.toLowerCase() === challenge.challengerName.toLowerCase() ||
-                    ag.player1.toLowerCase() === challenge.targetName.toLowerCase() || ag.player2.toLowerCase() === challenge.targetName.toLowerCase()) {
-                  self.sendToPlayer(challenge.challengerName, { type: "challengeDeclined", challengeId: msg.challengeId, reason: "in_game" });
-                  return;
-                }
+              if (ag._ended || ag.winner) continue; // game is over, ignore
+              var involvedC = ag.player1.toLowerCase() === challenge.challengerName.toLowerCase() || ag.player2.toLowerCase() === challenge.challengerName.toLowerCase();
+              var involvedT = ag.player1.toLowerCase() === challenge.targetName.toLowerCase() || ag.player2.toLowerCase() === challenge.targetName.toLowerCase();
+              if (involvedC || involvedT) {
+                self.sendToPlayer(challenge.challengerName, { type: "challengeDeclined", challengeId: msg.challengeId, reason: "in_game" });
+                self.sendToPlayer(challenge.targetName, { type: "challengeDeclined", challengeId: msg.challengeId, reason: "in_game" });
+                return;
               }
             }
             const game = self.createGame(challenge);
