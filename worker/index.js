@@ -14,6 +14,7 @@ export class LiveVisitors {
     this.skinData = null; // lazy-loaded: { owned: { [player]: [skinIds] }, custom: { [skinId]: metadata }, equipped: { [player]: skinId } }
     this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
     this._broadcastPending = false;
+    this._debugCounters = { accepted: 0, rejectedEpoch: 0, lastClientEpoch: null, lastSvrEpoch: null };
   }
 
   // Throttled broadcast: coalesces rapid calls into one broadcast every 2 seconds
@@ -133,12 +134,10 @@ export class LiveVisitors {
     const existing = scores[key];
 
     // Reject scores from clients running a stale epoch (pre-reset scores)
-    // Also reject if client doesn't send an epoch at all and a reset has happened
+    // Only reject when epoch is explicitly provided and stale
     const serverEpoch = await this.loadScoreEpoch();
-    if (serverEpoch > 0) {
-      if (typeof clientEpoch !== "number" || clientEpoch < serverEpoch) {
-        return; // stale or epoch-unaware client, reject
-      }
+    if (serverEpoch > 0 && typeof clientEpoch === "number" && clientEpoch < serverEpoch) {
+      return;
     }
 
     // If a server-side cut happened in the last 60s, don't let the client restore a higher score
@@ -337,6 +336,22 @@ export class LiveVisitors {
     }
 
     // Photo names: set one override
+    // Debug: expose DO state (temporary)
+    if (url.pathname === "/debug-state") {
+      const scores = await this.loadScores();
+      const epoch = await this.loadScoreEpoch();
+      const connCount = this.connections.size;
+      const connScores = [];
+      for (const [, info] of this.connections) {
+        if (info.name) connScores.push({ name: info.name, score: info.score || 0 });
+      }
+      const scoreKeys = Object.keys(scores);
+      const topScores = Object.values(scores).sort((a,b) => b.score - a.score).slice(0, 10);
+      return new Response(JSON.stringify({ epoch, connCount, connScores: connScores.slice(0, 20), persistedScoreCount: scoreKeys.length, topPersistedScores: topScores, broadcastPending: this._broadcastPending, debug: this._debugCounters }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     if (url.pathname === "/photo-names/set" && request.method === "POST") {
       const body = await request.json();
       const key = String(body.key || "");
@@ -1163,14 +1178,14 @@ export class LiveVisitors {
           // Use cached epoch (loaded by broadcast on connection open) to avoid async
           var clientEpoch = typeof msg.scoreEpoch === "number" ? msg.scoreEpoch : undefined;
           var svrEpoch = this.scoreEpoch || 0;
-          if (svrEpoch > 0 && (typeof clientEpoch !== "number" || clientEpoch < svrEpoch)) {
-            // Stale client — zero their in-memory score so broadcast doesn't show it
+
+          // Only reject if client explicitly sends a stale epoch number
+          // Clients without epoch support (old versions) are allowed through
+          if (svrEpoch > 0 && typeof clientEpoch === "number" && clientEpoch < svrEpoch) {
             info.score = 0;
-            // Tell this client to reset
             try { server.send(JSON.stringify({ type: "resetAll", scoreEpoch: svrEpoch })); } catch(e) {}
             return;
           }
-
           info.score = Math.floor(msg.score);
           info.stats = {
             smellyLevel: msg.smellyLevel || "",
@@ -2938,9 +2953,18 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "48" }), {
+      return corsResponse(JSON.stringify({ version: "49" }), {
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // Debug endpoint — check DO state (temporary)
+    if (url.pathname === "/debug-state") {
+      const lvId = env.LIVE_VISITORS.idFromName("global");
+      const lvObj = env.LIVE_VISITORS.get(lvId);
+      const res = await lvObj.fetch(new Request("https://dummy/debug-state"));
+      const body = await res.text();
+      return corsResponse(body, { headers: { "Content-Type": "application/json" } });
     }
 
     // Admin: reset all scores
