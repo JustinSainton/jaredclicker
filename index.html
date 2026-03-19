@@ -3175,7 +3175,9 @@
 
       spawnFloatNumber(x, y, '+' + formatNumber(earned));
       playCoinSound();
-      hapticLight();
+      // hapticLight called from touchstart handler (before preventDefault)
+      // Only call here for desktop click fallback
+      if (!coinTouched) hapticLight();
 
       if (Math.random() < 0.3) spawnParticle(x, y);
 
@@ -3191,6 +3193,8 @@
     // Use touchstart for instant response on mobile (no 300ms delay)
     var coinTouched = false;
     coinBtn.addEventListener('touchstart', function(e) {
+      // Fire haptic BEFORE preventDefault — iOS requires user gesture context
+      hapticLight();
       e.preventDefault(); // prevents zoom and ghost click
       if (!_isClickAllowed(e, true)) return;
       coinTouched = true;
