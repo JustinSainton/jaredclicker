@@ -3563,6 +3563,8 @@
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.version && data.version !== CURRENT_VERSION) {
+            // Don't auto-refresh during an active game — wait until it's over
+            if (typeof activeGameId !== 'undefined' && activeGameId) return;
             saveGame();
             window.location.reload();
           }
