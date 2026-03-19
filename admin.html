@@ -223,6 +223,19 @@
       box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
     }
 
+    .give-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      background: linear-gradient(135deg, #065f46, #059669);
+      border-color: #34d399;
+      color: #fff;
+    }
+
+    .give-btn:hover {
+      background: linear-gradient(135deg, #059669, #10b981);
+      box-shadow: 0 4px 12px rgba(52, 211, 153, 0.3);
+    }
+
     .empty-state {
       text-align: center;
       padding: 40px;
@@ -436,6 +449,16 @@
       var btnGroup = document.createElement('div');
       btnGroup.className = 'btn-group';
 
+      var giveBtn = document.createElement('button');
+      giveBtn.className = 'give-btn';
+      giveBtn.textContent = '+Coins';
+      giveBtn.setAttribute('data-name', scores[i].name);
+      giveBtn.addEventListener('click', function() {
+        var name = this.getAttribute('data-name');
+        giveCoins(name);
+      });
+      btnGroup.appendChild(giveBtn);
+
       var resetBtn = document.createElement('button');
       resetBtn.className = 'reset-btn';
       resetBtn.textContent = 'Reset';
@@ -461,6 +484,33 @@
 
       tbody.appendChild(row);
     }
+  }
+
+  function giveCoins(name) {
+    var input = prompt('How many coins to give "' + name + '"?\n\nExamples: 1000, 1000000, 1e9 (1 billion)');
+    if (!input) return;
+    var amount = Math.floor(Number(input));
+    if (!amount || amount <= 0) { alert('Invalid amount.'); return; }
+    if (!confirm('Give ' + amount.toLocaleString() + ' coins to "' + name + '"?')) return;
+
+    fetch(API_BASE + '/admin/add-coins', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + adminPassword,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ playerName: name, amount: amount })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed to add coins');
+      return res.json();
+    })
+    .then(function(data) {
+      loadScores();
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+    });
   }
 
   function resetPlayer(name) {

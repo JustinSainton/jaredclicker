@@ -463,6 +463,42 @@ export class LiveVisitors {
       });
     }
 
+    // Admin: add coins to individual player
+    if (url.pathname === "/admin/add-coins" && request.method === "POST") {
+      const body = await request.json();
+      const targetName = String(body.playerName || "").trim();
+      const amount = Math.floor(Number(body.amount) || 0);
+      if (!targetName || amount <= 0) {
+        return new Response(JSON.stringify({ error: "playerName and positive amount required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const targetKey = targetName.toLowerCase();
+
+      // 1. Add to persisted score
+      const scores = await this.loadScores();
+      if (scores[targetKey]) {
+        scores[targetKey].score += amount;
+      } else {
+        scores[targetKey] = { name: targetName, score: amount, stats: { smellyLevel: "" }, date: Date.now() };
+      }
+      this.persistedScores = scores;
+      await this.state.storage.put("scores", scores);
+
+      // 2. Update connected clients + send scoreCorrection so their local state updates
+      var correctionMsg = JSON.stringify({ type: "scoreCorrection", targetName: targetName, newScore: scores[targetKey].score });
+      for (const [ws, info] of this.connections) {
+        if (info.name && info.name.toLowerCase() === targetKey) {
+          info.score = scores[targetKey].score;
+          try { ws.send(correctionMsg); } catch (e) {}
+        }
+      }
+
+      await this.addSystemChat("ADMIN gave " + targetName + " " + amount.toLocaleString() + " coins!");
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true, player: targetName, newScore: scores[targetKey].score }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     // Broadcast raised amount to all clients
     if (url.pathname === "/broadcast-raised" && request.method === "POST") {
       const body = await request.json();
@@ -3042,6 +3078,26 @@ export default {
       const res = await obj.fetch(new Request("https://dummy/admin/reset-player", {
         method: "POST",
         body: JSON.stringify({ playerName: reqBody.playerName }),
+      }));
+      const body = await res.text();
+      return corsResponse(body, {
+        status: res.status, headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Admin: add coins to individual player
+    if (url.pathname === "/admin/add-coins" && request.method === "POST") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { "Content-Type": "application/json" },
+        });
+      }
+      const reqBody = await request.json();
+      const id = env.LIVE_VISITORS.idFromName("global");
+      const obj = env.LIVE_VISITORS.get(id);
+      const res = await obj.fetch(new Request("https://dummy/admin/add-coins", {
+        method: "POST",
+        body: JSON.stringify({ playerName: reqBody.playerName, amount: reqBody.amount }),
       }));
       const body = await res.text();
       return corsResponse(body, {
