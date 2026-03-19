@@ -3862,9 +3862,14 @@
           if (data.type === 'gameStarted') {
             activeGameId = data.game.id;
             activeGameState = data.game;
+            // Clear challenge from sent/received lists
+            var oppName = data.game.player1.toLowerCase() === (playerName || '').toLowerCase() ? data.game.player2 : data.game.player1;
+            sentChallenges = sentChallenges.filter(function(c) { return c.targetName.toLowerCase() !== oppName.toLowerCase(); });
+            receivedChallenges = receivedChallenges.filter(function(c) { return c.challengerName.toLowerCase() !== oppName.toLowerCase(); });
             hideChallengePopup();
             showGameOverlay(data.game);
             hapticMedium();
+            _lastBattlePlayerKey = ''; // force battle section refresh
             return;
           }
           if (data.type === 'gameUpdate') {
@@ -3878,6 +3883,7 @@
             activeGameState = data.game;
             showGameResult(data.game);
             hapticSabotage();
+            _lastBattlePlayerKey = ''; // force battle section refresh on next view
             return;
           }
           if (data.type === 'walletDeduct') {
