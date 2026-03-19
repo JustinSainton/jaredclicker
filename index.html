@@ -2327,14 +2327,14 @@
     /* Push notification permission prompt */
     .push-permission-prompt {
       position: fixed;
-      bottom: 20px;
+      bottom: 90px;
       left: 50%;
       transform: translateX(-50%) translateY(120px);
       background: linear-gradient(135deg, #2a2a4a, #1a1a3a);
       border: 2px solid #ffd700;
       border-radius: 14px;
       padding: 16px 24px;
-      z-index: 400;
+      z-index: 510;
       text-align: center;
       box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
       max-width: 340px;
@@ -5221,10 +5221,12 @@
     }
 
     // Check push prompt after clicks (hook into handleCoinClick)
+    var _pushClickCount = 0;
     var _origHandleCoinClick = handleCoinClick;
     handleCoinClick = function(x, y) {
       _origHandleCoinClick(x, y);
-      if (!pushPromptShown && !pushPromptDismissed && !pushSubscribed && playerName && state.totalClicks === 5) {
+      _pushClickCount++;
+      if (_pushClickCount === 5 && !pushPromptShown && !pushPromptDismissed && !pushSubscribed && playerName) {
         registerServiceWorker();
         showPushPrompt();
       }
