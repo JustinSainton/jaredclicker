@@ -3194,7 +3194,7 @@
     var coinTouched = false;
     coinBtn.addEventListener('touchstart', function(e) {
       // Fire haptic BEFORE preventDefault — iOS requires user gesture context
-      hapticLight();
+      hapticMedium();
       e.preventDefault(); // prevents zoom and ghost click
       if (!_isClickAllowed(e, true)) return;
       coinTouched = true;
