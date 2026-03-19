@@ -4093,8 +4093,12 @@
           if (data.type === 'spectatorChatMsg') { return; /* handled in spectator view */ }
           if (data.type === 'spectatorBetPlaced') { return; }
           if (data.type === 'spectatorBetResult') {
-            if (data.won) alert('You won your spectator bet! +' + formatNumber(data.payout) + ' coins!');
-            else alert('You lost your spectator bet.');
+            // Show as achievement-style toast instead of alert
+            var betMsg = data.won ? '\uD83C\uDFB0 Bet won! +' + formatNumber(data.payout) + ' coins!' : '\uD83C\uDFB0 Bet lost!';
+            achNameEl.textContent = betMsg;
+            achievementToast.querySelector('.ach-title').textContent = data.won ? 'SPECTATOR WIN' : 'SPECTATOR LOSS';
+            achievementToast.classList.add('show');
+            setTimeout(function() { achievementToast.classList.remove('show'); }, 3000);
             return;
           }
           if (data.type === 'walletDeduct') {
@@ -4158,9 +4162,14 @@
           // Refresh battle section only when online player list changes
           if (currentTab === 'battle' && typeof renderBattleSection === 'function') {
             var newPlayerKey = (data.players || []).filter(function(p) { return p.hasName; }).map(function(p) { return p.name; }).sort().join(',');
-            if (newPlayerKey !== _lastBattlePlayerKey) {
-              _lastBattlePlayerKey = newPlayerKey;
+            var newGamesKey = (data.activeGames || []).map(function(g) { return g.id; }).join(',');
+            var fullKey = newPlayerKey + '|' + newGamesKey;
+            if (fullKey !== _lastBattlePlayerKey) {
+              _lastBattlePlayerKey = fullKey;
+              // Save scroll position and restore after re-render
+              var scrollY = window.scrollY;
               renderBattleSection();
+              window.scrollTo(0, scrollY);
             }
           }
 
@@ -8301,30 +8310,48 @@
         genMsg.textContent = (gameTypeNames[game.type] || 'Game') + ' in progress...';
         content.appendChild(genMsg);
       }
-      // Bet buttons (if not already bet)
-      var betDiv = document.createElement('div');
-      betDiv.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:16px;';
-      var betP1 = document.createElement('button');
-      betP1.className = 'game-result-btn';
-      betP1.style.cssText += 'font-size:12px;padding:8px 16px;';
-      betP1.textContent = 'Bet on ' + game.player1;
-      betP1.addEventListener('click', function() {
-        var amt = prompt('Bet how many coins on ' + game.player1 + '? (min 100)');
-        if (!amt) return;
-        liveWs.send(JSON.stringify({ type: 'spectatorBet', gameId: game.id, betOn: game.player1, amount: parseInt(amt) }));
-      });
-      betDiv.appendChild(betP1);
-      var betP2 = document.createElement('button');
-      betP2.className = 'game-result-btn';
-      betP2.style.cssText += 'font-size:12px;padding:8px 16px;';
-      betP2.textContent = 'Bet on ' + game.player2;
-      betP2.addEventListener('click', function() {
-        var amt = prompt('Bet how many coins on ' + game.player2 + '? (min 100)');
-        if (!amt) return;
-        liveWs.send(JSON.stringify({ type: 'spectatorBet', gameId: game.id, betOn: game.player2, amount: parseInt(amt) }));
-      });
-      betDiv.appendChild(betP2);
-      content.appendChild(betDiv);
+      // Bet UI
+      if (!game.winner) {
+        var betSection = document.createElement('div');
+        betSection.style.cssText = 'background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:12px;padding:14px;margin-top:16px;';
+        var betTitle = document.createElement('div');
+        betTitle.style.cssText = 'color:#a855f7;font-size:13px;margin-bottom:10px;text-align:center;font-family:Fredoka One,cursive;';
+        betTitle.textContent = '\uD83C\uDFB0 Place Your Bet';
+        betSection.appendChild(betTitle);
+        // Bet amount slider
+        var betAmtDisplay = document.createElement('div');
+        betAmtDisplay.style.cssText = 'color:#ffd700;font-family:Press Start 2P,monospace;font-size:14px;text-align:center;margin-bottom:6px;';
+        betAmtDisplay.textContent = '1,000';
+        betSection.appendChild(betAmtDisplay);
+        var betSlider = document.createElement('input');
+        betSlider.type = 'range'; betSlider.min = '100'; betSlider.max = String(Math.min(1000000, state.totalCoins));
+        betSlider.value = '1000'; betSlider.step = '100';
+        betSlider.style.cssText = 'width:100%;accent-color:#a855f7;margin-bottom:10px;';
+        betSlider.addEventListener('input', function() { betAmtDisplay.textContent = formatNumber(parseInt(betSlider.value)); });
+        betSection.appendChild(betSlider);
+        // Player buttons
+        var betBtns = document.createElement('div');
+        betBtns.style.cssText = 'display:flex;gap:8px;';
+        var mkBetBtn = function(pName, color) {
+          var btn = document.createElement('button');
+          btn.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid ' + color + ';background:rgba(0,0,0,0.3);color:' + color + ';font-family:Fredoka One,cursive;font-size:13px;cursor:pointer;';
+          btn.textContent = pName;
+          btn.addEventListener('click', function() {
+            var amt = parseInt(betSlider.value);
+            liveWs.send(JSON.stringify({ type: 'spectatorBet', gameId: game.id, betOn: pName, amount: amt }));
+            betSection.textContent = '';
+            var conf = document.createElement('div');
+            conf.style.cssText = 'text-align:center;color:#a855f7;font-size:13px;font-family:Fredoka One,cursive;padding:8px;';
+            conf.textContent = '\u2705 Bet ' + formatNumber(amt) + ' on ' + pName + '!';
+            betSection.appendChild(conf);
+          });
+          return btn;
+        };
+        betBtns.appendChild(mkBetBtn(game.player1, '#4ade80'));
+        betBtns.appendChild(mkBetBtn(game.player2, '#ef4444'));
+        betSection.appendChild(betBtns);
+        content.appendChild(betSection);
+      }
       // Close button
       var closeBtn = document.createElement('button');
       closeBtn.className = 'game-result-btn';
