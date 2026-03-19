@@ -252,11 +252,13 @@ export class LiveVisitors {
     const key = name.toLowerCase();
     const entry = scores[key];
     if (!entry || entry.score < amount) return false;
+    const oldScore = entry.score;
     entry.score -= amount;
     entry.serverCutAt = Date.now();
     this.persistedScores = scores;
     await this.state.storage.put("scores", scores);
-    this.sendToPlayer(name, { type: "scoreCorrection", targetName: entry.name, newScore: entry.score });
+    // Send delta so client preserves any local progress above server's knowledge
+    this.sendToPlayer(name, { type: "scoreCorrection", targetName: entry.name, newScore: entry.score, delta: -amount });
     return true;
   }
 
@@ -266,10 +268,10 @@ export class LiveVisitors {
     const entry = scores[key];
     if (!entry) return;
     entry.score += amount;
-    entry.serverCutAt = Date.now();
+    // No serverCutAt on awards — don't block client from syncing earned coins
     this.persistedScores = scores;
     await this.state.storage.put("scores", scores);
-    this.sendToPlayer(name, { type: "scoreCorrection", targetName: entry.name, newScore: entry.score });
+    this.sendToPlayer(name, { type: "scoreCorrection", targetName: entry.name, newScore: entry.score, delta: amount });
   }
 
   createGame(challenge) {
@@ -823,7 +825,7 @@ export class LiveVisitors {
       // Broadcast coin cut event for popup notifications + score correction for target client
       var cutEvent = { type: "coinCutEvent", attackerName: attackerName, targetName: targetName, percentage: percentage, removed: removed, newScore: newScore, timestamp: Date.now() };
       var cutEventData = JSON.stringify(cutEvent);
-      var correctionMsg = JSON.stringify({ type: "scoreCorrection", targetName: targetName, newScore: newScore });
+      var correctionMsg = JSON.stringify({ type: "scoreCorrection", targetName: targetName, newScore: newScore, delta: -removed });
       for (var [ws] of this.connections) {
         try { ws.send(cutEventData); ws.send(correctionMsg); } catch(e) { this.connections.delete(ws); }
       }

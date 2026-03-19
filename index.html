@@ -3780,8 +3780,16 @@
 
           if (data.type === 'scoreCorrection') {
             if (playerName && data.targetName && data.targetName.toLowerCase() === playerName.toLowerCase()) {
-              state.totalCoins = data.newScore;
-              state.coins = Math.min(state.coins, data.newScore);
+              if (typeof data.delta === 'number') {
+                // Delta mode: apply the change relative to local score (preserves local progress)
+                state.totalCoins = Math.max(0, state.totalCoins + data.delta);
+                if (data.delta < 0) state.coins = Math.max(0, state.coins + data.delta);
+                else state.coins += data.delta;
+              } else {
+                // Legacy absolute mode (admin add-coins, older corrections)
+                state.totalCoins = data.newScore;
+                state.coins = Math.min(state.coins, data.newScore);
+              }
               saveGame();
               updateCounters();
             }
