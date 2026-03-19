@@ -2046,6 +2046,181 @@
     .skin-anim-pulse { animation: skin-pulse 3s ease-in-out infinite; }
     .skin-anim-sparkle { animation: skin-sparkle 1.5s ease-in-out infinite; }
     .skin-anim-float { animation: skin-float 4s ease-in-out infinite; }
+
+    /* ===== MOBILE FOOTER NAV ===== */
+    .mobile-footer-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 60px;
+      padding-bottom: env(safe-area-inset-bottom);
+      background: linear-gradient(180deg, #1a1a2e, #0f0f1e);
+      border-top: 2px solid #ffd700;
+      z-index: 500;
+      justify-content: space-around;
+      align-items: center;
+    }
+    .tab-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      background: none; border: none; color: #888; cursor: pointer;
+      padding: 6px 12px; font-family: 'Fredoka One', cursive; font-size: 9px;
+      transition: color 0.2s; -webkit-tap-highlight-color: transparent;
+    }
+    .tab-btn .tab-emoji {
+      font-size: 24px; line-height: 28px;
+      filter: grayscale(1) brightness(0.6);
+      transition: filter 0.2s;
+    }
+    .tab-btn.active { color: #ffd700; }
+    .tab-btn.active .tab-emoji { filter: none; }
+    .tab-btn img { width: 28px; height: 28px; filter: grayscale(1) brightness(0.6); transition: filter 0.2s; }
+    .tab-btn.active img { filter: none; }
+
+    @media (max-width: 900px) {
+      .mobile-footer-nav { display: flex; }
+      body.tab-nav-active { padding-bottom: 70px; }
+      body.tab-nav-active .header { display: none !important; }
+      body.tab-nav-active .game-container > * { display: none !important; }
+      body.tab-nav-active .tab-visible { display: block !important; }
+      body.tab-nav-active .click-area.tab-visible { display: flex !important; }
+      body.tab-nav-active .header.tab-visible { display: block !important; }
+      body.tab-nav-active .achievement-toast { bottom: 80px; }
+      body.tab-nav-active .achievement-toast.show { transform: translateX(-50%) translateY(0); }
+      body.tab-nav-active .sabotage-banner { bottom: 70px; }
+      body.tab-nav-active .chat-panel { bottom: 70px; }
+    }
+
+    /* ===== BATTLE SECTION ===== */
+    .battle-section {
+      background: rgba(0,0,0,0.5); border: 2px solid #ef4444;
+      border-radius: 16px; padding: 24px; min-width: 350px; max-width: 420px;
+    }
+    @media (max-width: 900px) {
+      .battle-section { min-width: unset; width: 90vw; max-width: 420px; }
+    }
+    .battle-section h2 { color: #ef4444; text-shadow: 2px 2px 0 #7c0000; margin-bottom: 16px; }
+    .battle-empty { color: #888; text-align: center; padding: 20px; font-size: 14px; }
+    .pending-challenge {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 10px; padding: 12px; margin-bottom: 8px;
+    }
+    .challenge-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; }
+    .challenge-name { color: #ffd700; font-size: 14px; }
+    .challenge-detail { color: #daa520; font-size: 12px; margin-top: 4px; }
+    .challenge-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .challenge-actions button {
+      padding: 6px 16px; border-radius: 8px; border: none;
+      font-family: 'Fredoka One', cursive; cursor: pointer; font-size: 13px;
+    }
+    .challenge-accept { background: #4ade80; color: #064e3b; }
+    .challenge-decline { background: #ef4444; color: white; }
+    .active-game-card {
+      background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3);
+      border-radius: 10px; padding: 12px; margin-bottom: 8px; cursor: pointer;
+    }
+    .active-game-card:hover { background: rgba(255,215,0,0.15); }
+
+    /* ===== GAME OVERLAY ===== */
+    .game-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.95); z-index: 600;
+      flex-direction: column; align-items: center; justify-content: center; padding: 20px;
+    }
+    .game-overlay.active { display: flex; }
+    .game-overlay-title { font-size: 24px; color: #ffd700; text-shadow: 2px 2px 0 #b8860b; margin-bottom: 4px; }
+    .game-overlay-vs { font-size: 14px; color: #daa520; margin-bottom: 4px; }
+    .game-overlay-wager { font-size: 12px; color: #4ade80; font-family: 'Press Start 2P', monospace; margin-bottom: 20px; }
+    .rps-choices { display: flex; gap: 16px; margin-bottom: 24px; }
+    .rps-btn {
+      width: 90px; height: 90px; border-radius: 16px; border: 3px solid #ffd700;
+      background: rgba(255,215,0,0.1); font-size: 48px; cursor: pointer;
+      transition: transform 0.2s, background 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .rps-btn:hover { transform: scale(1.1); background: rgba(255,215,0,0.2); }
+    .rps-btn.selected { background: rgba(255,215,0,0.3); transform: scale(1.15); box-shadow: 0 0 20px rgba(255,215,0,0.5); }
+    .rps-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .ttt-grid { display: grid; grid-template-columns: repeat(3, 80px); grid-template-rows: repeat(3, 80px); gap: 4px; margin-bottom: 24px; }
+    .ttt-cell {
+      background: rgba(255,215,0,0.1); border: 2px solid #ffd700; border-radius: 8px;
+      font-size: 36px; color: #ffd700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Press Start 2P', monospace; transition: background 0.2s;
+    }
+    .ttt-cell:hover:not(.taken) { background: rgba(255,215,0,0.2); }
+    .ttt-cell.taken { cursor: default; }
+    .trivia-question { font-size: 18px; color: #fff; text-align: center; margin-bottom: 20px; max-width: 500px; line-height: 1.4; }
+    .trivia-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 500px; width: 100%; }
+    .trivia-answer-btn {
+      padding: 12px 16px; border: 2px solid #ffd700; border-radius: 12px;
+      background: rgba(255,215,0,0.1); color: #ffd700;
+      font-family: 'Fredoka One', cursive; font-size: 14px; cursor: pointer;
+      transition: all 0.2s; text-align: center;
+    }
+    .trivia-answer-btn:hover { background: rgba(255,215,0,0.2); }
+    .trivia-answer-btn.correct { background: rgba(74,222,128,0.3); border-color: #4ade80; color: #4ade80; }
+    .trivia-answer-btn.wrong { background: rgba(239,68,68,0.3); border-color: #ef4444; color: #ef4444; }
+    .trivia-answer-btn:disabled { cursor: default; opacity: 0.7; }
+    .trivia-timer { font-size: 36px; color: #ffd700; font-family: 'Press Start 2P', monospace; margin-bottom: 16px; }
+    .game-result { text-align: center; }
+    .game-result-text { font-size: 28px; color: #ffd700; text-shadow: 2px 2px 0 #b8860b; margin-bottom: 8px; }
+    .game-result-coins { font-size: 14px; color: #4ade80; font-family: 'Press Start 2P', monospace; margin-bottom: 16px; }
+    .game-result-btn {
+      padding: 12px 24px; border-radius: 12px; border: 2px solid #ffd700;
+      background: linear-gradient(135deg, #b8860b, #ffd700); color: #1a1a2e;
+      font-family: 'Fredoka One', cursive; font-size: 16px; cursor: pointer; margin: 4px;
+    }
+    .game-result-rematch {
+      padding: 10px 20px; border-radius: 12px; border: 2px solid #a855f7;
+      background: linear-gradient(135deg, #7c3aed, #a855f7); color: white;
+      font-family: 'Fredoka One', cursive; font-size: 14px; cursor: pointer; margin: 4px;
+    }
+    .game-waiting { color: #daa520; font-size: 16px; animation: gpulse 1.5s ease-in-out infinite; }
+    @keyframes gpulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    /* Challenge popup */
+    .challenge-popup {
+      display: none; position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #1a1a2e, #2a2a4a);
+      border: 3px solid #ef4444; border-radius: 16px;
+      padding: 24px; z-index: 550; text-align: center;
+      min-width: 280px; max-width: 90vw;
+      box-shadow: 0 0 40px rgba(239,68,68,0.5);
+    }
+    .challenge-popup.active { display: block; }
+    .challenge-popup h3 { color: #ef4444; margin-bottom: 12px; font-size: 20px; }
+    .challenge-popup-info { color: #daa520; margin-bottom: 8px; font-size: 14px; }
+    .challenge-popup-wager { color: #ffd700; font-family: 'Press Start 2P', monospace; font-size: 14px; margin-bottom: 12px; }
+    .challenge-popup-timer { color: #888; font-size: 11px; margin-bottom: 12px; }
+    .challenge-popup-actions { display: flex; gap: 12px; justify-content: center; }
+
+    /* Challenge UI in player detail */
+    .challenge-box {
+      background: linear-gradient(135deg, #1e1e3a, #2a1a3a); border: 2px solid #a855f7;
+      border-radius: 12px; padding: 14px; margin-top: 8px;
+    }
+    .challenge-box-title { color: #a855f7; font-size: 16px; margin-bottom: 10px; }
+    .challenge-type-btns { display: flex; gap: 8px; margin-bottom: 10px; justify-content: center; }
+    .challenge-type-btn {
+      padding: 8px 14px; border-radius: 10px; border: 2px solid #555;
+      background: rgba(255,255,255,0.05); color: #aaa;
+      font-size: 20px; cursor: pointer; transition: all 0.2s;
+    }
+    .challenge-type-btn.selected { border-color: #ffd700; background: rgba(255,215,0,0.15); color: #ffd700; }
+    .challenge-wager-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .challenge-wager-input {
+      flex: 1; padding: 8px 12px; border-radius: 8px; border: 2px solid #ffd700;
+      background: rgba(0,0,0,0.5); color: #ffd700; font-family: 'Press Start 2P', monospace;
+      font-size: 11px; text-align: center;
+    }
+    .challenge-wager-label { color: #daa520; font-size: 11px; white-space: nowrap; }
+    .challenge-send-btn {
+      width: 100%; padding: 10px; border-radius: 10px;
+      border: 2px solid #ef4444; background: linear-gradient(135deg, #991b1b, #dc2626);
+      color: white; font-family: 'Fredoka One', cursive; font-size: 15px; cursor: pointer;
+    }
+    .challenge-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body class="has-banner">
@@ -2209,6 +2384,14 @@
         <div id="customSkinStatus" style="color:#aaa;font-size:12px;text-align:center;margin-top:6px;min-height:20px;"></div>
       </div>
     </div>
+
+    <!-- Battle Section -->
+    <div class="battle-section" id="battleSection">
+      <h2>Battle Arena</h2>
+      <div id="battleContent">
+        <div class="battle-empty">Challenge players from the leaderboard to wager coins!</div>
+      </div>
+    </div>
   </div>
 
   <!-- Skin Preview Overlay -->
@@ -2347,6 +2530,50 @@
   <div class="achievement-toast" id="achievementToast">
     <div class="ach-title">ACHIEVEMENT UNLOCKED</div>
     <div class="ach-name" id="achName"></div>
+  </div>
+
+  <!-- Mobile Footer Nav -->
+  <nav class="mobile-footer-nav" id="mobileFooterNav">
+    <button class="tab-btn active" data-tab="click" id="tabBtnClick">
+      <span class="tab-emoji">&#x1FA99;</span>
+      <span>Click</span>
+    </button>
+    <button class="tab-btn" data-tab="shop" id="tabBtnShop">
+      <span class="tab-emoji">&#x1F3EA;</span>
+      <span>Shop</span>
+    </button>
+    <button class="tab-btn" data-tab="board" id="tabBtnBoard">
+      <span class="tab-emoji">&#x1F3C6;</span>
+      <span>Board</span>
+    </button>
+    <button class="tab-btn" data-tab="battle" id="tabBtnBattle">
+      <span class="tab-emoji">&#x2694;&#xFE0F;</span>
+      <span>Battle</span>
+    </button>
+    <button class="tab-btn" data-tab="skins" id="tabBtnSkins">
+      <span class="tab-emoji">&#x1F3A8;</span>
+      <span>Skins</span>
+    </button>
+  </nav>
+
+  <!-- Game Overlay -->
+  <div class="game-overlay" id="gameOverlay">
+    <div class="game-overlay-title" id="gameOverlayTitle"></div>
+    <div class="game-overlay-vs" id="gameOverlayVs"></div>
+    <div class="game-overlay-wager" id="gameOverlayWager"></div>
+    <div id="gameOverlayContent"></div>
+  </div>
+
+  <!-- Challenge Received Popup -->
+  <div class="challenge-popup" id="challengePopup">
+    <h3>CHALLENGE!</h3>
+    <div class="challenge-popup-info" id="challengePopupInfo"></div>
+    <div class="challenge-popup-wager" id="challengePopupWager"></div>
+    <div class="challenge-popup-timer" id="challengePopupTimer"></div>
+    <div class="challenge-popup-actions">
+      <button class="challenge-accept" id="challengeAcceptBtn" style="padding:10px 24px;font-size:16px;">Accept</button>
+      <button class="challenge-decline" id="challengeDeclineBtn" style="padding:10px 24px;font-size:16px;">Decline</button>
+    </div>
   </div>
 
   <script>
@@ -3593,6 +3820,61 @@
             return;
           }
 
+          // ===== GAME MESSAGES =====
+          if (data.type === 'challengeReceived') {
+            showChallengePopup(data.challenge);
+            return;
+          }
+          if (data.type === 'challengeSent') {
+            sentChallenges.push(data.challenge);
+            renderBattleSection();
+            return;
+          }
+          if (data.type === 'challengeDeclined') {
+            sentChallenges = sentChallenges.filter(function(c) { return c.id !== data.challengeId; });
+            renderBattleSection();
+            if (data.reason === 'insufficient_coins') alert('Challenge failed: not enough coins!');
+            return;
+          }
+          if (data.type === 'challengeExpired') {
+            hideChallengePopup();
+            sentChallenges = sentChallenges.filter(function(c) { return c.id !== data.challengeId; });
+            receivedChallenges = receivedChallenges.filter(function(c) { return c.id !== data.challengeId; });
+            renderBattleSection();
+            return;
+          }
+          if (data.type === 'gameStarted') {
+            activeGameId = data.game.id;
+            activeGameState = data.game;
+            hideChallengePopup();
+            showGameOverlay(data.game);
+            hapticMedium();
+            return;
+          }
+          if (data.type === 'gameUpdate') {
+            if (data.game && data.game.id === activeGameId) {
+              activeGameState = data.game;
+              updateGameOverlay(data.game);
+            }
+            return;
+          }
+          if (data.type === 'gameEnded') {
+            activeGameState = data.game;
+            showGameResult(data.game);
+            hapticSabotage();
+            return;
+          }
+          if (data.type === 'walletDeduct') {
+            state.coins = Math.max(0, state.coins - data.amount);
+            saveGame(); updateCounters();
+            return;
+          }
+          if (data.type === 'walletAward') {
+            state.coins += data.amount;
+            saveGame(); updateCounters();
+            return;
+          }
+
           // Epoch check: if server epoch is newer, this client missed a reset
           if (typeof data.scoreEpoch === 'number') {
             var localEpoch = parseInt(localStorage.getItem('jcScoreEpoch') || '0', 10);
@@ -3957,6 +4239,107 @@
           startWipeCampaign(entry.name);
         });
         detailCard.appendChild(wipeBtn);
+
+        // ===== CHALLENGE TO BATTLE =====
+        var challengeBox = document.createElement('div');
+        challengeBox.className = 'challenge-box';
+        var chalTitle = document.createElement('div');
+        chalTitle.className = 'challenge-box-title';
+        chalTitle.textContent = '\u2694\uFE0F CHALLENGE TO BATTLE';
+        challengeBox.appendChild(chalTitle);
+        var typeRow = document.createElement('div');
+        typeRow.className = 'challenge-type-btns';
+        var challengeGameTypes = [
+          { type: 'rps', emoji: '\u270A', label: 'RPS' },
+          { type: 'ttt', emoji: '\u274C', label: 'TTT' },
+          { type: 'trivia', emoji: '\uD83E\uDDE0', label: 'Trivia' }
+        ];
+        var selectedGameType = 'rps';
+        for (var gi = 0; gi < challengeGameTypes.length; gi++) {
+          (function(gt) {
+            var typeBtn = document.createElement('button');
+            typeBtn.className = 'challenge-type-btn' + (gt.type === selectedGameType ? ' selected' : '');
+            typeBtn.textContent = gt.emoji;
+            typeBtn.title = gt.label;
+            typeBtn.addEventListener('click', function(ev) {
+              ev.stopPropagation();
+              selectedGameType = gt.type;
+              var allTB = typeRow.querySelectorAll('.challenge-type-btn');
+              for (var tb = 0; tb < allTB.length; tb++) allTB[tb].classList.remove('selected');
+              typeBtn.classList.add('selected');
+            });
+            typeRow.appendChild(typeBtn);
+          })(challengeGameTypes[gi]);
+        }
+        challengeBox.appendChild(typeRow);
+        // Wager source toggle (wallet vs score)
+        var sourceRow = document.createElement('div');
+        sourceRow.className = 'challenge-type-btns';
+        var selectedWagerSource = 'score';
+        var sourceBtns = [
+          { src: 'wallet', label: '\uD83D\uDCB0 Wallet', tip: 'Bet spendable coins' },
+          { src: 'score', label: '\uD83C\uDFC6 Score', tip: 'Bet leaderboard rank' }
+        ];
+        for (var si = 0; si < sourceBtns.length; si++) {
+          (function(sb) {
+            var srcBtn = document.createElement('button');
+            srcBtn.className = 'challenge-type-btn' + (sb.src === selectedWagerSource ? ' selected' : '');
+            srcBtn.textContent = sb.label;
+            srcBtn.title = sb.tip;
+            srcBtn.style.fontSize = '12px';
+            srcBtn.addEventListener('click', function(ev) {
+              ev.stopPropagation();
+              selectedWagerSource = sb.src;
+              var allSB = sourceRow.querySelectorAll('.challenge-type-btn');
+              for (var x = 0; x < allSB.length; x++) allSB[x].classList.remove('selected');
+              srcBtn.classList.add('selected');
+              // Update max wager based on source
+              var newMax = sb.src === 'wallet' ? Math.min(10000000, state.coins, entry.score) : Math.min(10000000, state.totalCoins, entry.score);
+              wagerInput.max = String(newMax);
+              if (parseInt(wagerInput.value) > newMax) wagerInput.value = String(Math.min(1000, newMax));
+            });
+            sourceRow.appendChild(srcBtn);
+          })(sourceBtns[si]);
+        }
+        challengeBox.appendChild(sourceRow);
+        var sourceHint = document.createElement('div');
+        sourceHint.style.cssText = 'color:#888;font-size:10px;text-align:center;margin-bottom:8px;';
+        sourceHint.textContent = 'Wallet = spendable coins | Score = leaderboard rank';
+        challengeBox.appendChild(sourceHint);
+        var wagerRow = document.createElement('div');
+        wagerRow.className = 'challenge-wager-row';
+        var wagerLabel = document.createElement('span');
+        wagerLabel.className = 'challenge-wager-label';
+        wagerLabel.textContent = 'Wager:';
+        wagerRow.appendChild(wagerLabel);
+        var wagerInput = document.createElement('input');
+        wagerInput.className = 'challenge-wager-input';
+        wagerInput.type = 'number';
+        wagerInput.min = '100';
+        var maxWager = Math.min(10000000, state.totalCoins, entry.score);
+        wagerInput.max = String(maxWager);
+        wagerInput.value = String(Math.min(1000, maxWager));
+        wagerInput.placeholder = '100 - ' + formatNumber(maxWager);
+        wagerRow.appendChild(wagerInput);
+        var coinsLbl = document.createElement('span');
+        coinsLbl.className = 'challenge-wager-label';
+        coinsLbl.textContent = 'coins';
+        wagerRow.appendChild(coinsLbl);
+        challengeBox.appendChild(wagerRow);
+        var sendChalBtn = document.createElement('button');
+        sendChalBtn.className = 'challenge-send-btn';
+        sendChalBtn.textContent = 'Send Challenge';
+        if (maxWager < 100) { sendChalBtn.disabled = true; sendChalBtn.textContent = 'Not enough coins'; }
+        sendChalBtn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          var wager = parseInt(wagerInput.value);
+          if (isNaN(wager) || wager < 100 || wager > maxWager) { wagerInput.style.borderColor = '#ef4444'; return; }
+          sendChallenge(entry.name, selectedGameType, wager, selectedWagerSource);
+          hidePlayerDetail();
+          if (typeof mobileQuery !== 'undefined' && mobileQuery.matches) switchTab('battle');
+        });
+        challengeBox.appendChild(sendChalBtn);
+        detailCard.appendChild(challengeBox);
 
         // Buy 5 credits (show if no credits)
         if (myCredits <= 0) {
@@ -6697,6 +7080,455 @@
     // Fetch skin catalog on load and periodically
     fetchSkinCatalog();
     setInterval(fetchSkinCatalog, 60000);
+
+    // ===== MOBILE FOOTER NAV =====
+    var tabSections = {
+      'click': ['.header', '.click-area'],
+      'shop': ['#shop', '#statsPanel'],
+      'board': ['#leaderboardPanel', '#campaignsSection'],
+      'battle': ['#battleSection'],
+      'skins': ['#skinShopSection']
+    };
+    var allTabSelectors = ['.header', '.click-area', '#shop', '#statsPanel', '#leaderboardPanel', '#campaignsSection', '#battleSection', '#skinShopSection'];
+    var currentTab = 'click';
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      for (var i = 0; i < allTabSelectors.length; i++) {
+        var el = document.querySelector(allTabSelectors[i]);
+        if (el) el.classList.remove('tab-visible');
+      }
+      var sections = tabSections[tabName] || [];
+      for (var i = 0; i < sections.length; i++) {
+        var el = document.querySelector(sections[i]);
+        if (el) el.classList.add('tab-visible');
+      }
+      var buttons = document.querySelectorAll('.tab-btn');
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.toggle('active', buttons[i].dataset.tab === tabName);
+      }
+      window.scrollTo(0, 0);
+      if (typeof hapticLight === 'function') hapticLight();
+    }
+
+    var mobileQuery = window.matchMedia('(max-width: 900px)');
+    function handleMobileChange(e) {
+      if (e.matches) {
+        document.body.classList.add('tab-nav-active');
+        switchTab(currentTab);
+      } else {
+        document.body.classList.remove('tab-nav-active');
+        var vis = document.querySelectorAll('.tab-visible');
+        for (var i = 0; i < vis.length; i++) vis[i].classList.remove('tab-visible');
+      }
+    }
+    if (mobileQuery.addEventListener) {
+      mobileQuery.addEventListener('change', handleMobileChange);
+    } else if (mobileQuery.addListener) {
+      mobileQuery.addListener(handleMobileChange);
+    }
+    if (mobileQuery.matches) {
+      document.body.classList.add('tab-nav-active');
+      switchTab('click');
+    }
+
+    var tabBtns = document.querySelectorAll('.tab-btn');
+    for (var i = 0; i < tabBtns.length; i++) {
+      tabBtns[i].addEventListener('click', function() {
+        switchTab(this.dataset.tab);
+      });
+    }
+
+    // ===== BATTLE SYSTEM (client) =====
+    var activeGameId = null;
+    var activeGameState = null;
+    var sentChallenges = [];
+    var receivedChallenges = [];
+    var currentChallengePopupData = null;
+    var challengePopupTimerInterval = null;
+    var gameOverlayEl = document.getElementById('gameOverlay');
+    var gameOverlayTitleEl = document.getElementById('gameOverlayTitle');
+    var gameOverlayVsEl = document.getElementById('gameOverlayVs');
+    var gameOverlayWagerEl = document.getElementById('gameOverlayWager');
+    var gameOverlayContentEl = document.getElementById('gameOverlayContent');
+    var challengePopupEl = document.getElementById('challengePopup');
+    var challengePopupInfoEl = document.getElementById('challengePopupInfo');
+    var challengePopupWagerEl = document.getElementById('challengePopupWager');
+    var challengePopupTimerEl = document.getElementById('challengePopupTimer');
+    var gameTypeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia' };
+
+    function sendChallenge(targetName, gameType, wagerCoins, wagerSource) {
+      if (!liveWs || liveWs.readyState !== 1) return;
+      liveWs.send(JSON.stringify({ type: 'challenge', targetName: targetName, gameType: gameType, wagerCoins: wagerCoins, wagerSource: wagerSource || 'score' }));
+    }
+
+    function showChallengePopup(challenge) {
+      currentChallengePopupData = challenge;
+      receivedChallenges.push(challenge);
+      challengePopupInfoEl.textContent = challenge.challengerName + ' challenges you to ' + (gameTypeNames[challenge.gameType] || challenge.gameType) + '!';
+      challengePopupWagerEl.textContent = formatNumber(challenge.wagerCoins) + ' coins wager';
+      // Add source toggle for accepter
+      acceptWagerSource = 'score';
+      var existingToggle = document.getElementById('acceptSourceToggle');
+      if (existingToggle) existingToggle.remove();
+      var srcToggle = document.createElement('div');
+      srcToggle.id = 'acceptSourceToggle';
+      srcToggle.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-bottom:10px;';
+      var srcOptions = [
+        { src: 'wallet', label: '\uD83D\uDCB0 Wallet' },
+        { src: 'score', label: '\uD83C\uDFC6 Score' }
+      ];
+      for (var sti = 0; sti < srcOptions.length; sti++) {
+        (function(so) {
+          var sb = document.createElement('button');
+          sb.className = 'challenge-type-btn' + (so.src === 'score' ? ' selected' : '');
+          sb.textContent = so.label;
+          sb.style.fontSize = '12px';
+          sb.addEventListener('click', function() {
+            acceptWagerSource = so.src;
+            var all = srcToggle.querySelectorAll('.challenge-type-btn');
+            for (var z = 0; z < all.length; z++) all[z].classList.remove('selected');
+            sb.classList.add('selected');
+          });
+          srcToggle.appendChild(sb);
+        })(srcOptions[sti]);
+      }
+      var srcHint = document.createElement('div');
+      srcHint.style.cssText = 'color:#888;font-size:9px;text-align:center;margin-top:4px;';
+      srcHint.textContent = 'Choose where your wager comes from';
+      srcToggle.appendChild(srcHint);
+      challengePopupTimerEl.parentNode.insertBefore(srcToggle, challengePopupTimerEl);
+      challengePopupEl.classList.add('active');
+      hapticMedium();
+      if (challengePopupTimerInterval) clearInterval(challengePopupTimerInterval);
+      var remaining = Math.max(0, Math.floor((challenge.expiresAt - Date.now()) / 1000));
+      challengePopupTimerEl.textContent = remaining + 's remaining';
+      challengePopupTimerInterval = setInterval(function() {
+        remaining--;
+        if (remaining <= 0) { clearInterval(challengePopupTimerInterval); hideChallengePopup(); }
+        else challengePopupTimerEl.textContent = remaining + 's remaining';
+      }, 1000);
+      renderBattleSection();
+    }
+
+    function hideChallengePopup() {
+      challengePopupEl.classList.remove('active');
+      currentChallengePopupData = null;
+      if (challengePopupTimerInterval) { clearInterval(challengePopupTimerInterval); challengePopupTimerInterval = null; }
+    }
+
+    var acceptWagerSource = 'score'; // default for accepting challenges
+    document.getElementById('challengeAcceptBtn').addEventListener('click', function() {
+      if (currentChallengePopupData) {
+        liveWs.send(JSON.stringify({ type: 'acceptChallenge', challengeId: currentChallengePopupData.id, wagerSource: acceptWagerSource }));
+        hideChallengePopup();
+      }
+    });
+    document.getElementById('challengeDeclineBtn').addEventListener('click', function() {
+      if (currentChallengePopupData) {
+        var cid = currentChallengePopupData.id;
+        liveWs.send(JSON.stringify({ type: 'declineChallenge', challengeId: cid }));
+        hideChallengePopup();
+        receivedChallenges = receivedChallenges.filter(function(c) { return c.id !== cid; });
+        renderBattleSection();
+      }
+    });
+
+    function showGameOverlay(game) {
+      gameOverlayTitleEl.textContent = gameTypeNames[game.type] || game.type;
+      gameOverlayVsEl.textContent = game.player1 + ' vs ' + game.player2;
+      gameOverlayWagerEl.textContent = formatNumber(game.wagerCoins) + ' coins at stake';
+      gameOverlayEl.classList.add('active');
+      renderGameContent(game);
+    }
+
+    function updateGameOverlay(game) { renderGameContent(game); }
+
+    function hideGameOverlay() {
+      gameOverlayEl.classList.remove('active');
+      activeGameId = null;
+      activeGameState = null;
+    }
+
+    function renderGameContent(game) {
+      var content = gameOverlayContentEl;
+      content.textContent = '';
+      if (game.winner) return;
+      if (game.type === 'rps') renderRpsGame(game, content);
+      else if (game.type === 'ttt') renderTttGame(game, content);
+      else if (game.type === 'trivia') renderTriviaGame(game, content);
+    }
+
+    function renderRpsGame(game, container) {
+      if (game.rpsReveal) {
+        var revealDiv = document.createElement('div');
+        revealDiv.style.cssText = 'text-align:center;margin-bottom:16px;';
+        var moveEmojis = { rock: '\uD83E\uDEA8', paper: '\uD83D\uDCC4', scissors: '\u2702\uFE0F' };
+        var emojiRow = document.createElement('div');
+        emojiRow.style.cssText = 'font-size:48px;margin-bottom:8px;';
+        emojiRow.textContent = (moveEmojis[game.rpsReveal.p1Move] || '?') + ' vs ' + (moveEmojis[game.rpsReveal.p2Move] || '?');
+        revealDiv.appendChild(emojiRow);
+        var rTextDiv = document.createElement('div');
+        rTextDiv.style.cssText = 'color:#ffd700;font-size:16px;';
+        rTextDiv.textContent = game.rpsReveal.result === 'draw' ? 'Draw!' : (game.rpsReveal.result === 'p1' ? game.player1 + ' wins round!' : game.player2 + ' wins round!');
+        revealDiv.appendChild(rTextDiv);
+        container.appendChild(revealDiv);
+      }
+      if (game.maxRounds > 1) {
+        var scoreDiv = document.createElement('div');
+        scoreDiv.style.cssText = 'text-align:center;color:#daa520;margin-bottom:12px;font-size:14px;';
+        scoreDiv.textContent = game.player1 + ' ' + game.p1Score + ' - ' + game.p2Score + ' ' + game.player2 + ' (Round ' + game.round + '/' + game.maxRounds + ')';
+        container.appendChild(scoreDiv);
+      }
+      var isP1 = playerName && playerName.toLowerCase() === game.player1.toLowerCase();
+      var myMove = isP1 ? game.rpsRound.p1Move : game.rpsRound.p2Move;
+      var oppMove = isP1 ? game.rpsRound.p2Move : game.rpsRound.p1Move;
+      if (myMove && myMove !== 'hidden') {
+        var waitDiv = document.createElement('div');
+        waitDiv.className = 'game-waiting';
+        waitDiv.textContent = oppMove === 'hidden' ? 'Opponent is choosing...' : 'Waiting for opponent...';
+        container.appendChild(waitDiv);
+      } else {
+        var choices = document.createElement('div');
+        choices.className = 'rps-choices';
+        var moves = [{ m: 'rock', e: '\uD83E\uDEA8' }, { m: 'paper', e: '\uD83D\uDCC4' }, { m: 'scissors', e: '\u2702\uFE0F' }];
+        for (var mi = 0; mi < moves.length; mi++) {
+          (function(mv) {
+            var btn = document.createElement('button');
+            btn.className = 'rps-btn';
+            btn.textContent = mv.e;
+            btn.addEventListener('click', function() {
+              liveWs.send(JSON.stringify({ type: 'gameMove', gameId: game.id, move: mv.m }));
+              var allBtns = choices.querySelectorAll('.rps-btn');
+              for (var j = 0; j < allBtns.length; j++) {
+                allBtns[j].disabled = true;
+                if (allBtns[j] === btn) allBtns[j].classList.add('selected');
+              }
+            });
+            choices.appendChild(btn);
+          })(moves[mi]);
+        }
+        container.appendChild(choices);
+      }
+    }
+
+    function renderTttGame(game, container) {
+      var isP1 = playerName && playerName.toLowerCase() === game.player1.toLowerCase();
+      var mySymbol = isP1 ? game.tttSymbols[game.player1] : game.tttSymbols[game.player2];
+      var isMyTurn = game.tttCurrentTurn && game.tttCurrentTurn.toLowerCase() === (playerName || '').toLowerCase();
+      var turnDiv = document.createElement('div');
+      turnDiv.style.cssText = 'text-align:center;color:#daa520;margin-bottom:12px;font-size:14px;';
+      turnDiv.textContent = isMyTurn ? 'Your turn! (You are ' + mySymbol + ')' : game.tttCurrentTurn + "'s turn...";
+      container.appendChild(turnDiv);
+      var grid = document.createElement('div');
+      grid.className = 'ttt-grid';
+      for (var ci = 0; ci < 9; ci++) {
+        (function(idx) {
+          var cell = document.createElement('div');
+          cell.className = 'ttt-cell' + (game.tttBoard[idx] ? ' taken' : '');
+          cell.textContent = game.tttBoard[idx] || '';
+          if (!game.tttBoard[idx] && isMyTurn) {
+            cell.addEventListener('click', function() {
+              liveWs.send(JSON.stringify({ type: 'gameMove', gameId: game.id, move: idx }));
+            });
+          }
+          grid.appendChild(cell);
+        })(ci);
+      }
+      container.appendChild(grid);
+    }
+
+    function renderTriviaGame(game, container) {
+      var isP1 = playerName && playerName.toLowerCase() === game.player1.toLowerCase();
+      var myAnswer = isP1 ? game.triviaP1Answer : game.triviaP2Answer;
+      var oppAnswer = isP1 ? game.triviaP2Answer : game.triviaP1Answer;
+      var qDiv = document.createElement('div');
+      qDiv.className = 'trivia-question';
+      qDiv.textContent = game.triviaQuestion;
+      container.appendChild(qDiv);
+      if (myAnswer !== null && myAnswer !== undefined) {
+        var waitDiv = document.createElement('div');
+        waitDiv.className = 'game-waiting';
+        waitDiv.textContent = oppAnswer === 'hidden' ? 'Opponent is answering...' : 'Waiting for opponent...';
+        container.appendChild(waitDiv);
+      } else {
+        var answers = document.createElement('div');
+        answers.className = 'trivia-answers';
+        for (var ai = 0; ai < game.triviaAnswers.length; ai++) {
+          (function(idx) {
+            var btn = document.createElement('button');
+            btn.className = 'trivia-answer-btn';
+            btn.textContent = game.triviaAnswers[idx];
+            btn.addEventListener('click', function() {
+              liveWs.send(JSON.stringify({ type: 'gameMove', gameId: game.id, move: idx }));
+              var allBtns = answers.querySelectorAll('.trivia-answer-btn');
+              for (var j = 0; j < allBtns.length; j++) {
+                allBtns[j].disabled = true;
+                if (j === idx) allBtns[j].style.borderColor = '#a855f7';
+              }
+            });
+            answers.appendChild(btn);
+          })(ai);
+        }
+        container.appendChild(answers);
+      }
+    }
+
+    function showGameResult(game) {
+      var content = gameOverlayContentEl;
+      content.textContent = '';
+      gameOverlayEl.classList.add('active');
+      var result = document.createElement('div');
+      result.className = 'game-result';
+      var isWinner = game.winner && playerName && game.winner.toLowerCase() === playerName.toLowerCase();
+      var isDraw = game.winner === 'draw';
+      var text = document.createElement('div');
+      text.className = 'game-result-text';
+      text.textContent = isDraw ? 'DRAW!' : (isWinner ? 'YOU WIN!' : 'YOU LOSE!');
+      text.style.color = isDraw ? '#daa520' : (isWinner ? '#4ade80' : '#ef4444');
+      result.appendChild(text);
+      var coins = document.createElement('div');
+      coins.className = 'game-result-coins';
+      if (isDraw) { coins.textContent = formatNumber(game.wagerCoins) + ' coins refunded'; coins.style.color = '#daa520'; }
+      else if (isWinner) { coins.textContent = '+' + formatNumber(game.wagerCoins * 2) + ' coins!'; }
+      else { coins.textContent = '-' + formatNumber(game.wagerCoins) + ' coins'; coins.style.color = '#ef4444'; }
+      result.appendChild(coins);
+      if (game.type === 'trivia' && game.triviaCorrectIndex !== undefined) {
+        var ansDiv = document.createElement('div');
+        ansDiv.style.cssText = 'color:#4ade80;font-size:13px;margin-bottom:12px;';
+        ansDiv.textContent = 'Correct answer: ' + game.triviaAnswers[game.triviaCorrectIndex];
+        result.appendChild(ansDiv);
+      }
+      var closeBtn = document.createElement('button');
+      closeBtn.className = 'game-result-btn';
+      closeBtn.textContent = 'Close';
+      closeBtn.addEventListener('click', function() { hideGameOverlay(); });
+      result.appendChild(closeBtn);
+      if (!isDraw && !isWinner && game.maxRounds === 1) {
+        var rematchBtn = document.createElement('button');
+        rematchBtn.className = 'game-result-rematch';
+        rematchBtn.textContent = 'Best 2 of 3 \u2014 $1.99';
+        rematchBtn.addEventListener('click', function() { startRematch(game); });
+        result.appendChild(rematchBtn);
+      }
+      content.appendChild(result);
+    }
+
+    function startRematch(game) {
+      fetch(apiBase + '/create-rematch-intent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId: game.id })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        processRematchPayment(data.clientSecret, game.id);
+      });
+    }
+
+    function processRematchPayment(clientSecret, gameId) {
+      if (!stripe) return;
+      var elements = stripe.elements({ clientSecret: clientSecret });
+      var payModal = document.getElementById('paymentModal');
+      var payCard = payModal.querySelector('.payment-card');
+      payCard.querySelector('h3').textContent = 'Best 2 of 3 Rematch';
+      payCard.querySelector('.price').textContent = '$1.99';
+      payCard.querySelector('.payment-desc').textContent = 'Your original game counts as round 1. Win 2 rounds to claim the pot!';
+      var payElm = document.getElementById('payment-element');
+      payElm.textContent = '';
+      var cardEl = elements.create('payment');
+      cardEl.mount(payElm);
+      var payBtn = document.getElementById('payBtn');
+      payBtn.textContent = 'Pay $1.99';
+      payBtn.disabled = false;
+      payModal.classList.add('active');
+      payBtn.onclick = function() {
+        payBtn.disabled = true;
+        payBtn.textContent = 'Processing...';
+        stripe.confirmPayment({ elements: elements, confirmParams: { return_url: window.location.href }, redirect: 'if_required' })
+        .then(function(result) {
+          if (result.error) {
+            document.getElementById('paymentStatus').textContent = result.error.message;
+            payBtn.disabled = false; payBtn.textContent = 'Pay $1.99';
+          } else {
+            payModal.classList.remove('active');
+            fetch(apiBase + '/rematch', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ gameId: gameId, paymentIntentId: result.paymentIntent.id })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+              if (d.error) alert(d.error);
+            });
+          }
+        });
+      };
+    }
+
+    function renderBattleSection() {
+      var battleContent = document.getElementById('battleContent');
+      if (!battleContent) return;
+      battleContent.textContent = '';
+      if (receivedChallenges.length > 0) {
+        var recH = document.createElement('div');
+        recH.style.cssText = 'color:#ef4444;font-size:14px;margin-bottom:8px;';
+        recH.textContent = 'Incoming Challenges';
+        battleContent.appendChild(recH);
+        for (var ri = 0; ri < receivedChallenges.length; ri++) {
+          var rc = receivedChallenges[ri];
+          var rcard = document.createElement('div');
+          rcard.className = 'pending-challenge';
+          var rcName = document.createElement('div');
+          rcName.className = 'challenge-name';
+          rcName.textContent = rc.challengerName;
+          rcard.appendChild(rcName);
+          var rcDetail = document.createElement('div');
+          rcDetail.className = 'challenge-detail';
+          rcDetail.textContent = (gameTypeNames[rc.gameType] || rc.gameType) + ' \u2014 ' + formatNumber(rc.wagerCoins) + ' coins';
+          rcard.appendChild(rcDetail);
+          var ractions = document.createElement('div');
+          ractions.className = 'challenge-actions';
+          (function(ch) {
+            var ab = document.createElement('button'); ab.className = 'challenge-accept'; ab.textContent = 'Accept';
+            ab.addEventListener('click', function() { liveWs.send(JSON.stringify({ type: 'acceptChallenge', challengeId: ch.id })); });
+            var db = document.createElement('button'); db.className = 'challenge-decline'; db.textContent = 'Decline';
+            db.addEventListener('click', function() {
+              liveWs.send(JSON.stringify({ type: 'declineChallenge', challengeId: ch.id }));
+              receivedChallenges = receivedChallenges.filter(function(x) { return x.id !== ch.id; });
+              renderBattleSection();
+            });
+            ractions.appendChild(ab); ractions.appendChild(db);
+          })(rc);
+          rcard.appendChild(ractions);
+          battleContent.appendChild(rcard);
+        }
+      }
+      if (sentChallenges.length > 0) {
+        var sentH = document.createElement('div');
+        sentH.style.cssText = 'color:#daa520;font-size:14px;margin-bottom:8px;margin-top:12px;';
+        sentH.textContent = 'Sent Challenges';
+        battleContent.appendChild(sentH);
+        for (var si = 0; si < sentChallenges.length; si++) {
+          var sc = sentChallenges[si];
+          var scard = document.createElement('div');
+          scard.className = 'pending-challenge';
+          scard.style.borderColor = 'rgba(218,165,32,0.3)';
+          var scName = document.createElement('div');
+          scName.className = 'challenge-name';
+          scName.textContent = '\u2192 ' + sc.targetName;
+          scard.appendChild(scName);
+          var scDetail = document.createElement('div');
+          scDetail.className = 'challenge-detail';
+          scDetail.textContent = (gameTypeNames[sc.gameType] || sc.gameType) + ' \u2014 ' + formatNumber(sc.wagerCoins) + ' coins \u2022 Waiting...';
+          scard.appendChild(scDetail);
+          battleContent.appendChild(scard);
+        }
+      }
+      if (receivedChallenges.length === 0 && sentChallenges.length === 0) {
+        var empty = document.createElement('div');
+        empty.className = 'battle-empty';
+        empty.textContent = 'Challenge players from the leaderboard to wager coins!';
+        battleContent.appendChild(empty);
+      }
+    }
 
   </script>
 </body>

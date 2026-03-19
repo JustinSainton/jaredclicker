@@ -13,6 +13,9 @@ export class LiveVisitors {
     this.accounts = null; // lazy-loaded: { [name_lower]: { displayName, pinHash, tokens, createdAt } }
     this.skinData = null; // lazy-loaded: { owned: { [player]: [skinIds] }, custom: { [skinId]: metadata }, equipped: { [player]: skinId } }
     this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
+    this.activeGames = new Map();      // gameId → GameState
+    this.pendingChallenges = new Map(); // chalId → ChallengeState
+    this.forfeitTimers = new Map();    // playerName → { timer, gameId }
     this._broadcastPending = false;
     this._debugCounters = { accepted: 0, rejectedEpoch: 0, lastClientEpoch: null, lastSvrEpoch: null };
   }
@@ -212,6 +215,216 @@ export class LiveVisitors {
 
   async saveAccounts() {
     await this.state.storage.put("accounts", this.accounts);
+  }
+
+  // ===== BATTLE SYSTEM METHODS =====
+  sendToPlayer(name, data) {
+    const msg = typeof data === 'string' ? data : JSON.stringify(data);
+    const lower = name.toLowerCase();
+    for (const [ws, info] of this.connections) {
+      if (info.name && info.name.toLowerCase() === lower) {
+        try { ws.send(msg); } catch (e) {}
+      }
+    }
+  }
+
+  async deductWager(name, amount) {
+    const scores = await this.loadScores();
+    const key = name.toLowerCase();
+    const entry = scores[key];
+    if (!entry || entry.score < amount) return false;
+    entry.score -= amount;
+    entry.serverCutAt = Date.now();
+    this.persistedScores = scores;
+    await this.state.storage.put("scores", scores);
+    this.sendToPlayer(name, { type: "scoreCorrection", targetName: entry.name, newScore: entry.score });
+    return true;
+  }
+
+  async awardWinnings(name, amount) {
+    const scores = await this.loadScores();
+    const key = name.toLowerCase();
+    const entry = scores[key];
+    if (!entry) return;
+    entry.score += amount;
+    entry.serverCutAt = Date.now();
+    this.persistedScores = scores;
+    await this.state.storage.put("scores", scores);
+    this.sendToPlayer(name, { type: "scoreCorrection", targetName: entry.name, newScore: entry.score });
+  }
+
+  createGame(challenge) {
+    const gameId = 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const game = {
+      id: gameId, type: challenge.gameType,
+      player1: challenge.challengerName, player2: challenge.targetName,
+      wagerCoins: challenge.wagerCoins,
+      p1Source: challenge.challengerSource || 'score',
+      p2Source: challenge.targetSource || 'score',
+      round: 1, maxRounds: 1, p1Score: 0, p2Score: 0,
+      winner: null, createdAt: Date.now(),
+    };
+    if (challenge.gameType === 'rps') {
+      game.rpsRound = { p1Move: null, p2Move: null };
+      game.rpsResults = [];
+    } else if (challenge.gameType === 'ttt') {
+      game.tttBoard = [null, null, null, null, null, null, null, null, null];
+      game.tttCurrentTurn = Math.random() < 0.5 ? game.player1 : game.player2;
+      game.tttSymbols = {};
+      game.tttSymbols[game.player1] = 'X';
+      game.tttSymbols[game.player2] = 'O';
+    } else if (challenge.gameType === 'trivia') {
+      const q = TRIVIA_BANK[Math.floor(Math.random() * TRIVIA_BANK.length)];
+      game.triviaQuestion = q.q;
+      game.triviaAnswers = q.a;
+      game.triviaCorrectIndex = q.c;
+      game.triviaP1Answer = null; game.triviaP1Time = null;
+      game.triviaP2Answer = null; game.triviaP2Time = null;
+      game.triviaStartedAt = Date.now();
+    }
+    this.activeGames.set(gameId, game);
+    return game;
+  }
+
+  async processMove(game, playerName, move) {
+    const isP1 = game.player1.toLowerCase() === playerName.toLowerCase();
+    const isP2 = game.player2.toLowerCase() === playerName.toLowerCase();
+    if (!isP1 && !isP2) return;
+
+    if (game.type === 'rps') {
+      const valid = ['rock', 'paper', 'scissors'];
+      if (!valid.includes(move)) return;
+      if (isP1 && game.rpsRound.p1Move) return;
+      if (isP2 && game.rpsRound.p2Move) return;
+      if (isP1) game.rpsRound.p1Move = move;
+      if (isP2) game.rpsRound.p2Move = move;
+      this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+      this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      if (game.rpsRound.p1Move && game.rpsRound.p2Move) {
+        const result = this.resolveRps(game.rpsRound.p1Move, game.rpsRound.p2Move);
+        const reveal = { p1Move: game.rpsRound.p1Move, p2Move: game.rpsRound.p2Move, result };
+        game.rpsResults.push(reveal);
+        if (result === 'p1') game.p1Score++;
+        else if (result === 'p2') game.p2Score++;
+        const roundsNeeded = Math.ceil(game.maxRounds / 2);
+        if (game.p1Score >= roundsNeeded || game.p2Score >= roundsNeeded || game.rpsResults.length >= game.maxRounds) {
+          if (game.p1Score > game.p2Score) game.winner = game.player1;
+          else if (game.p2Score > game.p1Score) game.winner = game.player2;
+          else game.winner = 'draw';
+          this.sendToPlayer(game.player1, { type: "gameUpdate", game: { ...this.sanitizeGame(game, game.player1), rpsReveal: reveal } });
+          this.sendToPlayer(game.player2, { type: "gameUpdate", game: { ...this.sanitizeGame(game, game.player2), rpsReveal: reveal } });
+          await this.endGame(game, 'completed');
+        } else {
+          this.sendToPlayer(game.player1, { type: "gameUpdate", game: { ...this.sanitizeGame(game, game.player1), rpsReveal: reveal } });
+          this.sendToPlayer(game.player2, { type: "gameUpdate", game: { ...this.sanitizeGame(game, game.player2), rpsReveal: reveal } });
+          game.rpsRound = { p1Move: null, p2Move: null };
+          game.round++;
+        }
+      }
+    } else if (game.type === 'ttt') {
+      const cell = parseInt(move);
+      if (isNaN(cell) || cell < 0 || cell > 8) return;
+      if (game.tttBoard[cell] !== null) return;
+      if (game.tttCurrentTurn.toLowerCase() !== playerName.toLowerCase()) return;
+      const sym = isP1 ? game.tttSymbols[game.player1] : game.tttSymbols[game.player2];
+      game.tttBoard[cell] = sym;
+      const winResult = this.checkTttWinner(game.tttBoard);
+      if (winResult) {
+        game.winner = winResult === 'draw' ? 'draw' : playerName;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+        await this.endGame(game, 'completed');
+      } else {
+        game.tttCurrentTurn = isP1 ? game.player2 : game.player1;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      }
+    } else if (game.type === 'trivia') {
+      const answerIdx = parseInt(move);
+      if (isNaN(answerIdx) || answerIdx < 0 || answerIdx > 3) return;
+      const now = Date.now();
+      if (isP1 && game.triviaP1Answer === null) { game.triviaP1Answer = answerIdx; game.triviaP1Time = now - game.triviaStartedAt; }
+      if (isP2 && game.triviaP2Answer === null) { game.triviaP2Answer = answerIdx; game.triviaP2Time = now - game.triviaStartedAt; }
+      if (game.triviaP1Answer !== null && game.triviaP2Answer !== null) {
+        const p1c = game.triviaP1Answer === game.triviaCorrectIndex;
+        const p2c = game.triviaP2Answer === game.triviaCorrectIndex;
+        if (p1c && p2c) game.winner = game.triviaP1Time <= game.triviaP2Time ? game.player1 : game.player2;
+        else if (p1c) game.winner = game.player1;
+        else if (p2c) game.winner = game.player2;
+        else game.winner = 'draw';
+        await this.endGame(game, 'completed');
+      } else {
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      }
+    }
+  }
+
+  resolveRps(m1, m2) {
+    if (m1 === m2) return 'draw';
+    if ((m1 === 'rock' && m2 === 'scissors') || (m1 === 'paper' && m2 === 'rock') || (m1 === 'scissors' && m2 === 'paper')) return 'p1';
+    return 'p2';
+  }
+
+  checkTttWinner(board) {
+    const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    for (const [a, b, c] of lines) {
+      if (board[a] && board[a] === board[b] && board[b] === board[c]) return board[a];
+    }
+    return board.every(cell => cell !== null) ? 'draw' : null;
+  }
+
+  async endGame(game, reason) {
+    if (game.winner === 'draw') {
+      // Refund each player to their chosen source
+      if ((game.p1Source || 'score') === 'score') await this.awardWinnings(game.player1, game.wagerCoins);
+      else this.sendToPlayer(game.player1, { type: 'walletAward', amount: game.wagerCoins });
+      if ((game.p2Source || 'score') === 'score') await this.awardWinnings(game.player2, game.wagerCoins);
+      else this.sendToPlayer(game.player2, { type: 'walletAward', amount: game.wagerCoins });
+    } else if (game.winner) {
+      // Winner receives 2x to their chosen source
+      const winSource = game.winner === game.player1 ? (game.p1Source || 'score') : (game.p2Source || 'score');
+      if (winSource === 'score') await this.awardWinnings(game.winner, game.wagerCoins * 2);
+      else this.sendToPlayer(game.winner, { type: 'walletAward', amount: game.wagerCoins * 2 });
+    }
+    const names = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia' };
+    const tn = names[game.type] || game.type;
+    if (game.winner === 'draw') {
+      await this.addSystemChat('\u2694\uFE0F ' + game.player1 + ' vs ' + game.player2 + ' in ' + tn + ' \u2014 DRAW! Wagers refunded.');
+    } else if (reason === 'forfeit') {
+      await this.addSystemChat('\u2694\uFE0F ' + game.winner + ' wins ' + (game.wagerCoins * 2) + ' coins in ' + tn + ' \u2014 opponent disconnected!');
+    } else if (game.winner) {
+      const loser = game.winner === game.player1 ? game.player2 : game.player1;
+      await this.addSystemChat('\u2694\uFE0F ' + game.winner + ' defeats ' + loser + ' in ' + tn + ' and wins ' + (game.wagerCoins * 2) + ' coins!');
+    }
+    this.sendToPlayer(game.player1, { type: "gameEnded", game: game, reason });
+    this.sendToPlayer(game.player2, { type: "gameEnded", game: game, reason });
+    const self = this;
+    setTimeout(() => { self.activeGames.delete(game.id); }, 60000);
+    this.scheduleBroadcast();
+  }
+
+  sanitizeGame(game, forPlayer) {
+    const g = { ...game };
+    if (game.type === 'rps' && game.rpsRound) {
+      g.rpsRound = { ...game.rpsRound };
+      if (forPlayer.toLowerCase() === game.player1.toLowerCase()) {
+        g.rpsRound.p2Move = game.rpsRound.p2Move ? 'hidden' : null;
+      } else {
+        g.rpsRound.p1Move = game.rpsRound.p1Move ? 'hidden' : null;
+      }
+    }
+    if (game.type === 'trivia') {
+      g.triviaCorrectIndex = undefined;
+      if (forPlayer.toLowerCase() === game.player1.toLowerCase()) {
+        g.triviaP2Answer = game.triviaP2Answer !== null ? 'hidden' : null;
+        g.triviaP2Time = undefined;
+      } else {
+        g.triviaP1Answer = game.triviaP1Answer !== null ? 'hidden' : null;
+        g.triviaP1Time = undefined;
+      }
+    }
+    return g;
   }
 
   async generateToken() {
@@ -1262,6 +1475,38 @@ export class LiveVisitors {
       return new Response(JSON.stringify({ error: "not found" }), { status: 404 });
     }
 
+    // Rematch handler (forwarded from outer handler after payment verification)
+    if (url.pathname === "/rematch" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const oldGame = this.activeGames.get(body.gameId);
+        if (!oldGame) return new Response(JSON.stringify({ error: "Game not found or expired" }), { status: 404, headers: { "Content-Type": "application/json" } });
+        if (!oldGame.winner || oldGame.winner === 'draw') return new Response(JSON.stringify({ error: "Game not eligible for rematch" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        // Create new best-of-3 game with round 1 result carried over
+        const loser = oldGame.winner === oldGame.player1 ? oldGame.player2 : oldGame.player1;
+        const challenge = {
+          challengerName: oldGame.player1, targetName: oldGame.player2,
+          gameType: oldGame.type, wagerCoins: oldGame.wagerCoins,
+        };
+        const newGame = this.createGame(challenge);
+        newGame.maxRounds = 3;
+        // Carry over round 1 result - winner of original game gets 1 point
+        if (oldGame.winner === newGame.player1) newGame.p1Score = 1;
+        else newGame.p2Score = 1;
+        newGame.round = 2;
+        if (newGame.type === 'rps') {
+          newGame.rpsResults = [{ p1Move: 'carried', p2Move: 'carried', result: oldGame.winner === newGame.player1 ? 'p1' : 'p2' }];
+        }
+        // No re-wagering - original pot stays, loser paid $1.99 for the chance
+        await this.addSystemChat('\u2694\uFE0F REMATCH! ' + newGame.player1 + ' vs ' + newGame.player2 + ' \u2014 Best 2 of 3!');
+        this.sendToPlayer(newGame.player1, { type: "gameStarted", game: this.sanitizeGame(newGame, newGame.player1) });
+        this.sendToPlayer(newGame.player2, { type: "gameStarted", game: this.sanitizeGame(newGame, newGame.player2) });
+        return new Response(JSON.stringify({ ok: true, gameId: newGame.id }), { headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
     if (request.headers.get("Upgrade") !== "websocket") {
       return new Response("Expected WebSocket", { status: 426 });
     }
@@ -1303,6 +1548,12 @@ export class LiveVisitors {
           }
           if (oldName && oldName !== info.name) {
             this.renameScore(oldName, info.name);
+          }
+          // Cancel forfeit timer on reconnection
+          var fKey = info.name.toLowerCase();
+          if (this.forfeitTimers.has(fKey)) {
+            clearTimeout(this.forfeitTimers.get(fKey).timer);
+            this.forfeitTimers.delete(fKey);
           }
         }
 
@@ -1376,6 +1627,87 @@ export class LiveVisitors {
           return;
         }
 
+        // ===== BATTLE SYSTEM WS HANDLERS =====
+        if (msg.type === "challenge" && info.name && msg.targetName && msg.gameType && typeof msg.wagerCoins === "number") {
+          const self = this;
+          (async () => {
+            const validTypes = ['rps', 'ttt', 'trivia'];
+            if (!validTypes.includes(msg.gameType)) return;
+            const wager = Math.floor(msg.wagerCoins);
+            if (wager < 100 || wager > 10000000) return;
+            if (info.name.toLowerCase() === msg.targetName.toLowerCase()) return;
+            const scores = await self.loadScores();
+            const cScore = (scores[info.name.toLowerCase()] && scores[info.name.toLowerCase()].score) || 0;
+            const tScore = (scores[msg.targetName.toLowerCase()] && scores[msg.targetName.toLowerCase()].score) || 0;
+            if (wager > cScore || wager > tScore) return;
+            const chalId = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            const challenge = {
+              id: chalId, challengerName: info.name, targetName: msg.targetName,
+              gameType: msg.gameType, wagerCoins: wager,
+              challengerSource: msg.wagerSource === 'wallet' ? 'wallet' : 'score',
+              createdAt: Date.now(), expiresAt: Date.now() + 60000,
+            };
+            self.pendingChallenges.set(chalId, challenge);
+            setTimeout(() => {
+              if (self.pendingChallenges.has(chalId)) {
+                self.pendingChallenges.delete(chalId);
+                self.sendToPlayer(challenge.challengerName, { type: "challengeExpired", challengeId: chalId });
+                self.sendToPlayer(challenge.targetName, { type: "challengeExpired", challengeId: chalId });
+              }
+            }, 60000);
+            self.sendToPlayer(msg.targetName, { type: "challengeReceived", challenge });
+            self.sendToPlayer(info.name, { type: "challengeSent", challenge });
+          })();
+          return;
+        }
+
+        if (msg.type === "acceptChallenge" && msg.challengeId) {
+          const self = this;
+          (async () => {
+            const challenge = self.pendingChallenges.get(msg.challengeId);
+            if (!challenge) return;
+            if (info.name.toLowerCase() !== challenge.targetName.toLowerCase()) return;
+            self.pendingChallenges.delete(msg.challengeId);
+            challenge.targetSource = msg.wagerSource === 'wallet' ? 'wallet' : 'score';
+            // Deduct wagers based on each player's chosen source
+            var d1 = true, d2 = true;
+            if (challenge.challengerSource === 'score') d1 = await self.deductWager(challenge.challengerName, challenge.wagerCoins);
+            else self.sendToPlayer(challenge.challengerName, { type: "walletDeduct", amount: challenge.wagerCoins });
+            if (challenge.targetSource === 'score') d2 = await self.deductWager(challenge.targetName, challenge.wagerCoins);
+            else self.sendToPlayer(challenge.targetName, { type: "walletDeduct", amount: challenge.wagerCoins });
+            if (!d1 || !d2) {
+              if (d1 && challenge.challengerSource === 'score') await self.awardWinnings(challenge.challengerName, challenge.wagerCoins);
+              else if (d1) self.sendToPlayer(challenge.challengerName, { type: "walletAward", amount: challenge.wagerCoins });
+              if (d2 && challenge.targetSource === 'score') await self.awardWinnings(challenge.targetName, challenge.wagerCoins);
+              else if (d2) self.sendToPlayer(challenge.targetName, { type: "walletAward", amount: challenge.wagerCoins });
+              self.sendToPlayer(challenge.challengerName, { type: "challengeDeclined", challengeId: msg.challengeId, reason: "insufficient_coins" });
+              return;
+            }
+            const game = self.createGame(challenge);
+            const typeNames = { rps: 'Rock Paper Scissors', ttt: 'Tic-Tac-Toe', trivia: 'Trivia' };
+            await self.addSystemChat('\u2694\uFE0F ' + challenge.challengerName + ' vs ' + challenge.targetName + ' \u2014 ' + (typeNames[challenge.gameType] || challenge.gameType) + ' for ' + challenge.wagerCoins + ' coins!');
+            self.sendToPlayer(challenge.challengerName, { type: "gameStarted", game: self.sanitizeGame(game, challenge.challengerName) });
+            self.sendToPlayer(challenge.targetName, { type: "gameStarted", game: self.sanitizeGame(game, challenge.targetName) });
+          })();
+          return;
+        }
+
+        if (msg.type === "declineChallenge" && msg.challengeId) {
+          const challenge = this.pendingChallenges.get(msg.challengeId);
+          if (!challenge) return;
+          if (info.name.toLowerCase() !== challenge.targetName.toLowerCase()) return;
+          this.pendingChallenges.delete(msg.challengeId);
+          this.sendToPlayer(challenge.challengerName, { type: "challengeDeclined", challengeId: msg.challengeId });
+          return;
+        }
+
+        if (msg.type === "gameMove" && msg.gameId && info.name) {
+          const self = this;
+          const game = self.activeGames.get(msg.gameId);
+          if (game) { (async () => { await self.processMove(game, info.name, msg.move); })(); }
+          return;
+        }
+
         this.connections.set(server, info);
       } catch (e) {
         // plain text heartbeat, ignore
@@ -1384,7 +1716,35 @@ export class LiveVisitors {
     });
 
     server.addEventListener("close", () => {
+      const closedInfo = this.connections.get(server);
       this.connections.delete(server);
+      // Check if disconnected player was in an active game
+      if (closedInfo && closedInfo.name) {
+        const pName = closedInfo.name;
+        const pLower = pName.toLowerCase();
+        for (const [gameId, game] of this.activeGames) {
+          if (game.winner) continue;
+          if (game.player1.toLowerCase() === pLower || game.player2.toLowerCase() === pLower) {
+            // Check for other connections from same player
+            let hasOther = false;
+            for (const [, oi] of this.connections) {
+              if (oi.name && oi.name.toLowerCase() === pLower) { hasOther = true; break; }
+            }
+            if (!hasOther) {
+              const opponent = game.player1.toLowerCase() === pLower ? game.player2 : game.player1;
+              const self = this;
+              const timer = setTimeout(() => {
+                if (self.activeGames.has(gameId) && !game.winner) {
+                  game.winner = opponent;
+                  self.endGame(game, 'forfeit');
+                }
+                self.forfeitTimers.delete(pLower);
+              }, 30000);
+              this.forfeitTimers.set(pLower, { timer, gameId });
+            }
+          }
+        }
+      }
       this.broadcast();
     });
 
@@ -1509,6 +1869,110 @@ export class LiveVisitors {
     }
   }
 }
+
+// ===== TRIVIA BANK =====
+const TRIVIA_BANK = [
+  {q:"How many hearts does an octopus have?",a:["Three","Two","Five","One"],c:0},
+  {q:"What is a group of flamingos called?",a:["A flamboyance","A flock","A bloom","A colony"],c:0},
+  {q:"Which animal can sleep for 3 years?",a:["Snail","Sloth","Koala","Cat"],c:0},
+  {q:"What animal has the longest pregnancy?",a:["Elephant","Blue whale","Giraffe","Rhino"],c:0},
+  {q:"How many noses does a slug have?",a:["Four","Two","One","Three"],c:0},
+  {q:"What is the only mammal that can truly fly?",a:["Bat","Flying squirrel","Sugar glider","Colugo"],c:0},
+  {q:"Which bird can fly backwards?",a:["Hummingbird","Kingfisher","Swift","Sparrow"],c:0},
+  {q:"What color is a hippo's sweat?",a:["Red","Clear","Yellow","Brown"],c:0},
+  {q:"How many brains does a leech have?",a:["32","2","1","10"],c:0},
+  {q:"What animal has the largest eye?",a:["Colossal squid","Blue whale","Ostrich","Horse"],c:0},
+  {q:"What country has the most islands?",a:["Sweden","Indonesia","Philippines","Canada"],c:0},
+  {q:"What is the driest continent on Earth?",a:["Antarctica","Africa","Australia","Asia"],c:0},
+  {q:"What is the smallest country in the world?",a:["Vatican City","Monaco","Nauru","San Marino"],c:0},
+  {q:"What country has more pyramids than Egypt?",a:["Sudan","Mexico","Peru","Iraq"],c:0},
+  {q:"What capital city is the highest above sea level?",a:["La Paz","Quito","Bogota","Addis Ababa"],c:0},
+  {q:"What is the only continent with no active volcanoes?",a:["Australia","Antarctica","Europe","Africa"],c:0},
+  {q:"What country has a flag that is not rectangular?",a:["Nepal","Switzerland","Tonga","Bhutan"],c:0},
+  {q:"What ocean is the Bermuda Triangle in?",a:["Atlantic","Pacific","Indian","Arctic"],c:0},
+  {q:"What was the shortest war in history?",a:["Anglo-Zanzibar War","Six-Day War","Falklands War","Gulf War"],c:0},
+  {q:"Who was the first woman to win a Nobel Prize?",a:["Marie Curie","Mother Teresa","Dorothy Hodgkin","Bertha von Suttner"],c:0},
+  {q:"What ancient wonder was in Alexandria?",a:["Lighthouse","Library","Colossus","Hanging Gardens"],c:0},
+  {q:"How long did the Hundred Years' War last?",a:["116 years","100 years","99 years","120 years"],c:0},
+  {q:"What was invented first: lighter or match?",a:["Lighter","Match","Same year","Neither"],c:0},
+  {q:"Who painted the ceiling of the Sistine Chapel?",a:["Michelangelo","Leonardo da Vinci","Raphael","Donatello"],c:0},
+  {q:"What year did the Titanic sink?",a:["1912","1905","1915","1920"],c:0},
+  {q:"Which ancient civilization invented paper?",a:["Chinese","Egyptian","Roman","Greek"],c:0},
+  {q:"What was the first toy advertised on TV?",a:["Mr. Potato Head","Barbie","Slinky","Etch A Sketch"],c:0},
+  {q:"What is the hardest natural substance?",a:["Diamond","Titanium","Quartz","Sapphire"],c:0},
+  {q:"How many bones does a shark have?",a:["Zero","206","100","50"],c:0},
+  {q:"What planet rains diamonds?",a:["Neptune","Jupiter","Saturn","Venus"],c:0},
+  {q:"What percentage of the ocean is unexplored?",a:["Over 80%","About 50%","About 30%","Over 95%"],c:0},
+  {q:"How long is one day on Venus?",a:["243 Earth days","365 Earth days","30 Earth days","1 Earth day"],c:0},
+  {q:"What is the most abundant gas in Earth's atmosphere?",a:["Nitrogen","Oxygen","Carbon dioxide","Argon"],c:0},
+  {q:"What temperature are Celsius and Fahrenheit equal?",a:["-40","0","-32","32"],c:0},
+  {q:"What color does gold turn when nano-sized?",a:["Red","Blue","Green","Purple"],c:0},
+  {q:"What nut is used to make marzipan?",a:["Almond","Walnut","Cashew","Pistachio"],c:0},
+  {q:"What is the most stolen food in the world?",a:["Cheese","Chocolate","Meat","Bread"],c:0},
+  {q:"What fruit floats in water?",a:["Apple","Grape","Banana","Mango"],c:0},
+  {q:"What spice is the most expensive by weight?",a:["Saffron","Vanilla","Cardamom","Cinnamon"],c:0},
+  {q:"What food never spoils?",a:["Honey","Rice","Salt","Sugar"],c:0},
+  {q:"What country invented ice cream?",a:["China","Italy","France","Turkey"],c:0},
+  {q:"What vegetable was first grown in space?",a:["Potato","Lettuce","Tomato","Carrot"],c:0},
+  {q:"What is the fear of long words called?",a:["Hippopotomonstrosesquippedaliophobia","Logophobia","Verbophobia","Sesquiphobia"],c:0},
+  {q:"How many dimples does a golf ball have?",a:["336","200","400","500"],c:0},
+  {q:"What is the dot over the letter 'i' called?",a:["Tittle","Dot","Iota","Serif"],c:0},
+  {q:"How long is the longest hiccuping spree?",a:["68 years","10 years","30 years","1 year"],c:0},
+  {q:"What is the national animal of Scotland?",a:["Unicorn","Lion","Stag","Eagle"],c:0},
+  {q:"What was the first message sent over the internet?",a:["LO","Hello","Test","Hi"],c:0},
+  {q:"How many muscles does a cat have in each ear?",a:["32","12","8","20"],c:0},
+  {q:"What is the only letter not in any US state name?",a:["Q","X","Z","J"],c:0},
+  {q:"How long does sunlight take to reach Earth?",a:["8 minutes","1 second","1 minute","30 minutes"],c:0},
+  {q:"What planet has the most moons?",a:["Saturn","Jupiter","Uranus","Neptune"],c:0},
+  {q:"What is the hottest planet in our solar system?",a:["Venus","Mercury","Mars","Jupiter"],c:0},
+  {q:"How old is the universe?",a:["13.8 billion years","10 billion years","4.5 billion years","20 billion years"],c:0},
+  {q:"What planet spins on its side?",a:["Uranus","Neptune","Pluto","Saturn"],c:0},
+  {q:"How many bones does an adult human have?",a:["206","300","180","250"],c:0},
+  {q:"What is the smallest bone in the body?",a:["Stapes","Hammer","Anvil","Phalanx"],c:0},
+  {q:"What organ uses 20% of your oxygen?",a:["Brain","Heart","Liver","Lungs"],c:0},
+  {q:"How many times does the heart beat per day?",a:["100,000","50,000","200,000","75,000"],c:0},
+  {q:"What is the most spoken language in the world?",a:["Mandarin","English","Spanish","Hindi"],c:0},
+  {q:"What is the longest English word with no vowels?",a:["Rhythms","Myths","Gym","Lynx"],c:0},
+  {q:"How many official languages does South Africa have?",a:["11","2","5","8"],c:0},
+  {q:"What is the oldest known written language?",a:["Sumerian","Egyptian","Chinese","Sanskrit"],c:0},
+  {q:"How long is an Olympic swimming pool?",a:["50 meters","100 meters","25 meters","75 meters"],c:0},
+  {q:"What sport was first played on the moon?",a:["Golf","Tennis","Baseball","Frisbee"],c:0},
+  {q:"What country invented chess?",a:["India","China","Persia","Egypt"],c:0},
+  {q:"How wide is an NBA basketball hoop in inches?",a:["18","16","20","24"],c:0},
+  {q:"What instrument has 47 strings?",a:["Harp","Piano","Guitar","Sitar"],c:0},
+  {q:"How many keys does a standard piano have?",a:["88","76","92","64"],c:0},
+  {q:"What note is a standard tuning fork?",a:["A","C","E","G"],c:0},
+  {q:"What year was the first iPhone released?",a:["2007","2005","2008","2006"],c:0},
+  {q:"What was the first computer virus called?",a:["Creeper","Worm","Bug","Trojan"],c:0},
+  {q:"How many bits in a byte?",a:["8","4","16","2"],c:0},
+  {q:"What company created the first hard drive?",a:["IBM","Apple","Microsoft","Intel"],c:0},
+  {q:"What is the only even prime number?",a:["2","4","0","6"],c:0},
+  {q:"What is a googol?",a:["10^100","10^10","10^1000","10^50"],c:0},
+  {q:"What number is considered unlucky in Japan?",a:["4","13","7","9"],c:0},
+  {q:"What is the Mona Lisa's real name?",a:["La Gioconda","La Bella","La Donna","La Signora"],c:0},
+  {q:"What artist cut off his own ear?",a:["Van Gogh","Picasso","Monet","Dali"],c:0},
+  {q:"What color do you get mixing all colors of light?",a:["White","Black","Brown","Gray"],c:0},
+  {q:"What is the most visited museum in the world?",a:["Louvre","British Museum","Met","Smithsonian"],c:0},
+  {q:"How many Rubik's Cube combinations are there?",a:["43 quintillion","1 billion","1 million","1 trillion"],c:0},
+  {q:"What is the speed of light in km/s?",a:["300,000","150,000","1,000,000","30,000"],c:0},
+  {q:"What element has the chemical symbol 'Au'?",a:["Gold","Silver","Aluminum","Argon"],c:0},
+  {q:"Which planet has the Great Red Spot?",a:["Jupiter","Mars","Saturn","Neptune"],c:0},
+  {q:"What blood type is the universal donor?",a:["O negative","AB positive","A positive","B negative"],c:0},
+  {q:"How many teeth does an adult human have?",a:["32","28","36","30"],c:0},
+  {q:"What is the largest organ in the human body?",a:["Skin","Liver","Brain","Lungs"],c:0},
+  {q:"What is the rarest blood type?",a:["AB negative","O negative","B negative","A negative"],c:0},
+  {q:"How many time zones does Russia span?",a:["11","9","7","13"],c:0},
+  {q:"What is the deepest point in the ocean?",a:["Mariana Trench","Tonga Trench","Java Trench","Puerto Rico Trench"],c:0},
+  {q:"How many cards are in a standard deck?",a:["52","48","54","56"],c:0},
+  {q:"What is the only letter that doesn't appear in the periodic table?",a:["J","Q","X","Z"],c:0},
+  {q:"How many rings are on the Olympic flag?",a:["5","4","6","7"],c:0},
+  {q:"What is the longest bone in the human body?",a:["Femur","Tibia","Humerus","Spine"],c:0},
+  {q:"What gas makes soda fizzy?",a:["Carbon dioxide","Nitrogen","Oxygen","Helium"],c:0},
+  {q:"What is the only metal that is liquid at room temperature?",a:["Mercury","Gallium","Cesium","Lead"],c:0},
+  {q:"How many sides does a dodecagon have?",a:["12","10","8","14"],c:0},
+  {q:"What country gifted the Statue of Liberty to the US?",a:["France","England","Germany","Spain"],c:0},
+  {q:"What is the largest desert in the world?",a:["Antarctica","Sahara","Arabian","Gobi"],c:0},
+];
 
 // Durable Object for leaderboard persistence
 export class Leaderboard {
@@ -3208,9 +3672,91 @@ export default {
       }
     }
 
+    // ===== TAB ICON GENERATION (admin) =====
+    if (url.pathname === "/generate-tab-icons" && request.method === "POST") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      }
+      try {
+        const icons = [
+          { name: "click", prompt: "Create a single golden coin icon in pixel art style, 64x64 pixels, dark transparent background, shiny metallic gold, suitable for a game tab icon" },
+          { name: "shop", prompt: "Create a treasure chest icon in pixel art style, 64x64 pixels, dark transparent background, wooden chest overflowing with gold coins, suitable for a game tab icon" },
+          { name: "board", prompt: "Create a golden trophy icon in pixel art style, 64x64 pixels, dark transparent background, gleaming first place trophy, suitable for a game tab icon" },
+          { name: "battle", prompt: "Create two crossed swords icon in pixel art style, 64x64 pixels, dark transparent background, metallic silver blades with gold handles, suitable for a game tab icon" },
+          { name: "skins", prompt: "Create a paint palette icon in pixel art style, 64x64 pixels, dark transparent background, colorful paint blobs on wooden palette, suitable for a game tab icon" },
+        ];
+        const results = [];
+        for (const icon of icons) {
+          const result = await callGemini(env.GEMINI_API_KEY, icon.prompt, []);
+          if (result.error) { results.push({ name: icon.name, error: result.error }); continue; }
+          const bytes = Uint8Array.from(atob(result.base64), c => c.charCodeAt(0));
+          await env.PHOTOS.put("tab-icons/" + icon.name + ".png", bytes, {
+            httpMetadata: { contentType: "image/png" },
+            customMetadata: { cacheControl: "public, max-age=604800" },
+          });
+          results.push({ name: icon.name, ok: true });
+        }
+        return corsResponse(JSON.stringify({ results }), { headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
+    // Serve tab icons from R2
+    if (url.pathname.startsWith("/tab-icons/") && request.method === "GET") {
+      const key = url.pathname.slice(1); // "tab-icons/click.png"
+      const obj = await env.PHOTOS.get(key);
+      if (!obj) return corsResponse("Not found", { status: 404 });
+      return new Response(obj.body, {
+        headers: { ...corsHeaders, "Content-Type": "image/png", "Cache-Control": "public, max-age=604800" },
+      });
+    }
+
+    // ===== REMATCH SYSTEM =====
+    if (url.pathname === "/create-rematch-intent" && request.method === "POST") {
+      try {
+        const { gameId } = await request.json();
+        if (!gameId) return corsResponse(JSON.stringify({ error: "Missing gameId" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        const stripeRes = await fetch("https://api.stripe.com/v1/payment_intents", {
+          method: "POST",
+          headers: { Authorization: "Basic " + btoa(env.STRIPE_SECRET_KEY + ":"), "Content-Type": "application/x-www-form-urlencoded" },
+          body: "amount=199&currency=usd&description=" + encodeURIComponent("Best 2 of 3 Rematch") + "&metadata[type]=rematch&metadata[gameId]=" + encodeURIComponent(gameId),
+        });
+        const intent = await stripeRes.json();
+        if (intent.error) return corsResponse(JSON.stringify({ error: intent.error.message }), { status: 400, headers: { "Content-Type": "application/json" } });
+        return corsResponse(JSON.stringify({ clientSecret: intent.client_secret }), { headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
+    if (url.pathname === "/rematch" && request.method === "POST") {
+      try {
+        const { gameId, paymentIntentId } = await request.json();
+        if (!gameId || !paymentIntentId) return corsResponse(JSON.stringify({ error: "Missing fields" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        // Verify payment
+        const piRes = await fetch("https://api.stripe.com/v1/payment_intents/" + paymentIntentId, {
+          headers: { Authorization: "Basic " + btoa(env.STRIPE_SECRET_KEY + ":") },
+        });
+        const pi = await piRes.json();
+        if (pi.status !== "succeeded") return corsResponse(JSON.stringify({ error: "Payment not completed" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        // Forward to DO to create rematch game
+        const lvId = env.LIVE_VISITORS.idFromName("global");
+        const lvObj = env.LIVE_VISITORS.get(lvId);
+        const res = await lvObj.fetch(new Request("https://dummy/rematch", {
+          method: "POST",
+          body: JSON.stringify({ gameId, paymentIntentId }),
+        }));
+        const body = await res.text();
+        return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+      } catch (e) {
+        return corsResponse(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "52" }), {
+      return corsResponse(JSON.stringify({ version: "53" }), {
         headers: { "Content-Type": "application/json" },
       });
     }
