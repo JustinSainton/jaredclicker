@@ -3933,6 +3933,9 @@
             window._equippedSkins = data.equippedSkins;
           }
 
+          // Refresh battle section with latest player data
+          if (currentTab === 'battle' && typeof renderBattleSection === 'function') renderBattleSection();
+
           // Check server-side Luke hidden status
           if (data.lukeHidden && playerName) {
             var lhKey = playerName.toLowerCase();
@@ -7151,6 +7154,7 @@
       }
       window.scrollTo(0, 0);
       if (typeof hapticLight === 'function') hapticLight();
+      if (tabName === 'battle' && typeof renderBattleSection === 'function') renderBattleSection();
     }
 
     var mobileQuery = window.matchMedia('(max-width: 900px)');
