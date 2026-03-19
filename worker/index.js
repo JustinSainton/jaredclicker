@@ -334,10 +334,18 @@ export class LiveVisitors {
           this.sendToPlayer(game.player2, { type: "gameUpdate", game: { ...this.sanitizeGame(game, game.player2), rpsReveal: reveal } });
           await this.endGame(game, 'completed');
         } else {
+          // Send reveal first
           this.sendToPlayer(game.player1, { type: "gameUpdate", game: { ...this.sanitizeGame(game, game.player1), rpsReveal: reveal } });
           this.sendToPlayer(game.player2, { type: "gameUpdate", game: { ...this.sanitizeGame(game, game.player2), rpsReveal: reveal } });
+          // Reset for next round
           game.rpsRound = { p1Move: null, p2Move: null };
           game.round++;
+          // Send updated state after delay so clients see the reveal then get pick buttons
+          const self2 = this;
+          setTimeout(function() {
+            self2.sendToPlayer(game.player1, { type: "gameUpdate", game: self2.sanitizeGame(game, game.player1) });
+            self2.sendToPlayer(game.player2, { type: "gameUpdate", game: self2.sanitizeGame(game, game.player2) });
+          }, 2000);
         }
       }
     } else if (game.type === 'ttt') {
