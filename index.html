@@ -2327,23 +2327,27 @@
     /* Push notification permission prompt */
     .push-permission-prompt {
       position: fixed;
-      bottom: 90px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%) translateY(120px);
+      transform: translate(-50%, -50%) scale(0.8);
       background: linear-gradient(135deg, #2a2a4a, #1a1a3a);
       border: 2px solid #ffd700;
       border-radius: 14px;
-      padding: 16px 24px;
+      padding: 20px 24px;
       z-index: 510;
       text-align: center;
       box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
-      max-width: 340px;
-      width: 90vw;
-      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      max-width: 320px;
+      width: 85vw;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       font-family: 'Fredoka One', cursive;
     }
     .push-permission-prompt.show {
-      transform: translateX(-50%) translateY(0);
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+      pointer-events: auto;
     }
     .push-permission-prompt .push-title {
       font-size: 18px;
@@ -2768,8 +2772,8 @@
 
   <!-- Push notification permission prompt -->
   <div class="push-permission-prompt" id="pushPermissionPrompt">
-    <div class="push-title">Get Challenge Alerts?</div>
-    <div class="push-desc">Get notified when someone battles or sabotages you</div>
+    <div class="push-title">Get Game Alerts?</div>
+    <div class="push-desc">Challenges, sabotages, coin cuts, and game results</div>
     <div class="push-buttons">
       <button class="push-btn push-btn-enable" id="pushEnableBtn">Enable</button>
       <button class="push-btn push-btn-later" id="pushLaterBtn">Maybe Later</button>
