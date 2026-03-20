@@ -2094,7 +2094,8 @@
       body.tab-nav-active .header { display: none !important; }
       body.tab-nav-active .game-container > * { display: none !important; }
       body.tab-nav-active .tab-visible { display: block !important; }
-      body.tab-nav-active .click-area.tab-visible { display: flex !important; }
+      body.tab-nav-active .click-area.tab-visible { display: flex !important; order: 1; }
+      body.tab-nav-active #statsPanel.tab-visible { order: 2; }
       body.tab-nav-active .header.tab-visible { display: block !important; }
       body.tab-nav-active .achievement-toast { bottom: 80px; }
       body.tab-nav-active .achievement-toast.show { transform: translateX(-50%) translateY(0); }
