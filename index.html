@@ -286,8 +286,8 @@
     .stats {
       background: rgba(0,0,0,0.5);
       border: 2px solid #ffd700;
-      border-radius: 16px;
-      padding: 24px;
+      border-radius: 12px;
+      padding: 12px 16px;
       min-width: 280px;
       max-width: 350px;
     }
@@ -302,9 +302,9 @@
     .stat-row {
       display: flex;
       justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255, 215, 0, 0.2);
-      font-size: 14px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+      font-size: 13px;
     }
 
     .stat-label { color: #daa520; }
@@ -2470,7 +2470,7 @@
 
     <!-- Stats Panel -->
     <div class="stats" id="statsPanel">
-      <h2>Stats</h2>
+      <h2 style="font-size:16px;margin-bottom:4px;">Stats</h2>
       <div class="stat-row">
         <span class="stat-label">Total Coins</span>
         <span class="stat-value" id="statTotal">0</span>
@@ -2495,9 +2495,9 @@
         <span class="stat-label">Sabotage Credits</span>
         <span class="stat-value" id="statCredits">0</span>
       </div>
-      <div style="margin-top: 12px; text-align: center;">
-        <div class="stat-label" style="margin-bottom: 4px;">Smelly Level</div>
-        <div class="stat-value" id="statSmelly" style="font-size: 13px; display: block; margin-bottom: 8px;">Mildly Funky</div>
+      <div style="margin-top: 6px; text-align: center;">
+        <div class="stat-label" style="margin-bottom: 2px; font-size: 12px;">Smelly Level</div>
+        <div class="stat-value" id="statSmelly" style="font-size: 11px; display: block; margin-bottom: 4px;">Mildly Funky</div>
         <div class="smelly-meter">
           <div class="smelly-meter-fill" id="smellyFill"></div>
         </div>
@@ -4698,8 +4698,10 @@
 
       // Build a cache key from names + scores to skip unnecessary rebuilds (prevents image flashing)
       var eqSkins = window._equippedSkins || {};
+      var sabKeys = (typeof activeSabotages !== 'undefined' ? activeSabotages : []);
       var newKey = top3.map(function(e) {
-        return e.name + ':' + e.score + ':' + (eqSkins[e.name.toLowerCase()] || '');
+        var sabs = sabKeys.filter(function(s) { return s.targetName.toLowerCase() === e.name.toLowerCase(); }).length;
+        return e.name + ':' + e.score + ':' + (eqSkins[e.name.toLowerCase()] || '') + ':' + sabs;
       }).join('|');
       if (newKey === _podiumCacheKey && podiumEl.childNodes.length > 0) {
         // Only update score text in-place
@@ -4741,6 +4743,21 @@
           avatar.alt = entry.name;
           avatar.onerror = function() { this.src = 'jared-coin.png'; };
           avatarWrap.appendChild(avatar);
+
+          // Sabotage/freeze overlay on podium avatar
+          var playerSabs = activeSabotages.filter(function(s) { return s.targetName.toLowerCase() === entry.name.toLowerCase() && s.expiresAt > Date.now(); });
+          if (playerSabs.length > 0) {
+            var isFrozen = playerSabs.some(function(s) { return s.multiplier === 0 || (typeof s.durationMin === 'number' && s.durationMin >= 2); });
+            var overlay = document.createElement('div');
+            overlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;z-index:2;pointer-events:none;' +
+              (isFrozen ? 'background:rgba(59,130,246,0.35);border:3px solid #60a5fa;box-shadow:0 0 12px rgba(59,130,246,0.5);' :
+              'background:rgba(239,68,68,0.25);border:3px solid #ef4444;box-shadow:0 0 12px rgba(239,68,68,0.4);');
+            avatarWrap.appendChild(overlay);
+            var sabIcon = document.createElement('div');
+            sabIcon.style.cssText = 'position:absolute;bottom:-4px;right:-4px;font-size:16px;z-index:3;';
+            sabIcon.textContent = isFrozen ? '\u2744\uFE0F' : '\uD83D\uDC22';
+            avatarWrap.appendChild(sabIcon);
+          }
 
           // Crown for #1
           if (pos.pos === 1) {
@@ -7496,7 +7513,7 @@
 
     // ===== MOBILE FOOTER NAV =====
     var tabSections = {
-      'click': ['.header', '#statsPanel', '.click-area'],
+      'click': ['.header', '.click-area', '#statsPanel'],
       'shop': ['#shop'],
       'board': ['#leaderboardPanel', '#campaignsSection'],
       'battle': ['#battleSection'],
