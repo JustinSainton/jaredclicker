@@ -748,7 +748,8 @@ export class LiveVisitors {
       column[row] = c4sym;
       const c4win = this.checkC4Winner(game.c4Board, col, row, c4sym);
       if (c4win) {
-        game.winner = c4win === 'draw' ? 'draw' : playerName;
+        game.winner = c4win.winner === 'draw' ? 'draw' : playerName;
+        game.c4WinCells = c4win.winCells || [];
         this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
         this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
         await this.endGame(game, 'completed');
@@ -852,14 +853,14 @@ export class LiveVisitors {
   checkC4Winner(board, lastCol, lastRow, sym) {
     const dirs = [[1,0],[0,1],[1,1],[1,-1]];
     for (const [dc, dr] of dirs) {
-      let count = 1;
-      for (let i = 1; i < 4; i++) { const c = lastCol+dc*i, r = lastRow+dr*i; if (c<0||c>6||r<0||r>5||board[c][r]!==sym) break; count++; }
-      for (let i = 1; i < 4; i++) { const c = lastCol-dc*i, r = lastRow-dr*i; if (c<0||c>6||r<0||r>5||board[c][r]!==sym) break; count++; }
-      if (count >= 4) return sym;
+      var cells = [{ c: lastCol, r: lastRow }];
+      for (let i = 1; i < 4; i++) { const c = lastCol+dc*i, r = lastRow+dr*i; if (c<0||c>6||r<0||r>5||board[c][r]!==sym) break; cells.push({c,r}); }
+      for (let i = 1; i < 4; i++) { const c = lastCol-dc*i, r = lastRow-dr*i; if (c<0||c>6||r<0||r>5||board[c][r]!==sym) break; cells.push({c,r}); }
+      if (cells.length >= 4) return { winner: sym, winCells: cells };
     }
     let full = true;
     for (let c = 0; c < 7; c++) { if (board[c][5] === null) { full = false; break; } }
-    return full ? 'draw' : null;
+    return full ? { winner: 'draw', winCells: [] } : null;
   }
 
   randomShipPlacement(size) {

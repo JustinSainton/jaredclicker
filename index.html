@@ -7682,7 +7682,7 @@
     function renderGameContent(game) {
       var content = gameOverlayContentEl;
       content.textContent = '';
-      if (game.winner && game.type !== 'coinflip') return;
+      if (game.winner && game.type !== 'coinflip' && game.type !== 'connect4') return;
       if (game.type === 'rps') renderRpsGame(game, content);
       else if (game.type === 'ttt') renderTttGame(game, content);
       else if (game.type === 'trivia') renderTriviaGame(game, content);
@@ -7889,11 +7889,25 @@
     function renderConnect4Game(game, container) {
       var isP1 = playerName && playerName.toLowerCase() === game.player1.toLowerCase();
       var mySymbol = isP1 ? game.c4Symbols[game.player1] : game.c4Symbols[game.player2];
-      var isMyTurn = game.c4CurrentTurn && game.c4CurrentTurn.toLowerCase() === (playerName || '').toLowerCase();
+      var isMyTurn = !game.winner && game.c4CurrentTurn && game.c4CurrentTurn.toLowerCase() === (playerName || '').toLowerCase();
       var turnDiv = document.createElement('div');
       turnDiv.style.cssText = 'text-align:center;color:#daa520;margin-bottom:12px;font-size:14px;font-family:Fredoka One,cursive;';
-      turnDiv.textContent = isMyTurn ? 'Your turn! (You are ' + (mySymbol === 'R' ? '\uD83D\uDD34' : '\uD83D\uDFE1') + ')' : game.c4CurrentTurn + "'s turn...";
+      if (game.winner) {
+        var isWinner = game.winner !== 'draw' && game.winner.toLowerCase() === (playerName || '').toLowerCase();
+        turnDiv.textContent = game.winner === 'draw' ? 'DRAW!' : (isWinner ? 'YOU WIN!' : game.winner + ' WINS!');
+        turnDiv.style.color = game.winner === 'draw' ? '#daa520' : (isWinner ? '#4ade80' : '#ef4444');
+        turnDiv.style.fontSize = '20px';
+      } else {
+        turnDiv.textContent = isMyTurn ? 'Your turn! (You are ' + (mySymbol === 'R' ? '\uD83D\uDD34' : '\uD83D\uDFE1') + ')' : game.c4CurrentTurn + "'s turn...";
+      }
       container.appendChild(turnDiv);
+      // Build win cell lookup
+      var winCells = {};
+      if (game.c4WinCells) {
+        for (var wi = 0; wi < game.c4WinCells.length; wi++) {
+          winCells[game.c4WinCells[wi].c + ',' + game.c4WinCells[wi].r] = true;
+        }
+      }
       var grid = document.createElement('div');
       grid.className = 'c4-grid';
       for (var row = 5; row >= 0; row--) {
@@ -7904,7 +7918,13 @@
             var val = game.c4Board[c][r];
             if (val === 'R') cell.classList.add('c4-red');
             else if (val === 'Y') cell.classList.add('c4-yellow');
-            if (!val && isMyTurn) {
+            // Highlight winning cells
+            if (winCells[c + ',' + r]) {
+              cell.style.boxShadow = '0 0 12px 3px rgba(255,215,0,0.8)';
+              cell.style.border = '3px solid #ffd700';
+              cell.style.animation = 'gpulse 0.6s ease-in-out infinite';
+            }
+            if (!val && isMyTurn && !game.winner) {
               cell.classList.add('c4-clickable');
               cell.addEventListener('click', function() {
                 liveWs.send(JSON.stringify({ type: 'gameMove', gameId: game.id, move: c }));
