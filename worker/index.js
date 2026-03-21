@@ -16,6 +16,7 @@ export class LiveVisitors {
     this.lukeHidden = null; // lazy-loaded: { [playerNameLower]: expiresAt }
     this.pushSubscriptions = null; // lazy-loaded: { [playerNameLower]: [ { endpoint, keys } ] }
     this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
+    this.resetSchedule = null; // lazy-loaded: { enabled, nextResetAt, intervalMs }
     this.activeGames = new Map();      // gameId → GameState
     this.pendingChallenges = new Map(); // chalId → ChallengeState
     this.forfeitTimers = new Map();    // playerName → { timer, gameId }
@@ -237,6 +238,58 @@ export class LiveVisitors {
 
   async saveLukeHidden() {
     await this.state.storage.put("lukeHidden", this.lukeHidden);
+  }
+
+  async loadResetSchedule() {
+    if (this.resetSchedule === null) {
+      this.resetSchedule = (await this.state.storage.get("resetSchedule")) || { enabled: false, nextResetAt: 0, intervalMs: 7 * 24 * 60 * 60 * 1000 };
+    }
+    return this.resetSchedule;
+  }
+
+  async saveResetSchedule() {
+    await this.state.storage.put("resetSchedule", this.resetSchedule);
+  }
+
+  getNextMonday(fromDate) {
+    var d = new Date(fromDate || Date.now());
+    d.setUTCHours(7, 0, 0, 0); // Monday 7:00 UTC = midnight PST
+    var day = d.getUTCDay();
+    var daysUntilMonday = (8 - day) % 7 || 7; // days until next Monday
+    d.setUTCDate(d.getUTCDate() + daysUntilMonday);
+    return d.getTime();
+  }
+
+  async checkAutoReset() {
+    var schedule = await this.loadResetSchedule();
+    if (!schedule.enabled || !schedule.nextResetAt) return;
+    if (Date.now() < schedule.nextResetAt) return;
+    // Time to reset!
+    await this.performAutoReset();
+    // Schedule next reset
+    schedule.nextResetAt = this.getNextMonday(Date.now());
+    await this.saveResetSchedule();
+  }
+
+  async performAutoReset() {
+    // Same as admin/reset-scores but with auto-reset message
+    this.persistedScores = {};
+    await this.state.storage.put("scores", {});
+    const newEpoch = (await this.loadScoreEpoch()) + 1;
+    this.scoreEpoch = newEpoch;
+    await this.state.storage.put("scoreEpoch", newEpoch);
+    for (const [, info] of this.connections) { info.score = 0; }
+    const accounts = await this.loadAccounts();
+    for (const key of Object.keys(accounts)) {
+      if (accounts[key].gameState) { accounts[key].gameState = null; accounts[key].gameStateUpdatedAt = null; }
+    }
+    this.accounts = accounts;
+    await this.saveAccounts();
+    this.lastPodium = [];
+    await this.addSystemChat("\uD83D\uDD04 WEEKLY RESET! All scores have been reset. New week, new competition!");
+    const resetMsg = JSON.stringify({ type: "resetAll", scoreEpoch: newEpoch });
+    for (const [ws] of this.connections) { try { ws.send(resetMsg); } catch (e) {} }
+    this.broadcast();
   }
 
   async loadPushSubscriptions() {
@@ -1236,6 +1289,23 @@ export class LiveVisitors {
       return new Response(JSON.stringify({ ok: true }), {
         headers: { "Content-Type": "application/json" },
       });
+    }
+
+    // Admin: get/set reset schedule
+    if (url.pathname === "/admin/reset-schedule" && request.method === "GET") {
+      var sched = await this.loadResetSchedule();
+      return new Response(JSON.stringify(sched), { headers: { "Content-Type": "application/json" } });
+    }
+    if (url.pathname === "/admin/reset-schedule" && request.method === "POST") {
+      var rsBody = await request.json();
+      var sched = await this.loadResetSchedule();
+      if (typeof rsBody.enabled === 'boolean') sched.enabled = rsBody.enabled;
+      if (sched.enabled && (!sched.nextResetAt || sched.nextResetAt < Date.now())) {
+        sched.nextResetAt = this.getNextMonday(Date.now());
+      }
+      this.resetSchedule = sched;
+      await this.saveResetSchedule();
+      return new Response(JSON.stringify(sched), { headers: { "Content-Type": "application/json" } });
     }
 
     // Admin: reset all scores
@@ -2601,6 +2671,9 @@ export class LiveVisitors {
   }
 
   async broadcast() {
+    // Check for scheduled auto-reset
+    await this.checkAutoReset();
+
     const locations = {};
     const players = [];
     const scoreMap = {};
@@ -2706,6 +2779,7 @@ export class LiveVisitors {
       }),
       podiumChanges: podiumChanges.length > 0 ? podiumChanges : undefined,
       scoreEpoch: currentEpoch,
+      nextResetAt: (this.resetSchedule && this.resetSchedule.enabled) ? this.resetSchedule.nextResetAt : null,
     });
 
     for (const [ws] of this.connections) {
@@ -4581,6 +4655,32 @@ export default {
       }
     }
 
+    // Admin: configure weekly reset schedule
+    if (url.pathname === "/admin/reset-schedule" && request.method === "POST") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      }
+      const reqBody = await request.json();
+      const lvId = env.LIVE_VISITORS.idFromName("global");
+      const lvObj = env.LIVE_VISITORS.get(lvId);
+      const res = await lvObj.fetch(new Request("https://dummy/admin/reset-schedule", {
+        method: "POST", body: JSON.stringify(reqBody),
+      }));
+      const body = await res.text();
+      return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/admin/reset-schedule" && request.method === "GET") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      }
+      const lvId = env.LIVE_VISITORS.idFromName("global");
+      const lvObj = env.LIVE_VISITORS.get(lvId);
+      const res = await lvObj.fetch(new Request("https://dummy/admin/reset-schedule"));
+      const body = await res.text();
+      return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+    }
+
     // ===== TAB ICON GENERATION (admin) =====
     if (url.pathname === "/generate-tab-icons" && request.method === "POST") {
       if (!(await verifyAdmin(request, env))) {
@@ -4698,7 +4798,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "57" }), {
+      return corsResponse(JSON.stringify({ version: "58" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

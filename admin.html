@@ -328,6 +328,14 @@
 
     <div id="photoGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;"></div>
 
+    <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Weekly Reset</h2>
+    <p style="color: #aaa; font-size: 13px; margin-bottom: 12px;">Automatically reset all scores every Monday at midnight PST.</p>
+    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 8px;">
+      <button id="resetScheduleToggle" style="padding:10px 20px;font-size:14px;">Loading...</button>
+      <span id="resetScheduleStatus" style="color:#aaa;font-size:13px;"></span>
+    </div>
+    <div id="resetScheduleInfo" style="font-size: 13px; margin-bottom: 12px;"></div>
+
     <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Hide Luke</h2>
     <p style="color: #aaa; font-size: 13px; margin-bottom: 12px;">Manually hide Luke for a player (e.g. if their $1.99 payment failed to apply).</p>
     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
@@ -404,6 +412,7 @@
       renderScores(data);
       loadPhotos();
       loadAdminCampaigns();
+      loadResetSchedule();
     })
     .catch(function(err) {
       adminPassword = '';
@@ -670,6 +679,48 @@
       statusEl.textContent = 'Error: ' + err.message;
       statusEl.style.color = '#ff6b6b';
     });
+  });
+
+  // ===== WEEKLY RESET SCHEDULE =====
+  function loadResetSchedule() {
+    fetch(API_BASE + '/admin/reset-schedule', {
+      headers: { 'Authorization': 'Bearer ' + adminPassword }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(sched) {
+      var btn = document.getElementById('resetScheduleToggle');
+      var info = document.getElementById('resetScheduleInfo');
+      var status = document.getElementById('resetScheduleStatus');
+      btn.textContent = sched.enabled ? 'Disable Weekly Reset' : 'Enable Weekly Reset';
+      btn.style.background = sched.enabled ? 'linear-gradient(135deg, #8b0000, #cc0000)' : 'linear-gradient(135deg, #065f46, #059669)';
+      btn.style.borderColor = sched.enabled ? '#ff6b6b' : '#34d399';
+      btn.style.color = '#fff';
+      status.textContent = sched.enabled ? 'ACTIVE' : 'DISABLED';
+      status.style.color = sched.enabled ? '#4ade80' : '#888';
+      if (sched.enabled && sched.nextResetAt) {
+        info.textContent = 'Next reset: ' + new Date(sched.nextResetAt).toLocaleString();
+        info.style.color = '#ffd700';
+      } else {
+        info.textContent = '';
+      }
+    })
+    .catch(function() {});
+  }
+
+  document.getElementById('resetScheduleToggle').addEventListener('click', function() {
+    var btn = document.getElementById('resetScheduleToggle');
+    var isEnabled = btn.textContent.indexOf('Disable') !== -1;
+    var newState = !isEnabled;
+    if (newState && !confirm('Enable weekly auto-reset? Scores will reset every Monday at midnight PST.')) return;
+    if (!newState && !confirm('Disable weekly auto-reset?')) return;
+    fetch(API_BASE + '/admin/reset-schedule', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + adminPassword, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: newState })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function() { loadResetSchedule(); })
+    .catch(function(err) { alert('Error: ' + err.message); });
   });
 
   // ===== HIDE LUKE =====

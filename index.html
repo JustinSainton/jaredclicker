@@ -2447,6 +2447,11 @@
     <button class="close-banner" id="closeBanner">&times;</button>
   </div>
 
+  <!-- Reset Countdown Banner -->
+  <div id="resetCountdown" style="display:none;position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#991b1b,#dc2626);color:white;text-align:center;padding:6px 12px;z-index:110;font-family:Fredoka One,cursive;font-size:13px;">
+    <span>\uD83D\uDD04 Weekly Reset in </span><span id="resetTimer" style="font-family:Press Start 2P,monospace;font-size:11px;"></span>
+  </div>
+
   <!-- Coin Counter Bar -->
   <div class="coin-counter" id="coinCounterBar">
     <div class="cc-left" id="ccChatSlot"></div>
@@ -3583,7 +3588,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '57';
+    var CURRENT_VERSION = '58';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -4172,6 +4177,11 @@
           // Refresh battle section only when online player list changes
           // Don't re-render battle tab from broadcasts — only on tab switch
           // This prevents scroll snap-back and UI interruption
+
+          // Update reset countdown from broadcast
+          if (data.nextResetAt) {
+            window._nextResetAt = data.nextResetAt;
+          }
 
           // Score recovery: if server has a higher score for us, sync up (prevents localStorage loss)
           if (data.leaderboard && playerName) {
@@ -7511,6 +7521,32 @@
     // Fetch skin catalog on load and periodically
     fetchSkinCatalog();
     setInterval(fetchSkinCatalog, 60000);
+
+    // ===== RESET COUNTDOWN TIMER =====
+    var resetCountdownEl = document.getElementById('resetCountdown');
+    var resetTimerEl = document.getElementById('resetTimer');
+    setInterval(function() {
+      var nextReset = window._nextResetAt;
+      if (!nextReset) { resetCountdownEl.style.display = 'none'; return; }
+      var remaining = nextReset - Date.now();
+      if (remaining <= 0) { resetCountdownEl.style.display = 'none'; return; }
+      // Show countdown when within 7 days (always show if scheduled)
+      resetCountdownEl.style.display = 'block';
+      var days = Math.floor(remaining / 86400000);
+      var hours = Math.floor((remaining % 86400000) / 3600000);
+      var mins = Math.floor((remaining % 3600000) / 60000);
+      var secs = Math.floor((remaining % 60000) / 1000);
+      var parts = [];
+      if (days > 0) parts.push(days + 'd');
+      parts.push(hours + 'h');
+      parts.push(mins + 'm');
+      parts.push(secs + 's');
+      resetTimerEl.textContent = parts.join(' ');
+      // Change color based on urgency
+      if (remaining < 3600000) { resetCountdownEl.style.background = 'linear-gradient(135deg, #7c0000, #b91c1c)'; }
+      else if (remaining < 86400000) { resetCountdownEl.style.background = 'linear-gradient(135deg, #991b1b, #dc2626)'; }
+      else { resetCountdownEl.style.background = 'linear-gradient(135deg, #1e3a5f, #1e40af)'; }
+    }, 1000);
 
     // ===== MOBILE FOOTER NAV =====
     var tabSections = {
