@@ -8846,18 +8846,18 @@
       }
 
       // --- 1v1 Challenge UI ---
-      var chalLabel = document.createElement('div');
-      chalLabel.style.cssText = 'color:#ef4444;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:10px;margin-top:16px;';
-      chalLabel.textContent = '\u2694\uFE0F 1v1 CHALLENGE';
-      battleContent.appendChild(chalLabel);
+      var oneVoneLabel = document.createElement('div');
+      oneVoneLabel.style.cssText = 'color:#ef4444;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:10px;margin-top:16px;';
+      oneVoneLabel.textContent = '\u2694\uFE0F 1v1 CHALLENGE';
+      battleContent.appendChild(oneVoneLabel);
 
       var chalSection = document.createElement('div');
       chalSection.style.cssText = 'margin-top:16px;';
 
-      var chalLabel = document.createElement('div');
-      chalLabel.style.cssText = 'color:#ef4444;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:12px;';
-      chalLabel.textContent = 'NEW CHALLENGE';
-      chalSection.appendChild(chalLabel);
+      var chalSectionLabel = document.createElement('div');
+      chalSectionLabel.style.cssText = 'color:#ef4444;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:12px;';
+      chalSectionLabel.textContent = 'NEW CHALLENGE';
+      chalSection.appendChild(chalSectionLabel);
 
       // Player picker
       var pickerLabel = document.createElement('div');
@@ -9089,7 +9089,7 @@
         groupSection.appendChild(groupGrid);
       }
       // Insert group section at the TOP of battle content (before 1v1)
-      battleContent.insertBefore(groupSection, chalLabel);
+      battleContent.insertBefore(groupSection, oneVoneLabel);
 
       // ===== LIVE GAMES (spectator) =====
       var liveGames = (lastLiveData && lastLiveData.activeGames) ? lastLiveData.activeGames : [];
