@@ -328,6 +328,9 @@
 
     <div id="photoGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;"></div>
 
+    <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Banned Players</h2>
+    <div id="bannedList" style="margin-bottom: 16px; color: #888; font-size: 13px;">Loading...</div>
+
     <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Weekly Reset</h2>
     <p style="color: #aaa; font-size: 13px; margin-bottom: 12px;">Automatically reset all scores every Monday at midnight PST.</p>
     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 8px;">
@@ -413,6 +416,7 @@
       loadPhotos();
       loadAdminCampaigns();
       loadResetSchedule();
+      loadBannedPlayers();
     })
     .catch(function(err) {
       adminPassword = '';
@@ -680,6 +684,53 @@
       statusEl.style.color = '#ff6b6b';
     });
   });
+
+  // ===== BANNED PLAYERS =====
+  function loadBannedPlayers() {
+    fetch(API_BASE + '/admin/banned', { headers: { 'Authorization': 'Bearer ' + adminPassword } })
+    .then(function(r) { return r.json(); })
+    .then(function(banned) {
+      var el = document.getElementById('bannedList');
+      el.textContent = '';
+      var keys = Object.keys(banned);
+      if (keys.length === 0) {
+        el.textContent = 'No banned players.';
+        el.style.color = '#888';
+        return;
+      }
+      for (var i = 0; i < keys.length; i++) {
+        (function(name, ban) {
+          var card = document.createElement('div');
+          card.style.cssText = 'background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;';
+          var info = document.createElement('div');
+          info.style.cssText = 'font-size:13px;';
+          var nameDiv = document.createElement('div');
+          nameDiv.style.cssText = 'color:#ef4444;font-size:14px;';
+          nameDiv.textContent = name;
+          info.appendChild(nameDiv);
+          var reason = document.createElement('div');
+          reason.style.cssText = 'color:#888;font-size:11px;margin-top:2px;';
+          reason.textContent = ban.reason + ' \u2022 ' + Math.ceil((ban.until - Date.now()) / 60000) + 'min left';
+          info.appendChild(reason);
+          card.appendChild(info);
+          var unbanBtn = document.createElement('button');
+          unbanBtn.className = 'give-btn';
+          unbanBtn.textContent = 'Unban';
+          unbanBtn.style.cssText += 'padding:6px 14px;font-size:12px;';
+          unbanBtn.addEventListener('click', function() {
+            fetch(API_BASE + '/admin/unban', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + adminPassword, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playerName: name })
+            }).then(function() { loadBannedPlayers(); });
+          });
+          card.appendChild(unbanBtn);
+          el.appendChild(card);
+        })(keys[i], banned[keys[i]]);
+      }
+    })
+    .catch(function() { document.getElementById('bannedList').textContent = 'Failed to load.'; });
+  }
 
   // ===== WEEKLY RESET SCHEDULE =====
   function loadResetSchedule() {

@@ -18,6 +18,8 @@ export class LiveVisitors {
     this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
     this.resetSchedule = null; // lazy-loaded: { enabled, nextResetAt, intervalMs }
     this.hallOfFame = null; // lazy-loaded: array of weekly snapshots
+    this.bannedPlayers = null; // lazy-loaded: { [nameLower]: { until, reason } }
+    this._scoreRateTracker = {}; // in-memory: { [nameLower]: { updates: [timestamps], lastScore } }
     this.activeGames = new Map();      // gameId → GameState
     this.pendingChallenges = new Map(); // chalId → ChallengeState
     this.forfeitTimers = new Map();    // playerName → { timer, gameId }
@@ -240,6 +242,86 @@ export class LiveVisitors {
 
   async saveLukeHidden() {
     await this.state.storage.put("lukeHidden", this.lukeHidden);
+  }
+
+  async loadBannedPlayers() {
+    if (this.bannedPlayers === null) {
+      this.bannedPlayers = (await this.state.storage.get("bannedPlayers")) || {};
+    }
+    // Prune expired bans
+    var now = Date.now();
+    var changed = false;
+    for (var key in this.bannedPlayers) {
+      if (this.bannedPlayers[key].until && this.bannedPlayers[key].until <= now) {
+        delete this.bannedPlayers[key];
+        changed = true;
+      }
+    }
+    if (changed) await this.state.storage.put("bannedPlayers", this.bannedPlayers);
+    return this.bannedPlayers;
+  }
+
+  async saveBannedPlayers() {
+    await this.state.storage.put("bannedPlayers", this.bannedPlayers);
+  }
+
+  async checkAutoClickerAndBan(name, score, stats) {
+    var key = name.toLowerCase();
+    var banned = await this.loadBannedPlayers();
+    if (banned[key]) return true; // already banned
+
+    // Track score update rate
+    if (!this._scoreRateTracker[key]) {
+      this._scoreRateTracker[key] = { updates: [], lastScore: 0, suspiciousCount: 0 };
+    }
+    var tracker = this._scoreRateTracker[key];
+    var now = Date.now();
+    tracker.updates.push(now);
+    // Keep only last 60 seconds of updates
+    while (tracker.updates.length > 0 && tracker.updates[0] < now - 60000) tracker.updates.shift();
+
+    // Detection heuristics:
+    // 1. Score increase rate: if gaining more than 50 coins per second per coinsPerClick
+    //    for sustained periods, suspicious
+    var coinsPerClick = (stats && stats.coinsPerClick) || 1;
+    var coinsPerSec = (stats && stats.coinsPerSecond) || 0;
+    var scoreDelta = score - tracker.lastScore;
+    var timeDelta = now - (tracker.updates.length > 1 ? tracker.updates[tracker.updates.length - 2] : now);
+    tracker.lastScore = score;
+
+    if (timeDelta > 0 && scoreDelta > 0) {
+      // Calculate implied clicks per second from score increase
+      // scoreDelta = clicks * coinsPerClick + coinsPerSec * (timeDelta/1000)
+      var autoIncome = coinsPerSec * (timeDelta / 1000);
+      var clickIncome = scoreDelta - autoIncome;
+      var impliedCPS = clickIncome / Math.max(1, coinsPerClick) / Math.max(0.1, timeDelta / 1000);
+
+      // If clicking faster than 25 CPS sustained, that's suspicious
+      if (impliedCPS > 25) {
+        tracker.suspiciousCount++;
+      } else {
+        tracker.suspiciousCount = Math.max(0, tracker.suspiciousCount - 1);
+      }
+
+      // 2. If suspicious for 12+ consecutive updates (~60 seconds at 5s intervals), ban
+      if (tracker.suspiciousCount >= 12) {
+        var banDuration = 30 * 60 * 1000; // 30 minutes
+        banned[key] = {
+          until: now + banDuration,
+          reason: 'Autoclicker detected (' + Math.round(impliedCPS) + ' CPS sustained)',
+          bannedAt: now,
+          score: score
+        };
+        await this.saveBannedPlayers();
+        tracker.suspiciousCount = 0;
+
+        // Notify the player
+        this.sendToPlayer(name, { type: 'banned', until: banned[key].until, reason: banned[key].reason });
+        await this.addSystemChat('\u26D4 ' + name + ' has been temporarily banned for suspected autoclicking.');
+        return true;
+      }
+    }
+    return false;
   }
 
   async loadHallOfFame() {
@@ -1493,6 +1575,29 @@ export class LiveVisitors {
       });
     }
 
+    // Admin: list banned players
+    if (url.pathname === "/admin/banned" && request.method === "GET") {
+      var banned = await this.loadBannedPlayers();
+      return new Response(JSON.stringify(banned), { headers: { "Content-Type": "application/json" } });
+    }
+    // Admin: unban a player
+    if (url.pathname === "/admin/unban" && request.method === "POST") {
+      var ubBody = await request.json();
+      var ubName = String(ubBody.playerName || "").toLowerCase();
+      var banned = await this.loadBannedPlayers();
+      if (banned[ubName]) {
+        delete banned[ubName];
+        this.bannedPlayers = banned;
+        await this.saveBannedPlayers();
+        // Clear their rate tracker too
+        delete this._scoreRateTracker[ubName];
+        await this.addSystemChat('\u2705 ' + ubBody.playerName + ' has been unbanned by admin.');
+        this.sendToPlayer(ubBody.playerName, { type: 'unbanned' });
+        return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "Not banned" }), { status: 404, headers: { "Content-Type": "application/json" } });
+    }
+
     // Admin: get/set reset schedule
     if (url.pathname === "/admin/reset-schedule" && request.method === "GET") {
       var sched = await this.loadResetSchedule();
@@ -2565,6 +2670,21 @@ export class LiveVisitors {
 
         if (msg.type === "scoreUpdate" && msg.name && typeof msg.score === "number") {
           info.name = String(msg.name).slice(0, 20);
+
+          // Check ban status (use cached bannedPlayers — loaded on first broadcast)
+          if (this.bannedPlayers && this.bannedPlayers[info.name.toLowerCase()]) {
+            var bp = this.bannedPlayers[info.name.toLowerCase()];
+            if (bp.until > Date.now()) {
+              try { server.send(JSON.stringify({ type: 'banned', until: bp.until, reason: bp.reason })); } catch(e) {}
+              return;
+            }
+          }
+
+          // Autoclicker detection (fire-and-forget async — bans take effect on next update)
+          this.checkAutoClickerAndBan(info.name, Math.floor(msg.score), {
+            coinsPerClick: Math.floor(msg.coinsPerClick || 0),
+            coinsPerSecond: Math.floor(msg.coinsPerSecond || 0)
+          });
 
           // Check epoch BEFORE accepting the score into memory
           // Use cached epoch (loaded by broadcast on connection open) to avoid async
@@ -4906,6 +5026,33 @@ export default {
       }
     }
 
+    // Admin: view banned players
+    if (url.pathname === "/admin/banned" && request.method === "GET") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      }
+      const lvId = env.LIVE_VISITORS.idFromName("global");
+      const lvObj = env.LIVE_VISITORS.get(lvId);
+      const res = await lvObj.fetch(new Request("https://dummy/admin/banned"));
+      const body = await res.text();
+      return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Admin: unban a player
+    if (url.pathname === "/admin/unban" && request.method === "POST") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      }
+      const reqBody = await request.json();
+      const lvId = env.LIVE_VISITORS.idFromName("global");
+      const lvObj = env.LIVE_VISITORS.get(lvId);
+      const res = await lvObj.fetch(new Request("https://dummy/admin/unban", {
+        method: "POST", body: JSON.stringify({ playerName: reqBody.playerName }),
+      }));
+      const body = await res.text();
+      return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+    }
+
     // Admin: configure weekly reset schedule
     if (url.pathname === "/admin/reset-schedule" && request.method === "POST") {
       if (!(await verifyAdmin(request, env))) {
@@ -5049,7 +5196,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "60" }), {
+      return corsResponse(JSON.stringify({ version: "61" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

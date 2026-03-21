@@ -3610,7 +3610,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '60';
+    var CURRENT_VERSION = '61';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -4138,6 +4138,25 @@
             setTimeout(function() { achievementToast.classList.remove('show'); }, 3000);
             return;
           }
+          // ===== BAN MESSAGES =====
+          if (data.type === 'banned') {
+            var banMins = Math.ceil((data.until - Date.now()) / 60000);
+            gameOverlayTitleEl.textContent = '\u26D4 BANNED';
+            gameOverlayVsEl.textContent = data.reason || 'Autoclicker detected';
+            gameOverlayWagerEl.textContent = banMins + ' minutes remaining';
+            gameOverlayContentEl.textContent = '';
+            var banMsg = document.createElement('div');
+            banMsg.style.cssText = 'text-align:center;color:#ef4444;font-size:16px;font-family:Fredoka One,cursive;max-width:300px;line-height:1.5;';
+            banMsg.textContent = 'Your score updates are blocked until the ban expires. Contact an admin to appeal.';
+            gameOverlayContentEl.appendChild(banMsg);
+            gameOverlayEl.classList.add('active');
+            return;
+          }
+          if (data.type === 'unbanned') {
+            gameOverlayEl.classList.remove('active');
+            return;
+          }
+
           // ===== GROUP GAME MESSAGES =====
           if (data.type === 'groupLobbyCreated' || data.type === 'groupLobbyUpdate') {
             window._currentLobby = data.lobby;
