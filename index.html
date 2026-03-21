@@ -2791,6 +2791,22 @@
     </div>
   </div>
 
+  <!-- Group Game Wager Modal -->
+  <div class="challenge-popup" id="groupWagerModal" style="border-color:#ffd700;">
+    <h3 id="groupWagerTitle" style="color:#ffd700;">Host Game</h3>
+    <div id="groupWagerDesc" style="color:#daa520;font-size:13px;margin-bottom:12px;font-family:Fredoka One,cursive;"></div>
+    <div style="color:#daa520;font-size:13px;margin-bottom:6px;font-family:Fredoka One,cursive;">Entry wager per player:</div>
+    <div id="groupWagerDisplay" style="color:#ffd700;font-family:Press Start 2P,monospace;font-size:16px;text-align:center;margin-bottom:6px;">1,000</div>
+    <input type="range" id="groupWagerSlider" min="100" max="1000000" value="1000" step="100" style="width:100%;accent-color:#ffd700;margin-bottom:4px;">
+    <div style="display:flex;justify-content:space-between;color:#888;font-size:10px;font-family:Fredoka One,cursive;margin-bottom:14px;">
+      <span>100</span><span id="groupWagerMax">1M</span>
+    </div>
+    <div class="challenge-popup-actions">
+      <button class="challenge-accept" id="groupWagerConfirm" style="padding:10px 24px;font-size:16px;">Create Lobby</button>
+      <button class="challenge-decline" id="groupWagerCancel" style="padding:10px 24px;font-size:16px;">Cancel</button>
+    </div>
+  </div>
+
   <!-- Push notification permission prompt -->
   <div class="push-permission-prompt" id="pushPermissionPrompt">
     <div class="push-title">Get Game Alerts?</div>
@@ -7568,6 +7584,36 @@
       else { resetCountdownEl.style.background = 'linear-gradient(135deg, #1e3a5f, #1e40af)'; }
     }, 1000);
 
+    // ===== GROUP WAGER MODAL =====
+    var groupWagerModal = document.getElementById('groupWagerModal');
+    var groupWagerSlider = document.getElementById('groupWagerSlider');
+    var groupWagerDisplay = document.getElementById('groupWagerDisplay');
+    var _pendingGroupGameType = null;
+    groupWagerSlider.addEventListener('input', function() {
+      groupWagerDisplay.textContent = formatNumber(parseInt(groupWagerSlider.value));
+    });
+    document.getElementById('groupWagerConfirm').addEventListener('click', function() {
+      if (!_pendingGroupGameType) return;
+      var w = parseInt(groupWagerSlider.value);
+      liveWs.send(JSON.stringify({ type: 'createGroupLobby', gameType: _pendingGroupGameType, wagerCoins: w }));
+      groupWagerModal.classList.remove('active');
+      _pendingGroupGameType = null;
+    });
+    document.getElementById('groupWagerCancel').addEventListener('click', function() {
+      groupWagerModal.classList.remove('active');
+      _pendingGroupGameType = null;
+    });
+    function showGroupWagerModal(gameType, label) {
+      _pendingGroupGameType = gameType;
+      document.getElementById('groupWagerTitle').textContent = 'Host ' + label;
+      document.getElementById('groupWagerDesc').textContent = '3-20 players. Winner takes the pot!';
+      groupWagerSlider.max = String(Math.min(1000000, state.totalCoins));
+      document.getElementById('groupWagerMax').textContent = formatNumber(Math.min(1000000, state.totalCoins));
+      groupWagerSlider.value = '1000';
+      groupWagerDisplay.textContent = '1,000';
+      groupWagerModal.classList.add('active');
+    }
+
     // ===== GROUP GAMES (client) =====
     var groupGameTypeNames = { lastclick: 'Last Click Standing', auction: 'Auction House', triviaroyale: 'Trivia Royale' };
     var allGroupGameTypes = [
@@ -8799,7 +8845,12 @@
         }
       }
 
-      // --- New Challenge UI ---
+      // --- 1v1 Challenge UI ---
+      var chalLabel = document.createElement('div');
+      chalLabel.style.cssText = 'color:#ef4444;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:10px;margin-top:16px;';
+      chalLabel.textContent = '\u2694\uFE0F 1v1 CHALLENGE';
+      battleContent.appendChild(chalLabel);
+
       var chalSection = document.createElement('div');
       chalSection.style.cssText = 'margin-top:16px;';
 
@@ -8948,11 +8999,9 @@
       });
       chalSection.appendChild(sendBtn);
 
-      battleContent.appendChild(chalSection);
-
-      // ===== GROUP GAMES SECTION =====
+      // ===== GROUP GAMES SECTION (shown FIRST) =====
       var groupSection = document.createElement('div');
-      groupSection.style.cssText = 'margin-top:20px;border-top:1px solid rgba(255,215,0,0.2);padding-top:12px;';
+      groupSection.style.cssText = 'margin-bottom:16px;';
       var groupLabel = document.createElement('div');
       groupLabel.style.cssText = 'color:#ffd700;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:10px;';
       groupLabel.textContent = '\uD83C\uDFAE GROUP GAMES';
@@ -9032,18 +9081,15 @@
             var nm = document.createElement('div'); nm.className = 'game-type-card-name'; nm.textContent = gt.label; card.appendChild(nm);
             var dsc = document.createElement('div'); dsc.className = 'game-type-card-desc'; dsc.textContent = gt.desc; card.appendChild(dsc);
             card.addEventListener('click', function() {
-              var wager = prompt('Entry wager (min 100 coins):');
-              if (!wager) return;
-              var w = parseInt(wager);
-              if (isNaN(w) || w < 100) { alert('Min 100 coins'); return; }
-              liveWs.send(JSON.stringify({ type: 'createGroupLobby', gameType: gt.type, wagerCoins: w }));
+              showGroupWagerModal(gt.type, gt.label);
             });
             groupGrid.appendChild(card);
           })(allGroupGameTypes[gti]);
         }
         groupSection.appendChild(groupGrid);
       }
-      battleContent.appendChild(groupSection);
+      // Insert group section at the TOP of battle content (before 1v1)
+      battleContent.insertBefore(groupSection, chalLabel);
 
       // ===== LIVE GAMES (spectator) =====
       var liveGames = (lastLiveData && lastLiveData.activeGames) ? lastLiveData.activeGames : [];
