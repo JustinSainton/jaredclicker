@@ -20,6 +20,7 @@ export class LiveVisitors {
     this.activeGames = new Map();      // gameId → GameState
     this.pendingChallenges = new Map(); // chalId → ChallengeState
     this.forfeitTimers = new Map();    // playerName → { timer, gameId }
+    this.groupLobbies = new Map();    // lobbyId → GroupLobby
     this._broadcastPending = false;
     this._debugCounters = { accepted: 0, rejectedEpoch: 0, lastClientEpoch: null, lastSvrEpoch: null };
   }
@@ -290,6 +291,171 @@ export class LiveVisitors {
     const resetMsg = JSON.stringify({ type: "resetAll", scoreEpoch: newEpoch });
     for (const [ws] of this.connections) { try { ws.send(resetMsg); } catch (e) {} }
     this.broadcast();
+  }
+
+  // ===== GROUP GAME SYSTEM =====
+  createGroupLobby(hostName, gameType, wagerCoins, minPlayers, maxPlayers) {
+    var lobbyId = 'gl_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    var lobby = { id: lobbyId, type: gameType, hostName: hostName, wagerCoins: wagerCoins, minPlayers: minPlayers || 3, maxPlayers: maxPlayers || 20, players: [hostName], status: 'waiting', createdAt: Date.now() };
+    this.groupLobbies.set(lobbyId, lobby);
+    var self = this;
+    setTimeout(function() {
+      if (self.groupLobbies.has(lobbyId) && lobby.status === 'waiting') {
+        self.groupLobbies.delete(lobbyId);
+        for (var i = 0; i < lobby.players.length; i++) self.sendToPlayer(lobby.players[i], { type: 'groupLobbyExpired', lobbyId: lobbyId });
+      }
+    }, 300000);
+    return lobby;
+  }
+
+  async startGroupGame(lobby) {
+    lobby.status = 'playing';
+    var game = { id: lobby.id, type: lobby.type, players: lobby.players.slice(), wagerCoins: lobby.wagerCoins, hostName: lobby.hostName, eliminated: [], winner: null, _ended: false, createdAt: Date.now(), spectators: [], spectatorBets: [] };
+    for (var i = 0; i < game.players.length; i++) await this.deductWager(game.players[i], game.wagerCoins);
+    game.pot = game.wagerCoins * game.players.length;
+    if (lobby.type === 'lastclick') {
+      game.roundDuration = 10000; game.roundNumber = 0; game.roundClicks = {}; game.roundStartAt = null; game.alive = game.players.slice();
+      var self = this; setTimeout(function() { self.startLastClickRound(game); }, 3000);
+    } else if (lobby.type === 'auction') {
+      game.prizeAmount = Math.floor(game.pot * (0.5 + Math.random() * 1.5));
+      game.bids = {}; game.bidDeadline = Date.now() + 30000; game.revealed = false;
+      var self2 = this; setTimeout(function() { self2.resolveAuction(game); }, 30000);
+    } else if (lobby.type === 'triviaroyale') {
+      game.questions = [];
+      for (var qi = 0; qi < 5; qi++) {
+        var q = TRIVIA_BANK[Math.floor(Math.random() * TRIVIA_BANK.length)];
+        var ca = q.a[q.c]; var sh = q.a.slice();
+        for (var si = sh.length - 1; si > 0; si--) { var sj = Math.floor(Math.random() * (si + 1)); var t = sh[si]; sh[si] = sh[sj]; sh[sj] = t; }
+        game.questions.push({ q: q.q, a: sh, correct: sh.indexOf(ca) });
+      }
+      game.currentQuestion = 0; game.alive = game.players.slice(); game.answers = {}; game.questionStartAt = null; game.cumulativeTimes = {};
+      for (var pi = 0; pi < game.players.length; pi++) game.cumulativeTimes[game.players[pi]] = 0;
+      var self3 = this; setTimeout(function() { self3.startTriviaRoyaleRound(game); }, 3000);
+    }
+    this.activeGames.set(game.id, game);
+    var tn = { lastclick: 'Last Click Standing', auction: 'Auction House', triviaroyale: 'Trivia Royale' };
+    await this.addSystemChat('\uD83C\uDFAE ' + (tn[game.type] || game.type) + ' with ' + game.players.length + ' players for ' + game.pot + ' coins!');
+    for (var j = 0; j < game.players.length; j++) this.sendToPlayer(game.players[j], { type: 'groupGameStarted', game: this.sanitizeGroupGame(game, game.players[j]) });
+    return game;
+  }
+
+  startLastClickRound(game) {
+    if (game.winner || game._ended) return;
+    if (game.alive.length <= 1) { this.endGroupGame(game); return; }
+    game.roundNumber++; game.roundClicks = {};
+    for (var i = 0; i < game.alive.length; i++) game.roundClicks[game.alive[i]] = 0;
+    game.roundStartAt = Date.now(); game.roundEndAt = Date.now() + game.roundDuration;
+    this.broadcastGroupGame(game);
+    var self = this; setTimeout(function() { self.endLastClickRound(game); }, game.roundDuration);
+  }
+
+  endLastClickRound(game) {
+    if (game.winner || game._ended) return;
+    var minClicks = Infinity, minPlayer = null;
+    for (var i = 0; i < game.alive.length; i++) {
+      var c = game.roundClicks[game.alive[i]] || 0;
+      if (c < minClicks) { minClicks = c; minPlayer = game.alive[i]; }
+    }
+    if (minPlayer) { game.eliminated.push({ name: minPlayer, round: game.roundNumber, clicks: minClicks }); game.alive = game.alive.filter(function(p) { return p !== minPlayer; }); }
+    game.roundStartAt = null;
+    if (game.alive.length <= 1) { game.winner = game.alive.length === 1 ? game.alive[0] : 'draw'; this.endGroupGame(game); }
+    else { this.broadcastGroupGame(game); var self = this; setTimeout(function() { self.startLastClickRound(game); }, 3000); }
+  }
+
+  async resolveAuction(game) {
+    if (game.winner || game._ended || game.revealed) return;
+    game.revealed = true;
+    var highBid = 0, highBidder = null;
+    for (var p in game.bids) { if (game.bids[p] > highBid) { highBid = game.bids[p]; highBidder = p; } }
+    if (highBidder) {
+      game.winner = highBidder; game.winningBid = highBid;
+      await this.awardWinnings(highBidder, game.prizeAmount);
+      for (var j = 0; j < game.players.length; j++) { if (game.players[j] !== highBidder) await this.awardWinnings(game.players[j], game.wagerCoins); }
+    } else {
+      game.winner = 'draw';
+      for (var k = 0; k < game.players.length; k++) await this.awardWinnings(game.players[k], game.wagerCoins);
+    }
+    this.broadcastGroupGame(game); await this.endGroupGame(game);
+  }
+
+  startTriviaRoyaleRound(game) {
+    if (game.winner || game._ended) return;
+    if (game.alive.length <= 0 || game.currentQuestion >= game.questions.length) {
+      if (game.alive.length === 1) game.winner = game.alive[0];
+      else if (game.alive.length > 1) { var fastest = null, ft = Infinity; for (var i = 0; i < game.alive.length; i++) { var t = game.cumulativeTimes[game.alive[i]] || 999999; if (t < ft) { ft = t; fastest = game.alive[i]; } } game.winner = fastest || 'draw'; }
+      else game.winner = 'draw';
+      this.endGroupGame(game); return;
+    }
+    game.answers = {}; game.questionStartAt = Date.now();
+    this.broadcastGroupGame(game);
+    var self = this; setTimeout(function() { self.endTriviaRoyaleRound(game); }, 15000);
+  }
+
+  endTriviaRoyaleRound(game) {
+    if (game.winner || game._ended) return;
+    var q = game.questions[game.currentQuestion]; var newAlive = [];
+    for (var i = 0; i < game.alive.length; i++) {
+      var p = game.alive[i]; var ans = game.answers[p];
+      if (ans && ans.answer === q.correct) { newAlive.push(p); game.cumulativeTimes[p] = (game.cumulativeTimes[p] || 0) + ans.time; }
+      else game.eliminated.push({ name: p, round: game.currentQuestion + 1 });
+    }
+    game.alive = newAlive; game.currentQuestion++;
+    this.broadcastGroupGame(game);
+    var self = this; setTimeout(function() { self.startTriviaRoyaleRound(game); }, 3000);
+  }
+
+  async endGroupGame(game) {
+    if (game._ended) return; game._ended = true;
+    if (game.winner && game.winner !== 'draw') {
+      await this.awardWinnings(game.winner, game.pot);
+      var tn = { lastclick: 'Last Click Standing', auction: 'Auction House', triviaroyale: 'Trivia Royale' };
+      await this.addSystemChat('\uD83C\uDFC6 ' + game.winner + ' wins ' + (tn[game.type] || game.type) + '! +' + game.pot + ' coins!');
+    } else if (game.winner === 'draw') {
+      var share = Math.floor(game.pot / game.players.length);
+      for (var i = 0; i < game.players.length; i++) await this.awardWinnings(game.players[i], share);
+    }
+    this.broadcastGroupGame(game); await this.resolveSpectatorBets(game);
+    var self = this; setTimeout(function() { self.activeGames.delete(game.id); self.groupLobbies.delete(game.id); }, 60000);
+  }
+
+  broadcastGroupGame(game) {
+    for (var i = 0; i < game.players.length; i++) this.sendToPlayer(game.players[i], { type: 'groupGameUpdate', game: this.sanitizeGroupGame(game, game.players[i]) });
+    if (game.spectators) { for (var j = 0; j < game.spectators.length; j++) this.sendToPlayer(game.spectators[j], { type: 'groupGameUpdate', game: this.sanitizeGroupGame(game, null) }); }
+  }
+
+  sanitizeGroupGame(game, forPlayer) {
+    var g = Object.assign({}, game);
+    if (game.type === 'auction' && !game.revealed) {
+      g.bids = {}; if (forPlayer && game.bids[forPlayer] !== undefined) g.bids[forPlayer] = game.bids[forPlayer];
+      g.bidCount = Object.keys(game.bids).length;
+    }
+    if (game.type === 'triviaroyale') {
+      g.currentQ = game.questions[game.currentQuestion] || null;
+      if (g.currentQ) g.currentQ = { q: g.currentQ.q, a: g.currentQ.a };
+      g.questions = undefined;
+      if (forPlayer) { g.myAnswer = game.answers[forPlayer] || null; g.answeredCount = Object.keys(game.answers).length; }
+      g.answers = undefined;
+    }
+    return g;
+  }
+
+  processGroupMove(game, playerName, move) {
+    if (game._ended || game.winner) return;
+    if (game.type === 'lastclick') {
+      if (move !== 'tap' || !game.roundStartAt || Date.now() > game.roundEndAt || !game.alive.includes(playerName)) return;
+      game.roundClicks[playerName] = (game.roundClicks[playerName] || 0) + 1;
+    } else if (game.type === 'auction') {
+      if (game.revealed || !game.players.includes(playerName)) return;
+      var bid = parseInt(move); if (isNaN(bid) || bid < 0) return;
+      game.bids[playerName] = Math.min(bid, game.wagerCoins * 10);
+      this.sendToPlayer(playerName, { type: 'groupGameUpdate', game: this.sanitizeGroupGame(game, playerName) });
+    } else if (game.type === 'triviaroyale') {
+      if (!game.alive.includes(playerName) || game.answers[playerName]) return;
+      var idx = parseInt(move); if (isNaN(idx) || idx < 0 || idx > 3) return;
+      game.answers[playerName] = { answer: idx, time: Date.now() - game.questionStartAt };
+      if (game.alive.every(function(p) { return !!game.answers[p]; })) this.endTriviaRoyaleRound(game);
+      else this.broadcastGroupGame(game);
+    }
   }
 
   async loadPushSubscriptions() {
@@ -2584,6 +2750,51 @@ export class LiveVisitors {
           return;
         }
 
+        // ===== GROUP GAME WS HANDLERS =====
+        if (msg.type === "createGroupLobby" && info.name && msg.gameType && typeof msg.wagerCoins === "number") {
+          var gtypes = ['lastclick', 'auction', 'triviaroyale'];
+          if (!gtypes.includes(msg.gameType)) return;
+          var wager = Math.floor(msg.wagerCoins);
+          if (wager < 100 || wager > 10000000) return;
+          var lobby = this.createGroupLobby(info.name, msg.gameType, wager, 3, 20);
+          this.sendToPlayer(info.name, { type: 'groupLobbyCreated', lobby: lobby });
+          // Announce to all players
+          var tn = { lastclick: 'Last Click Standing', auction: 'Auction House', triviaroyale: 'Trivia Royale' };
+          this.addSystemChat('\uD83C\uDFAE ' + info.name + ' is hosting ' + (tn[msg.gameType] || msg.gameType) + '! Wager: ' + wager + ' coins. Join from the Battle tab!');
+          this.scheduleBroadcast();
+          return;
+        }
+
+        if (msg.type === "joinGroupLobby" && info.name && msg.lobbyId) {
+          var lobby = this.groupLobbies.get(msg.lobbyId);
+          if (!lobby || lobby.status !== 'waiting') return;
+          if (lobby.players.includes(info.name)) return;
+          if (lobby.players.length >= lobby.maxPlayers) return;
+          lobby.players.push(info.name);
+          // Notify all lobby players
+          for (var li = 0; li < lobby.players.length; li++) {
+            this.sendToPlayer(lobby.players[li], { type: 'groupLobbyUpdate', lobby: lobby });
+          }
+          this.scheduleBroadcast();
+          return;
+        }
+
+        if (msg.type === "startGroupLobby" && info.name && msg.lobbyId) {
+          var lobby = this.groupLobbies.get(msg.lobbyId);
+          if (!lobby || lobby.status !== 'waiting') return;
+          if (lobby.hostName !== info.name) return; // only host can start
+          if (lobby.players.length < lobby.minPlayers) return;
+          var self = this;
+          (async function() { await self.startGroupGame(lobby); })();
+          return;
+        }
+
+        if (msg.type === "groupMove" && info.name && msg.gameId) {
+          var game = this.activeGames.get(msg.gameId);
+          if (game && game.players) { this.processGroupMove(game, info.name, msg.move); }
+          return;
+        }
+
         if (msg.type === "stopWatching" && msg.gameId && info.name) {
           const swGame = this.activeGames.get(msg.gameId);
           if (swGame && swGame.spectators) {
@@ -2779,6 +2990,9 @@ export class LiveVisitors {
       }),
       podiumChanges: podiumChanges.length > 0 ? podiumChanges : undefined,
       scoreEpoch: currentEpoch,
+      groupLobbies: Array.from(this.groupLobbies.values()).filter(function(l) { return l.status === 'waiting'; }).map(function(l) {
+        return { id: l.id, type: l.type, hostName: l.hostName, wagerCoins: l.wagerCoins, playerCount: l.players.length, maxPlayers: l.maxPlayers, minPlayers: l.minPlayers };
+      }),
       nextResetAt: (this.resetSchedule && this.resetSchedule.enabled) ? this.resetSchedule.nextResetAt : null,
     });
 
@@ -4798,7 +5012,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "58" }), {
+      return corsResponse(JSON.stringify({ version: "59" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

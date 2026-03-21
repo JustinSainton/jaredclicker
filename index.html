@@ -3588,7 +3588,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '58';
+    var CURRENT_VERSION = '59';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -4116,6 +4116,26 @@
             setTimeout(function() { achievementToast.classList.remove('show'); }, 3000);
             return;
           }
+          // ===== GROUP GAME MESSAGES =====
+          if (data.type === 'groupLobbyCreated' || data.type === 'groupLobbyUpdate') {
+            window._currentLobby = data.lobby;
+            if (typeof mobileQuery !== 'undefined' && mobileQuery.matches) switchTab('battle');
+            renderBattleSection();
+            return;
+          }
+          if (data.type === 'groupLobbyExpired') {
+            window._currentLobby = null;
+            renderBattleSection();
+            return;
+          }
+          if (data.type === 'groupGameStarted' || data.type === 'groupGameUpdate') {
+            activeGameId = data.game.id;
+            activeGameState = data.game;
+            window._currentLobby = null;
+            showGroupGameOverlay(data.game);
+            return;
+          }
+
           if (data.type === 'walletDeduct') {
             state.coins = Math.max(0, state.coins - data.amount);
             saveGame(); updateCounters();
@@ -7548,6 +7568,228 @@
       else { resetCountdownEl.style.background = 'linear-gradient(135deg, #1e3a5f, #1e40af)'; }
     }, 1000);
 
+    // ===== GROUP GAMES (client) =====
+    var groupGameTypeNames = { lastclick: 'Last Click Standing', auction: 'Auction House', triviaroyale: 'Trivia Royale' };
+    var allGroupGameTypes = [
+      { type: 'lastclick', emoji: '\uD83D\uDCA5', label: 'Last Click', desc: 'Slowest eliminated!' },
+      { type: 'auction', emoji: '\uD83C\uDFB0', label: 'Auction House', desc: 'Highest bid wins' },
+      { type: 'triviaroyale', emoji: '\uD83E\uDDE0', label: 'Trivia Royale', desc: 'Wrong = out!' }
+    ];
+    window._currentLobby = null;
+
+    function showGroupGameOverlay(game) {
+      gameOverlayTitleEl.textContent = groupGameTypeNames[game.type] || game.type;
+      gameOverlayVsEl.textContent = game.players.length + ' players';
+      gameOverlayWagerEl.textContent = formatNumber(game.pot || 0) + ' coin pot';
+      gameOverlayEl.classList.add('active');
+      renderGroupGameContent(game);
+    }
+
+    function renderGroupGameContent(game) {
+      var content = gameOverlayContentEl;
+      content.textContent = '';
+      if (game._ended && game.winner) {
+        var isWinner = game.winner === playerName;
+        var isDraw = game.winner === 'draw';
+        var res = document.createElement('div');
+        res.className = 'game-result';
+        var txt = document.createElement('div');
+        txt.className = 'game-result-text';
+        txt.textContent = isDraw ? 'DRAW!' : (isWinner ? 'YOU WIN!' : game.winner + ' WINS!');
+        txt.style.color = isDraw ? '#daa520' : (isWinner ? '#4ade80' : '#ef4444');
+        res.appendChild(txt);
+        var coins = document.createElement('div');
+        coins.className = 'game-result-coins';
+        coins.textContent = isDraw ? 'Pot split evenly' : (isWinner ? '+' + formatNumber(game.pot) + ' coins!' : 'Better luck next time');
+        if (!isWinner && !isDraw) coins.style.color = '#ef4444';
+        res.appendChild(coins);
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'game-result-btn';
+        closeBtn.textContent = 'Close';
+        closeBtn.addEventListener('click', function() { hideGameOverlay(); });
+        res.appendChild(closeBtn);
+        content.appendChild(res);
+        return;
+      }
+      if (game.type === 'lastclick') renderLastClickGame(game, content);
+      else if (game.type === 'auction') renderAuctionGame(game, content);
+      else if (game.type === 'triviaroyale') renderTriviaRoyaleGame(game, content);
+    }
+
+    function renderLastClickGame(game, container) {
+      // Round info
+      var infoDiv = document.createElement('div');
+      infoDiv.style.cssText = 'text-align:center;margin-bottom:12px;font-family:Fredoka One,cursive;';
+      if (!game.roundStartAt) {
+        infoDiv.style.color = '#daa520'; infoDiv.style.fontSize = '20px';
+        infoDiv.textContent = game.roundNumber === 0 ? 'GET READY!' : 'Round ' + game.roundNumber + ' results...';
+        // Show eliminated
+        if (game.eliminated.length > 0) {
+          var elim = game.eliminated[game.eliminated.length - 1];
+          var elimDiv = document.createElement('div');
+          elimDiv.style.cssText = 'color:#ef4444;font-size:14px;margin-top:8px;';
+          elimDiv.textContent = '\u274C ' + elim.name + ' eliminated! (' + elim.clicks + ' clicks)';
+          infoDiv.appendChild(elimDiv);
+        }
+      } else {
+        var timeLeft = Math.max(0, Math.ceil((game.roundEndAt - Date.now()) / 1000));
+        infoDiv.style.color = timeLeft <= 3 ? '#ef4444' : '#ffd700'; infoDiv.style.fontSize = '16px';
+        infoDiv.textContent = 'Round ' + game.roundNumber + ' \u2022 ' + timeLeft + 's \u2022 ' + game.alive.length + ' alive';
+      }
+      container.appendChild(infoDiv);
+      // My click count
+      var isAlive = game.alive.includes(playerName);
+      var myClicks = (game.roundClicks && game.roundClicks[playerName]) || 0;
+      if (isAlive && game.roundStartAt) {
+        var countDiv = document.createElement('div');
+        countDiv.style.cssText = 'text-align:center;font-size:36px;color:#4ade80;font-family:Press Start 2P,monospace;margin-bottom:12px;';
+        countDiv.textContent = String(myClicks);
+        container.appendChild(countDiv);
+        var tapBtn = document.createElement('button');
+        tapBtn.style.cssText = 'width:180px;height:180px;border-radius:50%;border:4px solid #ffd700;background:linear-gradient(135deg,#b8860b,#ffd700);font-size:28px;font-family:Fredoka One,cursive;color:#1a1a2e;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:block;margin:0 auto;';
+        tapBtn.textContent = 'TAP!';
+        tapBtn.addEventListener('pointerdown', function(e) {
+          e.preventDefault();
+          liveWs.send(JSON.stringify({ type: 'groupMove', gameId: game.id, move: 'tap' }));
+          myClicks++; countDiv.textContent = String(myClicks);
+          tapBtn.style.transform = 'scale(0.95)';
+          hapticLight();
+        });
+        tapBtn.addEventListener('pointerup', function() { tapBtn.style.transform = 'scale(1)'; });
+        container.appendChild(tapBtn);
+      } else if (!isAlive) {
+        var deadDiv = document.createElement('div');
+        deadDiv.style.cssText = 'text-align:center;color:#ef4444;font-size:18px;font-family:Fredoka One,cursive;margin-top:20px;';
+        deadDiv.textContent = 'You were eliminated!';
+        container.appendChild(deadDiv);
+      }
+      // Players alive list
+      var aliveDiv = document.createElement('div');
+      aliveDiv.style.cssText = 'margin-top:16px;text-align:center;color:#888;font-size:11px;font-family:Fredoka One,cursive;';
+      aliveDiv.textContent = 'Alive: ' + game.alive.join(', ');
+      container.appendChild(aliveDiv);
+    }
+
+    function renderAuctionGame(game, container) {
+      // Prize display
+      var prizeDiv = document.createElement('div');
+      prizeDiv.style.cssText = 'text-align:center;margin-bottom:16px;';
+      var prizeLabel = document.createElement('div');
+      prizeLabel.style.cssText = 'color:#daa520;font-size:14px;font-family:Fredoka One,cursive;';
+      prizeLabel.textContent = 'Mystery Prize';
+      prizeDiv.appendChild(prizeLabel);
+      var prizeAmt = document.createElement('div');
+      prizeAmt.style.cssText = 'color:#ffd700;font-size:32px;font-family:Press Start 2P,monospace;margin-top:4px;';
+      prizeAmt.textContent = formatNumber(game.prizeAmount);
+      prizeDiv.appendChild(prizeAmt);
+      var prizeSub = document.createElement('div');
+      prizeSub.style.cssText = 'color:#888;font-size:11px;font-family:Fredoka One,cursive;margin-top:4px;';
+      prizeSub.textContent = 'Highest bidder wins! You pay your bid.';
+      prizeDiv.appendChild(prizeSub);
+      container.appendChild(prizeDiv);
+      if (game.revealed) {
+        // Show all bids
+        var revDiv = document.createElement('div');
+        revDiv.style.cssText = 'text-align:center;';
+        for (var p in game.bids) {
+          var bidLine = document.createElement('div');
+          bidLine.style.cssText = 'color:' + (p === game.winner ? '#4ade80' : '#daa520') + ';font-size:14px;font-family:Fredoka One,cursive;margin:4px 0;';
+          bidLine.textContent = p + ': ' + formatNumber(game.bids[p]) + (p === game.winner ? ' \u2705 WINNER' : '');
+          revDiv.appendChild(bidLine);
+        }
+        container.appendChild(revDiv);
+      } else {
+        // Bid input
+        var myBid = game.bids[playerName];
+        if (myBid !== undefined) {
+          var bidConf = document.createElement('div');
+          bidConf.style.cssText = 'text-align:center;color:#4ade80;font-size:16px;font-family:Fredoka One,cursive;margin-top:12px;';
+          bidConf.textContent = 'Your bid: ' + formatNumber(myBid) + ' \u2705';
+          container.appendChild(bidConf);
+          var bidCount = document.createElement('div');
+          bidCount.style.cssText = 'text-align:center;color:#888;font-size:12px;margin-top:8px;font-family:Fredoka One,cursive;';
+          bidCount.textContent = (game.bidCount || 0) + '/' + game.players.length + ' players have bid';
+          container.appendChild(bidCount);
+        } else {
+          var bidDisplay = document.createElement('div');
+          bidDisplay.style.cssText = 'color:#ffd700;font-family:Press Start 2P,monospace;font-size:14px;text-align:center;margin-bottom:6px;';
+          bidDisplay.textContent = formatNumber(Math.floor(game.prizeAmount / 2));
+          container.appendChild(bidDisplay);
+          var bidSlider = document.createElement('input');
+          bidSlider.type = 'range'; bidSlider.min = '0'; bidSlider.max = String(game.wagerCoins * 10);
+          bidSlider.value = String(Math.floor(game.prizeAmount / 2)); bidSlider.step = '100';
+          bidSlider.style.cssText = 'width:100%;accent-color:#ffd700;margin-bottom:12px;';
+          bidSlider.addEventListener('input', function() { bidDisplay.textContent = formatNumber(parseInt(bidSlider.value)); });
+          container.appendChild(bidSlider);
+          var bidBtn = document.createElement('button');
+          bidBtn.className = 'challenge-send-btn';
+          bidBtn.textContent = 'Place Bid';
+          bidBtn.addEventListener('click', function() {
+            liveWs.send(JSON.stringify({ type: 'groupMove', gameId: game.id, move: bidSlider.value }));
+            bidBtn.disabled = true; bidBtn.textContent = 'Bid placed!';
+          });
+          container.appendChild(bidBtn);
+        }
+        // Timer
+        var timeLeft = Math.max(0, Math.ceil((game.bidDeadline - Date.now()) / 1000));
+        var timerDiv = document.createElement('div');
+        timerDiv.style.cssText = 'text-align:center;color:#888;font-size:12px;margin-top:12px;font-family:Fredoka One,cursive;';
+        timerDiv.textContent = timeLeft + 's remaining to bid';
+        container.appendChild(timerDiv);
+      }
+    }
+
+    function renderTriviaRoyaleGame(game, container) {
+      var isAlive = game.alive.includes(playerName);
+      // Status bar
+      var statusDiv = document.createElement('div');
+      statusDiv.style.cssText = 'text-align:center;color:#daa520;font-size:13px;margin-bottom:12px;font-family:Fredoka One,cursive;';
+      statusDiv.textContent = 'Q' + (game.currentQuestion || 1) + '/5 \u2022 ' + game.alive.length + '/' + game.players.length + ' alive';
+      container.appendChild(statusDiv);
+      if (!isAlive) {
+        var deadDiv = document.createElement('div');
+        deadDiv.style.cssText = 'text-align:center;color:#ef4444;font-size:18px;font-family:Fredoka One,cursive;margin:20px 0;';
+        deadDiv.textContent = 'You were eliminated!';
+        container.appendChild(deadDiv);
+        return;
+      }
+      if (!game.currentQ) {
+        var waitDiv = document.createElement('div');
+        waitDiv.className = 'game-waiting';
+        waitDiv.textContent = 'Waiting for next question...';
+        container.appendChild(waitDiv);
+        return;
+      }
+      // Question
+      var qDiv = document.createElement('div');
+      qDiv.className = 'trivia-question';
+      qDiv.textContent = game.currentQ.q;
+      container.appendChild(qDiv);
+      if (game.myAnswer) {
+        var waitDiv2 = document.createElement('div');
+        waitDiv2.className = 'game-waiting';
+        waitDiv2.textContent = (game.answeredCount || 0) + '/' + game.alive.length + ' answered...';
+        container.appendChild(waitDiv2);
+      } else {
+        var answers = document.createElement('div');
+        answers.className = 'trivia-answers';
+        for (var ai = 0; ai < game.currentQ.a.length; ai++) {
+          (function(idx) {
+            var btn = document.createElement('button');
+            btn.className = 'trivia-answer-btn';
+            btn.textContent = game.currentQ.a[idx];
+            btn.addEventListener('click', function() {
+              liveWs.send(JSON.stringify({ type: 'groupMove', gameId: game.id, move: idx }));
+              var all = answers.querySelectorAll('.trivia-answer-btn');
+              for (var j = 0; j < all.length; j++) { all[j].disabled = true; if (j === idx) all[j].style.borderColor = '#a855f7'; }
+            });
+            answers.appendChild(btn);
+          })(ai);
+        }
+        container.appendChild(answers);
+      }
+    }
+
     // ===== MOBILE FOOTER NAV =====
     var tabSections = {
       'click': ['.header', '.click-area', '#statsPanel'],
@@ -8707,6 +8949,101 @@
       chalSection.appendChild(sendBtn);
 
       battleContent.appendChild(chalSection);
+
+      // ===== GROUP GAMES SECTION =====
+      var groupSection = document.createElement('div');
+      groupSection.style.cssText = 'margin-top:20px;border-top:1px solid rgba(255,215,0,0.2);padding-top:12px;';
+      var groupLabel = document.createElement('div');
+      groupLabel.style.cssText = 'color:#ffd700;font-family:Press Start 2P,monospace;font-size:10px;margin-bottom:10px;';
+      groupLabel.textContent = '\uD83C\uDFAE GROUP GAMES';
+      groupSection.appendChild(groupLabel);
+      // Show current lobby if in one
+      if (window._currentLobby) {
+        var lb = window._currentLobby;
+        var lobbyCard = document.createElement('div');
+        lobbyCard.style.cssText = 'background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:10px;padding:14px;margin-bottom:10px;';
+        var lTitle = document.createElement('div');
+        lTitle.style.cssText = 'color:#ffd700;font-size:16px;font-family:Fredoka One,cursive;margin-bottom:6px;';
+        lTitle.textContent = (groupGameTypeNames[lb.type] || lb.type) + ' Lobby';
+        lobbyCard.appendChild(lTitle);
+        var lPlayers = document.createElement('div');
+        lPlayers.style.cssText = 'color:#daa520;font-size:13px;font-family:Fredoka One,cursive;margin-bottom:8px;';
+        lPlayers.textContent = lb.players.join(', ') + ' (' + lb.players.length + '/' + lb.maxPlayers + ')';
+        lobbyCard.appendChild(lPlayers);
+        var lWager = document.createElement('div');
+        lWager.style.cssText = 'color:#4ade80;font-size:11px;font-family:Press Start 2P,monospace;margin-bottom:10px;';
+        lWager.textContent = formatNumber(lb.wagerCoins) + ' coins each';
+        lobbyCard.appendChild(lWager);
+        if (lb.hostName === playerName && lb.players.length >= lb.minPlayers) {
+          var startBtn = document.createElement('button');
+          startBtn.className = 'challenge-send-btn';
+          startBtn.textContent = 'Start Game (' + lb.players.length + ' players)';
+          startBtn.addEventListener('click', function() { liveWs.send(JSON.stringify({ type: 'startGroupLobby', lobbyId: lb.id })); });
+          lobbyCard.appendChild(startBtn);
+        } else if (lb.hostName === playerName) {
+          var waitMsg = document.createElement('div');
+          waitMsg.style.cssText = 'color:#888;font-size:12px;font-family:Fredoka One,cursive;text-align:center;';
+          waitMsg.textContent = 'Need ' + lb.minPlayers + '+ players to start';
+          lobbyCard.appendChild(waitMsg);
+        } else {
+          var waitMsg2 = document.createElement('div');
+          waitMsg2.style.cssText = 'color:#888;font-size:12px;font-family:Fredoka One,cursive;text-align:center;';
+          waitMsg2.textContent = 'Waiting for ' + lb.hostName + ' to start...';
+          lobbyCard.appendChild(waitMsg2);
+        }
+        groupSection.appendChild(lobbyCard);
+      }
+      // Open lobbies from broadcast
+      var openLobbies = (lastLiveData && lastLiveData.groupLobbies) ? lastLiveData.groupLobbies : [];
+      for (var gli = 0; gli < openLobbies.length; gli++) {
+        (function(gl) {
+          if (window._currentLobby && window._currentLobby.id === gl.id) return; // already shown above
+          var card = document.createElement('div');
+          card.className = 'spectator-game-card';
+          var title = document.createElement('div');
+          title.style.cssText = 'color:#ffd700;font-size:14px;font-family:Fredoka One,cursive;';
+          title.textContent = gl.hostName + "'s " + (groupGameTypeNames[gl.type] || gl.type);
+          card.appendChild(title);
+          var detail = document.createElement('div');
+          detail.style.cssText = 'color:#daa520;font-size:12px;font-family:Fredoka One,cursive;margin-top:4px;';
+          detail.textContent = gl.playerCount + '/' + gl.maxPlayers + ' players \u2022 ' + formatNumber(gl.wagerCoins) + ' coins';
+          card.appendChild(detail);
+          var joinBtn = document.createElement('button');
+          joinBtn.style.cssText = 'margin-top:8px;padding:8px 20px;border-radius:8px;border:2px solid #4ade80;background:rgba(74,222,128,0.15);color:#4ade80;font-family:Fredoka One,cursive;font-size:13px;cursor:pointer;';
+          joinBtn.textContent = 'Join';
+          joinBtn.addEventListener('click', function() { liveWs.send(JSON.stringify({ type: 'joinGroupLobby', lobbyId: gl.id })); });
+          card.appendChild(joinBtn);
+          groupSection.appendChild(card);
+        })(openLobbies[gli]);
+      }
+      // Create new group game
+      if (!window._currentLobby) {
+        var createLabel = document.createElement('div');
+        createLabel.style.cssText = 'color:#daa520;font-size:13px;margin-top:12px;margin-bottom:8px;font-family:Fredoka One,cursive;';
+        createLabel.textContent = 'Host a group game:';
+        groupSection.appendChild(createLabel);
+        var groupGrid = document.createElement('div');
+        groupGrid.className = 'game-type-grid';
+        for (var gti = 0; gti < allGroupGameTypes.length; gti++) {
+          (function(gt) {
+            var card = document.createElement('button');
+            card.className = 'game-type-card';
+            var emo = document.createElement('div'); emo.className = 'game-type-card-emoji'; emo.textContent = gt.emoji; card.appendChild(emo);
+            var nm = document.createElement('div'); nm.className = 'game-type-card-name'; nm.textContent = gt.label; card.appendChild(nm);
+            var dsc = document.createElement('div'); dsc.className = 'game-type-card-desc'; dsc.textContent = gt.desc; card.appendChild(dsc);
+            card.addEventListener('click', function() {
+              var wager = prompt('Entry wager (min 100 coins):');
+              if (!wager) return;
+              var w = parseInt(wager);
+              if (isNaN(w) || w < 100) { alert('Min 100 coins'); return; }
+              liveWs.send(JSON.stringify({ type: 'createGroupLobby', gameType: gt.type, wagerCoins: w }));
+            });
+            groupGrid.appendChild(card);
+          })(allGroupGameTypes[gti]);
+        }
+        groupSection.appendChild(groupGrid);
+      }
+      battleContent.appendChild(groupSection);
 
       // ===== LIVE GAMES (spectator) =====
       var liveGames = (lastLiveData && lastLiveData.activeGames) ? lastLiveData.activeGames : [];
