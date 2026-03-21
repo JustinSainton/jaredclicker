@@ -2448,8 +2448,9 @@
   </div>
 
   <!-- Reset Countdown Banner -->
-  <div id="resetCountdown" style="display:none;position:relative;background:linear-gradient(135deg,#1e3a5f,#1e40af);color:white;text-align:center;padding:6px 12px;font-family:Fredoka One,cursive;font-size:13px;">
+  <div id="resetCountdown" style="display:none;position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#1e3a5f,#1e40af);color:white;text-align:center;padding:8px 40px 8px 12px;z-index:200;font-family:Fredoka One,cursive;font-size:13px;">
     <span>&#x1F504; Weekly Reset in </span><span id="resetTimer" style="font-family:Press Start 2P,monospace;font-size:11px;"></span>
+    <button id="resetCountdownDismiss" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,0.6);font-size:18px;cursor:pointer;padding:4px 8px;">&times;</button>
   </div>
 
   <!-- Coin Counter Bar -->
@@ -7561,13 +7562,23 @@
     // ===== RESET COUNTDOWN TIMER =====
     var resetCountdownEl = document.getElementById('resetCountdown');
     var resetTimerEl = document.getElementById('resetTimer');
+    var resetDismissed = false;
+    var coinCounterBar = document.getElementById('coinCounterBar');
+    document.getElementById('resetCountdownDismiss').addEventListener('click', function() {
+      resetDismissed = true;
+      resetCountdownEl.style.display = 'none';
+      if (coinCounterBar) coinCounterBar.style.top = '';
+    });
     setInterval(function() {
+      if (resetDismissed) return;
       var nextReset = window._nextResetAt;
-      if (!nextReset) { resetCountdownEl.style.display = 'none'; return; }
+      if (!nextReset) { resetCountdownEl.style.display = 'none'; if (coinCounterBar) coinCounterBar.style.top = ''; return; }
       var remaining = nextReset - Date.now();
-      if (remaining <= 0) { resetCountdownEl.style.display = 'none'; return; }
-      // Show countdown when within 7 days (always show if scheduled)
+      if (remaining <= 0) { resetCountdownEl.style.display = 'none'; if (coinCounterBar) coinCounterBar.style.top = ''; return; }
       resetCountdownEl.style.display = 'block';
+      // Push coin counter bar down
+      var bannerHeight = resetCountdownEl.offsetHeight;
+      if (coinCounterBar) coinCounterBar.style.top = bannerHeight + 'px';
       var days = Math.floor(remaining / 86400000);
       var hours = Math.floor((remaining % 86400000) / 3600000);
       var mins = Math.floor((remaining % 3600000) / 60000);
