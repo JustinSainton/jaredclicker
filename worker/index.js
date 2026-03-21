@@ -573,8 +573,15 @@ export class LiveVisitors {
     } else if (challenge.gameType === 'trivia') {
       const q = TRIVIA_BANK[Math.floor(Math.random() * TRIVIA_BANK.length)];
       game.triviaQuestion = q.q;
-      game.triviaAnswers = q.a;
-      game.triviaCorrectIndex = q.c;
+      // Shuffle answers and track where the correct one ends up
+      var correctAnswer = q.a[q.c];
+      var shuffled = q.a.slice();
+      for (var si = shuffled.length - 1; si > 0; si--) {
+        var sj = Math.floor(Math.random() * (si + 1));
+        var tmp = shuffled[si]; shuffled[si] = shuffled[sj]; shuffled[sj] = tmp;
+      }
+      game.triviaAnswers = shuffled;
+      game.triviaCorrectIndex = shuffled.indexOf(correctAnswer);
       game.triviaP1Answer = null; game.triviaP1Time = null;
       game.triviaP2Answer = null; game.triviaP2Time = null;
       game.triviaStartedAt = Date.now();
