@@ -17,6 +17,7 @@ export class LiveVisitors {
     this.pushSubscriptions = null; // lazy-loaded: { [playerNameLower]: [ { endpoint, keys } ] }
     this.scoreEpoch = null; // lazy-loaded: integer that increments on each admin reset
     this.resetSchedule = null; // lazy-loaded: { enabled, nextResetAt, intervalMs }
+    this.hallOfFame = null; // lazy-loaded: array of weekly snapshots
     this.activeGames = new Map();      // gameId → GameState
     this.pendingChallenges = new Map(); // chalId → ChallengeState
     this.forfeitTimers = new Map();    // playerName → { timer, gameId }
@@ -241,6 +242,40 @@ export class LiveVisitors {
     await this.state.storage.put("lukeHidden", this.lukeHidden);
   }
 
+  async loadHallOfFame() {
+    if (this.hallOfFame === null) {
+      this.hallOfFame = (await this.state.storage.get("hallOfFame")) || [];
+    }
+    return this.hallOfFame;
+  }
+
+  async saveHallOfFame() {
+    await this.state.storage.put("hallOfFame", this.hallOfFame);
+  }
+
+  async snapshotWeeklyScores() {
+    var scores = await this.loadScores();
+    var leaderboard = Object.values(scores)
+      .filter(function(e) { return e.score > 0; })
+      .sort(function(a, b) { return b.score - a.score; })
+      .slice(0, 10) // top 10
+      .map(function(e) { return { name: e.name, score: e.score }; });
+    if (leaderboard.length === 0) return;
+    var hof = await this.loadHallOfFame();
+    hof.push({
+      week: hof.length + 1,
+      date: new Date().toISOString().slice(0, 10),
+      endedAt: Date.now(),
+      top10: leaderboard,
+      champion: leaderboard[0].name,
+      championScore: leaderboard[0].score,
+    });
+    // Keep last 52 weeks (1 year)
+    if (hof.length > 52) hof = hof.slice(-52);
+    this.hallOfFame = hof;
+    await this.saveHallOfFame();
+  }
+
   async loadResetSchedule() {
     if (this.resetSchedule === null) {
       this.resetSchedule = (await this.state.storage.get("resetSchedule")) || { enabled: false, nextResetAt: 0, intervalMs: 7 * 24 * 60 * 60 * 1000 };
@@ -273,7 +308,8 @@ export class LiveVisitors {
   }
 
   async performAutoReset() {
-    // Same as admin/reset-scores but with auto-reset message
+    // Snapshot leaderboard before wiping
+    await this.snapshotWeeklyScores();
     this.persistedScores = {};
     await this.state.storage.put("scores", {});
     const newEpoch = (await this.loadScoreEpoch()) + 1;
@@ -2993,6 +3029,7 @@ export class LiveVisitors {
       groupLobbies: Array.from(this.groupLobbies.values()).filter(function(l) { return l.status === 'waiting'; }).map(function(l) {
         return { id: l.id, type: l.type, hostName: l.hostName, wagerCoins: l.wagerCoins, playerCount: l.players.length, maxPlayers: l.maxPlayers, minPlayers: l.minPlayers };
       }),
+      hallOfFame: await this.loadHallOfFame(),
       nextResetAt: (this.resetSchedule && this.resetSchedule.enabled) ? this.resetSchedule.nextResetAt : null,
     });
 
@@ -5012,7 +5049,7 @@ export default {
 
     // Version endpoint for auto-refresh
     if (url.pathname === "/version") {
-      return corsResponse(JSON.stringify({ version: "59" }), {
+      return corsResponse(JSON.stringify({ version: "60" }), {
         headers: { "Content-Type": "application/json" },
       });
     }

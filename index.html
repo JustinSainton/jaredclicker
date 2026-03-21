@@ -2571,6 +2571,11 @@
     <!-- Leaderboard -->
     <div class="leaderboard" id="leaderboardPanel">
       <h2>Leaderboard</h2>
+      <div id="leaderboardTabs" style="display:flex;gap:0;margin-bottom:12px;border-radius:8px;overflow:hidden;border:2px solid #ffd700;">
+        <button id="lbTabWeek" class="lb-tab-btn" onclick="switchLeaderboardTab('week')" style="flex:1;padding:8px;background:rgba(255,215,0,0.2);color:#ffd700;border:none;font-family:Fredoka One,cursive;font-size:12px;cursor:pointer;">This Week</button>
+        <button id="lbTabAllTime" class="lb-tab-btn" onclick="switchLeaderboardTab('alltime')" style="flex:1;padding:8px;background:transparent;color:#888;border:none;border-left:1px solid #ffd700;font-family:Fredoka One,cursive;font-size:12px;cursor:pointer;">&#x1F3C6; Hall of Fame</button>
+      </div>
+      <div id="hallOfFameSection" style="display:none;"></div>
       <div class="lb-submit">
         <input type="text" id="lbNameInput" placeholder="Your name..." maxlength="20">
         <button id="lbSubmitBtn">Submit</button>
@@ -3605,7 +3610,7 @@
       .catch(function() {}); // silently use fallbacks
 
     // ===== AUTO-REFRESH ON NEW VERSION =====
-    var CURRENT_VERSION = '59';
+    var CURRENT_VERSION = '60';
     setInterval(function() {
       fetch('https://jaredclicker-live.justin-5b6.workers.dev/version')
         .then(function(r) { return r.json(); })
@@ -7594,6 +7599,86 @@
       else if (remaining < 86400000) { resetCountdownEl.style.background = 'linear-gradient(135deg, #991b1b, #dc2626)'; }
       else { resetCountdownEl.style.background = 'linear-gradient(135deg, #1e3a5f, #1e40af)'; }
     }, 1000);
+
+    // ===== LEADERBOARD TABS (This Week / Hall of Fame) =====
+    var _lbTab = 'week';
+    window.switchLeaderboardTab = function(tab) {
+      _lbTab = tab;
+      var weekBtn = document.getElementById('lbTabWeek');
+      var allBtn = document.getElementById('lbTabAllTime');
+      var hofSection = document.getElementById('hallOfFameSection');
+      var podium = document.getElementById('podiumStage');
+      var lbList = document.getElementById('leaderboardList');
+      var lbSubmit = document.querySelector('.lb-submit');
+      var lbAccount = document.getElementById('lbAccountBtn');
+      if (tab === 'week') {
+        weekBtn.style.background = 'rgba(255,215,0,0.2)'; weekBtn.style.color = '#ffd700';
+        allBtn.style.background = 'transparent'; allBtn.style.color = '#888';
+        hofSection.style.display = 'none';
+        if (podium) podium.style.display = '';
+        if (lbList) lbList.style.display = '';
+        if (lbSubmit) lbSubmit.style.display = '';
+        if (lbAccount) lbAccount.style.display = '';
+      } else {
+        allBtn.style.background = 'rgba(255,215,0,0.2)'; allBtn.style.color = '#ffd700';
+        weekBtn.style.background = 'transparent'; weekBtn.style.color = '#888';
+        hofSection.style.display = 'block';
+        if (podium) podium.style.display = 'none';
+        if (lbList) lbList.style.display = 'none';
+        if (lbSubmit) lbSubmit.style.display = 'none';
+        if (lbAccount) lbAccount.style.display = 'none';
+        renderHallOfFame();
+      }
+    };
+
+    function renderHallOfFame() {
+      var hof = (lastLiveData && lastLiveData.hallOfFame) ? lastLiveData.hallOfFame : [];
+      var section = document.getElementById('hallOfFameSection');
+      section.textContent = '';
+      if (hof.length === 0) {
+        var empty = document.createElement('div');
+        empty.style.cssText = 'text-align:center;color:#888;padding:20px;font-family:Fredoka One,cursive;font-size:14px;';
+        empty.textContent = 'No completed weeks yet. History will appear after the first weekly reset!';
+        section.appendChild(empty);
+        return;
+      }
+      // Show weeks in reverse chronological order
+      for (var wi = hof.length - 1; wi >= 0; wi--) {
+        var week = hof[wi];
+        var card = document.createElement('div');
+        card.style.cssText = 'background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.2);border-radius:10px;padding:12px;margin-bottom:10px;';
+        var header = document.createElement('div');
+        header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+        var weekLabel = document.createElement('div');
+        weekLabel.style.cssText = 'color:#ffd700;font-family:Fredoka One,cursive;font-size:14px;';
+        weekLabel.textContent = '\uD83C\uDFC6 Week ' + week.week;
+        header.appendChild(weekLabel);
+        var dateLabel = document.createElement('div');
+        dateLabel.style.cssText = 'color:#888;font-size:11px;font-family:Fredoka One,cursive;';
+        dateLabel.textContent = week.date;
+        header.appendChild(dateLabel);
+        card.appendChild(header);
+        // Champion highlight
+        var champ = document.createElement('div');
+        champ.style.cssText = 'color:#4ade80;font-size:13px;font-family:Fredoka One,cursive;margin-bottom:6px;';
+        champ.textContent = '\uD83D\uDC51 ' + week.champion + ' — ' + formatNumber(week.championScore) + ' coins';
+        card.appendChild(champ);
+        // Top 10
+        for (var ti = 0; ti < week.top10.length; ti++) {
+          var row = document.createElement('div');
+          row.style.cssText = 'display:flex;justify-content:space-between;padding:2px 0;font-size:12px;color:' + (ti === 0 ? '#ffd700' : (ti < 3 ? '#daa520' : '#888')) + ';font-family:Fredoka One,cursive;';
+          var nameSpan = document.createElement('span');
+          nameSpan.textContent = '#' + (ti + 1) + ' ' + week.top10[ti].name;
+          row.appendChild(nameSpan);
+          var scoreSpan = document.createElement('span');
+          scoreSpan.style.cssText = 'font-family:Press Start 2P,monospace;font-size:10px;';
+          scoreSpan.textContent = formatNumber(week.top10[ti].score);
+          row.appendChild(scoreSpan);
+          card.appendChild(row);
+        }
+        section.appendChild(card);
+      }
+    }
 
     // ===== GROUP WAGER MODAL =====
     var groupWagerModal = document.getElementById('groupWagerModal');
