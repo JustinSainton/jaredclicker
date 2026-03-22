@@ -326,7 +326,6 @@ export class LiveVisitors {
         this.sendToPlayer(name, { type: 'banned', until: banned[key].until, reason: banned[key].reason });
         await this.addSystemChat('\u26D4 ' + name + ' has been temporarily banned for suspected autoclicking.');
         return true;
-      }
     }
     return false;
   }
