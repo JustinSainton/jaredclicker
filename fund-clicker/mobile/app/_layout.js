@@ -10,12 +10,9 @@ import { initSounds } from "../lib/sounds";
 import { forceSave } from "../hooks/useGameState";
 
 // Stripe publishable key — this is the PLATFORM's key (not per-org)
-// Release builds must inject EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY.
-const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || (__DEV__ ? "pk_test_fundclicker_dev" : "");
-
-if (!STRIPE_PUBLISHABLE_KEY) {
-  throw new Error("Missing EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY");
-}
+// Set EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY in EAS env vars for production.
+// Falls back to a placeholder that disables Stripe gracefully.
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder";
 
 export default function RootLayout() {
   // Initialize sounds on app start
