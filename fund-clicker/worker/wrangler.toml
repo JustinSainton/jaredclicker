@@ -1,0 +1,32 @@
+name = "fund-clicker-api"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+account_id = "5b67e53a76209f3e02fae80cca835875"
+
+[durable_objects]
+bindings = [
+  { name = "ORG_GAME", class_name = "OrgGameInstance" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["OrgGameInstance"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fund-clicker-platform"
+database_id = "76f4da22-2614-4227-9531-47c2c7d04bae"
+
+[[r2_buckets]]
+bucket_name = "fund-clicker-assets"
+binding = "ASSETS"
+
+[vars]
+ADMIN_URL = "https://admin.fundclicker.com"
+STRIPE_CLIENT_ID = "" # Stripe Connect platform client ID
+
+# Secrets (set via `wrangler secret put`):
+# JWT_SECRET
+# STRIPE_SECRET_KEY
+# STRIPE_WEBHOOK_SECRET
+# GEMINI_API_KEY

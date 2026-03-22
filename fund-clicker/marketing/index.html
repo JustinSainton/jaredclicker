@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fund Clicker — Turn Fundraising Into a Game They Can't Stop Playing</title>
+<meta name="description" content="Fund Clicker turns donations into an addictive clicker game. Communities compete, battle, and sabotage — every purchase goes to your cause. $0/month. Keep 97%.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070b;--sf:#0e0e16;--card:#12121a;--el:#1a1a24;
+  --b1:#1c1c28;--b2:#2a2a38;
+  --t1:#f0f0f4;--t2:#b0b0c0;--t3:#6a6a80;--t4:#3a3a50;
+  --gold:#d4a826;--gl:#f0cc50;--gg:rgba(212,168,38,0.08);--ggs:rgba(212,168,38,0.18);
+  --em:#34d399;--emd:rgba(52,211,153,0.08);--rose:#f06070;--vi:#8b6cf0;--bl:#60a5fa;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--bg);color:var(--t1);font-family:'Plus Jakarta Sans',-apple-system,sans-serif;font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;z-index:10000;pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");opacity:0.4}
+
+.wrap{max-width:1140px;margin:0 auto;padding:0 32px}
+section{position:relative}
+h1.d{font-family:'Playfair Display',serif;font-size:clamp(44px,6.5vw,80px);font-weight:400;line-height:1.06;letter-spacing:-2px}
+h2.d{font-family:'Playfair Display',serif;font-size:clamp(32px,4.5vw,56px);font-weight:400;line-height:1.1;letter-spacing:-1.5px}
+h1.d em,h2.d em{font-style:italic;color:var(--gold)}
+.bl{font-size:clamp(17px,1.8vw,20px);line-height:1.65;color:var(--t2)}
+.lb{font-size:12px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--gold)}
+
+/* ─── NAV ─── */
+nav{position:fixed;top:0;left:0;right:0;z-index:9000;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;background:rgba(7,7,11,0.65);backdrop-filter:blur(30px) saturate(1.4);-webkit-backdrop-filter:blur(30px) saturate(1.4);border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.4s}
+/* Pure typographic logo */
+.logo{display:flex;align-items:baseline;gap:0;text-decoration:none;color:var(--t1)}
+.logo-text{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;letter-spacing:-0.5px}
+.logo-text b{font-weight:700;font-style:italic;color:var(--gold)}
+.nav-cta{font-size:14px;font-weight:600;color:var(--bg);background:var(--gold);padding:10px 22px;border-radius:8px;text-decoration:none;transition:all 0.25s;box-shadow:0 1px 4px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.15)}
+.nav-cta:hover{filter:brightness(1.1);transform:translateY(-1px)}
+
+/* ─── HERO ─── */
+.hero{min-height:100lvh;display:flex;align-items:center;padding:100px 0 80px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;width:min(1000px,120vw);height:1000px;border-radius:50%;background:radial-gradient(circle,var(--gg) 0%,transparent 55%);top:50%;left:50%;transform:translate(-50%,-55%);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;position:relative;z-index:1}
+.hero-left{max-width:540px}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--gold);border:1px solid rgba(212,168,38,0.2);background:rgba(212,168,38,0.05);padding:6px 18px 6px 10px;border-radius:100px;margin-bottom:28px}
+.hero-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.hero-body{margin:24px 0 36px}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap}
+.btn-g{display:inline-flex;align-items:center;gap:8px;padding:15px 32px;border-radius:12px;border:none;font-family:inherit;font-size:16px;font-weight:700;color:var(--bg);background:var(--gold);cursor:pointer;text-decoration:none;transition:all 0.3s cubic-bezier(0.16,1,0.3,1);box-shadow:0 2px 8px rgba(212,168,38,0.2),inset 0 1px 0 rgba(255,255,255,0.2)}
+.btn-g:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(212,168,38,0.3)}
+.btn-o{display:inline-flex;align-items:center;gap:8px;padding:15px 32px;border-radius:12px;font-family:inherit;font-size:16px;font-weight:600;color:var(--t1);background:rgba(255,255,255,0.04);border:1px solid var(--b1);cursor:pointer;text-decoration:none;transition:all 0.3s}
+.btn-o:hover{background:rgba(255,255,255,0.07);border-color:var(--b2)}
+
+/* ─── PRODUCT MOCKUP (right side of hero) ─── */
+.hero-right{position:relative}
+.mockup{background:var(--card);border:1px solid var(--b1);border-radius:20px;padding:24px;box-shadow:0 20px 80px rgba(0,0,0,0.5),0 0 60px var(--gg);position:relative;overflow:hidden}
+.mockup::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--vi),var(--bl))}
+.mockup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.mockup-title{font-size:14px;font-weight:700;color:var(--t2)}
+.mockup-badge{font-size:10px;font-weight:700;color:var(--em);background:var(--emd);padding:3px 8px;border-radius:4px}
+/* Fake leaderboard */
+.mockup-lb{display:flex;flex-direction:column;gap:6px}
+.mockup-row{display:flex;align-items:center;gap:10px;background:var(--el);border-radius:10px;padding:10px 14px;transition:all 0.3s}
+.mockup-row:first-child{background:linear-gradient(135deg,rgba(212,168,38,0.1),rgba(212,168,38,0.03));border:1px solid rgba(212,168,38,0.15)}
+.mockup-rank{width:24px;text-align:center;font-size:14px}
+.mockup-name{flex:1;font-size:13px;font-weight:600;color:var(--t1)}
+.mockup-score{font-size:13px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+.mockup-dot{width:6px;height:6px;border-radius:3px;background:var(--em)}
+/* Fake chat bubbles */
+.mockup-chat{margin-top:16px;display:flex;flex-direction:column;gap:6px}
+.mockup-msg{font-size:11px;color:var(--t2);background:var(--el);padding:8px 12px;border-radius:10px;max-width:80%}
+.mockup-msg.sys{color:var(--rose);font-style:italic;border-left:2px solid var(--rose);background:rgba(240,96,112,0.06);max-width:100%}
+.mockup-msg b{color:var(--gold)}
+
+/* ─── PROOF ─── */
+.proof{padding:56px 0;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);background:var(--sf)}
+.proof-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;text-align:center}
+.proof-v{font-family:'Playfair Display',serif;font-size:40px;font-weight:600;color:var(--gold);letter-spacing:-1px;display:block}
+.proof-l{font-size:13px;color:var(--t3);margin-top:4px;line-height:1.4}
+
+/* ─── SCENES ─── */
+.sc{padding:140px 0;position:relative;overflow:hidden}
+.sc-h{margin-bottom:56px}
+.sc-h .lb{margin-bottom:12px;display:block}
+
+/* ─── REVEAL ─── */
+.rv{opacity:0;transform:translateY(40px);transition:opacity 0.8s cubic-bezier(0.16,1,0.3,1),transform 0.8s cubic-bezier(0.16,1,0.3,1)}
+.rv.in{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.08s}.d2{transition-delay:.16s}.d3{transition-delay:.24s}.d4{transition-delay:.32s}.d5{transition-delay:.4s}.d6{transition-delay:.48s}.d7{transition-delay:.56s}
+
+/* ─── STEPS ─── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.step{background:var(--card);border:1px solid var(--b1);border-radius:20px;padding:36px 28px;transition:border-color 0.4s,transform 0.4s;position:relative;overflow:hidden}
+.step:hover{border-color:var(--b2);transform:translateY(-4px)}
+.step::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),transparent 80%);opacity:0;transition:opacity 0.4s}
+.step:hover::before{opacity:1}
+.step-n{width:40px;height:40px;border-radius:50%;background:var(--gold);color:var(--bg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;margin-bottom:20px;box-shadow:0 0 20px var(--gg)}
+.step h3{font-size:20px;font-weight:700;letter-spacing:-0.3px;margin-bottom:8px}
+.step p{color:var(--t2);font-size:15px;line-height:1.6}
+.step-tag{display:inline-block;margin-top:14px;font-size:12px;font-weight:700;color:var(--em);background:var(--emd);padding:4px 12px;border-radius:6px}
+
+/* ─── BENTO FEATURES ─── */
+.bento{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.bc{background:var(--card);border:1px solid var(--b1);border-radius:18px;padding:32px 26px;transition:border-color 0.3s,transform 0.3s;position:relative;overflow:hidden}
+.bc:hover{border-color:var(--gold);transform:translateY(-3px)}
+.bc:hover::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 30%,var(--gg),transparent 70%);pointer-events:none}
+.bc.w2{grid-column:span 2}
+.bc-i{font-size:28px;margin-bottom:14px;display:block}
+.bc h3{font-size:17px;font-weight:700;margin-bottom:6px}
+.bc p{font-size:14px;color:var(--t2);line-height:1.55}
+
+/* ─── PRICING ─── */
+.pg{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:56px}
+.pc{background:var(--card);border:1px solid var(--b1);border-radius:18px;padding:30px 22px;text-align:left;transition:border-color 0.3s;position:relative}
+.pc.ft{border-color:var(--gold);box-shadow:0 0 50px var(--ggs)}
+.pc.ft::before{content:'RECOMMENDED';position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--bg);padding:3px 14px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:1px;box-shadow:0 2px 8px rgba(212,168,38,0.3)}
+.pc-n{font-size:16px;font-weight:700}
+.pc-a{font-family:'Playfair Display',serif;font-size:30px;font-weight:600;color:var(--gold);margin:10px 0;letter-spacing:-0.5px}
+.pc-a span{font-size:14px;font-weight:400;color:var(--t3);font-family:'Plus Jakarta Sans',sans-serif}
+.pc-d{font-size:13px;color:var(--t2);line-height:1.6}
+.pc-d strong{color:var(--t1)}
+.pc-v{font-size:11px;font-weight:700;margin-top:16px;padding-top:14px;border-top:1px solid var(--b1);letter-spacing:0.3px}
+.vw{color:var(--rose)}.vg{color:var(--em)}
+
+/* ─── FINAL CTA ─── */
+.cta{padding:200px 0;text-align:center;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,var(--ggs) 0%,transparent 60%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.cta>*{position:relative;z-index:1}
+.cta .bl{max-width:500px;margin:20px auto 0}
+.cta .hero-actions{justify-content:center;margin-top:40px}
+
+/* ─── FOOTER ─── */
+footer{padding:40px 0;border-top:1px solid var(--b1);text-align:center}
+footer p{font-size:13px;color:var(--t4)}
+footer a{color:var(--t3);text-decoration:none}
+footer a:hover{color:var(--gold)}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:40px}.hero-right{order:-1}.steps{grid-template-columns:1fr}.bento{grid-template-columns:1fr}.bc.w2{grid-column:span 1}.pg{grid-template-columns:repeat(2,1fr)}.proof-grid{grid-template-columns:repeat(2,1fr);gap:24px}.sc{padding:100px 0}}
+@media(max-width:600px){.pg{grid-template-columns:1fr}.hero-actions{flex-direction:column}.btn-g,.btn-o{width:100%;justify-content:center}nav{padding:0 16px}.wrap{padding:0 20px}}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}*{transition-duration:0.01ms!important;animation-duration:0.01ms!important}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo">
+    <div class="logo-text">Fund<b>Clicker</b></div>
+  </a>
+  <a href="https://admin.fundclicker.com" class="nav-cta">Launch Your Fundraiser</a>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="hero-left">
+        <div class="hero-eyebrow"><div class="hero-dot"></div>Now on iOS &amp; Android</div>
+        <h1 class="d">Fundraising that feels like a game they <em>can't put down</em></h1>
+        <p class="bl hero-body">Your community clicks, competes, battles, and sabotages each other. Every real-money purchase goes directly to your cause. Zero monthly fees.</p>
+        <div class="hero-actions">
+          <a href="https://admin.fundclicker.com" class="btn-g">Launch Your Fundraiser &rarr;</a>
+          <a href="#how" class="btn-o">See How It Works</a>
+        </div>
+      </div>
+      <div class="hero-right">
+        <!-- Product mockup: mini leaderboard + chat -->
+        <div class="mockup">
+          <div class="mockup-header">
+            <div class="mockup-title">Live Leaderboard</div>
+            <div class="mockup-badge">12 online</div>
+          </div>
+          <div class="mockup-lb">
+            <div class="mockup-row"><span class="mockup-rank">&#x1F947;</span><div class="mockup-dot"></div><span class="mockup-name">Sarah M.</span><span class="mockup-score">245,891</span></div>
+            <div class="mockup-row"><span class="mockup-rank">&#x1F948;</span><div class="mockup-dot"></div><span class="mockup-name">Pastor Dave</span><span class="mockup-score">189,432</span></div>
+            <div class="mockup-row"><span class="mockup-rank">&#x1F949;</span><span class="mockup-name">Youth Group</span><span class="mockup-score">156,210</span></div>
+            <div class="mockup-row"><span class="mockup-rank">4</span><span class="mockup-name">Mike R.</span><span class="mockup-score">98,744</span></div>
+            <div class="mockup-row"><span class="mockup-rank">5</span><span class="mockup-name">Linda K.</span><span class="mockup-score">67,201</span></div>
+          </div>
+          <div class="mockup-chat">
+            <div class="mockup-msg sys">&#x1F4A3; Sarah M. sabotaged Pastor Dave! Half speed for 15 min!</div>
+            <div class="mockup-msg"><b>Pastor Dave:</b> Oh it's ON now...</div>
+            <div class="mockup-msg"><b>Mike R.:</b> &#x2694;&#xFE0F; challenged Youth Group to Clicker Duel for 5,000 coins!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PROOF ═══ -->
+<div class="proof">
+  <div class="wrap">
+    <div class="proof-grid">
+      <div class="rv"><span class="proof-v">$260+</span><span class="proof-l">Raised in first deployment</span></div>
+      <div class="rv d1"><span class="proof-v">1,000+</span><span class="proof-l">Clicks per second at peak</span></div>
+      <div class="rv d2"><span class="proof-v">97%</span><span class="proof-l">Goes directly to your org</span></div>
+      <div class="rv d3"><span class="proof-v">$0/mo</span><span class="proof-l">No subscription fees ever</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section class="sc" id="how" style="background:var(--bg)">
+  <div class="wrap">
+    <div class="sc-h rv"><span class="lb">How it works</span><h2 class="d">Live in <em>under two minutes</em></h2><p class="bl" style="margin-top:12px;max-width:520px">No technical skills. No app to build. Create, share, watch the donations flow.</p></div>
+    <div class="steps">
+      <div class="step rv d1"><div class="step-n">1</div><h3>Create your fundraiser</h3><p>Name your org, pick a visual theme from 6 hand-designed vibes, set your brand colors. Connect Stripe to receive payments.</p><span class="step-tag">~2 minutes</span></div>
+      <div class="step rv d2"><div class="step-n">2</div><h3>Share the join code</h3><p>Get a 6-character code your community enters in the Fund Clicker app. Text it, project it, put it on the Sunday bulletin.</p><span class="step-tag">One code, unlimited players</span></div>
+      <div class="step rv d3"><div class="step-n">3</div><h3>Watch donations flow</h3><p>Players buy sabotage credits, battle wagers, coin cuts, and skins. Every purchase is a donation &mdash; tracked in your real-time dashboard.</p><span class="step-tag">Real-time analytics</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section class="sc" style="background:var(--sf)">
+  <div class="wrap">
+    <div class="sc-h rv"><span class="lb">Features</span><h2 class="d">Not just a clicker.<br>A <em>fundraising engine</em>.</h2><p class="bl" style="margin-top:12px;max-width:520px">Every feature drives engagement. Every engagement drives purchases. Every purchase funds your cause.</p></div>
+    <div class="bento">
+      <div class="bc w2 rv"><span class="bc-i">&#x2694;&#xFE0F;</span><h3>9 Battle Games</h3><p>Rock Paper Scissors, Clicker Duel, Trivia, Tic-Tac-Toe, Coin Flip, Reaction Race, Connect 4, Hangman, Battleship. Players wager coins &mdash; losers pay real money for rematches. Competition drives donations.</p></div>
+      <div class="bc rv d1"><span class="bc-i">&#x1F4A3;</span><h3>Sabotage System</h3><p>Pay $0.99&ndash;$3.99 to halve an opponent's speed for 15 minutes. They can pay $0.99 to break free. Chaos that prints money.</p></div>
+      <div class="bc rv d2"><span class="bc-i">&#x2702;&#xFE0F;</span><h3>Coin Cut Campaigns</h3><p>Pool money to cut the leader by up to 40%. Or launch a $100 Total Wipe. Social, dramatic, lucrative.</p></div>
+      <div class="bc rv d3"><span class="bc-i">&#x1F3C6;</span><h3>Live Leaderboards</h3><p>Rankings updated every 2 seconds. Weekly resets with Hall of Fame. Fresh competition every week.</p></div>
+      <div class="bc w2 rv d4"><span class="bc-i">&#x1F3A8;</span><h3>White-Label + Multi-Fund + Competing Groups</h3><p>6 visual themes, custom colors, custom currency. Run multiple fundraisers simultaneously with competing groups &mdash; Youth vs Adults, Team A vs Team B. Watch engagement skyrocket when group pride is on the line.</p></div>
+      <div class="bc rv d5"><span class="bc-i">&#x1F4AC;</span><h3>Chat, Push &amp; Live Activities</h3><p>Real-time chat. Push notifications for battles and sabotage. iOS Live Activities on Lock Screen and Dynamic Island.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PRICING ═══ -->
+<section class="sc" id="pricing" style="background:var(--bg)">
+  <div class="wrap">
+    <div class="sc-h rv" style="text-align:center"><span class="lb">Pricing</span><h2 class="d">Your org keeps <em>97%</em></h2><p class="bl" style="max-width:480px;margin:12px auto 0">No monthly fees. No per-seat charges. No feature gates. You pay only when money moves.</p></div>
+    <div class="pg">
+      <div class="pc rv"><div class="pc-n">GoFundMe</div><div class="pc-a">2.9% <span>+ $0.30</span></div><div class="pc-d">Per-transaction fee eats into small donations. <strong>No engagement.</strong> Donors give once and forget.</div><div class="pc-v vw">Passive &mdash; donors give and leave</div></div>
+      <div class="pc rv d1"><div class="pc-n">Facebook</div><div class="pc-a">0% <span>fee</span></div><div class="pc-d">No fees, but <strong>declining organic reach</strong>. No custom branding. You don't own the relationship.</div><div class="pc-v vw">Declining reach &mdash; fewer eyeballs</div></div>
+      <div class="pc rv d2"><div class="pc-n">Church Platforms</div><div class="pc-a">$50&ndash;200 <span>/mo</span></div><div class="pc-d">Monthly subscription <strong>whether you fundraise or not</strong>. Basic forms. No gamification.</div><div class="pc-v vw">Paying even when idle</div></div>
+      <div class="pc ft rv d3"><div class="pc-n">Fund Clicker</div><div class="pc-a">3% <span>only</span></div><div class="pc-d"><strong>$0/month. Scales to zero.</strong> 9 battle games, sabotage, campaigns, skins, groups, chat, push. <strong>Your org keeps 97%.</strong></div><div class="pc-v vg">&#x2713; Engagement-driven &mdash; donors become players</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FINAL CTA ═══ -->
+<section class="cta">
+  <div class="wrap">
+    <h2 class="d rv">Ready to turn your next<br>fundraiser into <em>something<br>unforgettable?</em></h2>
+    <p class="bl rv d1">Set up in under 2 minutes. No credit card required.<br>Start raising money the moment your community joins.</p>
+    <div class="hero-actions rv d2"><a href="https://admin.fundclicker.com" class="btn-g">Launch Your Fundraiser &rarr;</a></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p style="margin-bottom:8px"><a href="#" class="logo" style="display:inline-flex"><div class="logo-text" style="font-size:18px">Fund<b>Clicker</b></div></a></p>
+    <p>&copy; 2026 Fund Clicker. All rights reserved. &middot; <a href="#">Privacy</a> &middot; <a href="#">Terms</a></p>
+  </div>
+</footer>
+
+<script>
+// Counter
+var c=847293,el=document.getElementById('ctr');
+// Scroll reveal
+var io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add('in')})},{threshold:0.12,rootMargin:'0px 0px -60px 0px'});
+document.querySelectorAll('.rv').forEach(function(x){io.observe(x)});
+// Nav background
+var nav=document.querySelector('nav');
+window.addEventListener('scroll',function(){nav.style.background=window.scrollY>80?'rgba(7,7,11,0.92)':'rgba(7,7,11,0.65)';},{passive:true});
+</script>
+</body>
+</html>
