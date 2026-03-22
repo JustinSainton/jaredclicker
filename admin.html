@@ -328,6 +328,13 @@
 
     <div id="photoGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;"></div>
 
+    <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Autoclicker Detection</h2>
+    <p style="color: #aaa; font-size: 13px; margin-bottom: 12px;">Toggle automatic banning of suspected autoclickers. Disable while tuning detection.</p>
+    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 8px;">
+      <button id="autobanToggle" style="padding:10px 20px;font-size:14px;">Loading...</button>
+      <span id="autobanStatus" style="color:#aaa;font-size:13px;"></span>
+    </div>
+
     <h2 style="margin-top: 32px; font-size: 20px; text-shadow: 2px 2px 0 #b8860b;">Banned Players</h2>
     <div id="bannedList" style="margin-bottom: 16px; color: #888; font-size: 13px;">Loading...</div>
 
@@ -683,6 +690,37 @@
       statusEl.textContent = 'Error: ' + err.message;
       statusEl.style.color = '#ff6b6b';
     });
+  });
+
+  // ===== AUTOBAN TOGGLE =====
+  function loadAutobanStatus() {
+    fetch(API_BASE + '/admin/autoban', { headers: { 'Authorization': 'Bearer ' + adminPassword } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var btn = document.getElementById('autobanToggle');
+      var status = document.getElementById('autobanStatus');
+      btn.textContent = data.enabled ? 'Disable Autoban' : 'Enable Autoban';
+      btn.style.background = data.enabled ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #22c55e, #16a34a)';
+      status.textContent = data.enabled ? 'Autoban is ACTIVE — suspicious players will be banned' : 'Autoban is DISABLED — no automatic bans';
+      status.style.color = data.enabled ? '#ef4444' : '#22c55e';
+    })
+    .catch(function() {
+      document.getElementById('autobanStatus').textContent = 'Failed to load status';
+    });
+  }
+  loadAutobanStatus();
+
+  document.getElementById('autobanToggle').addEventListener('click', function() {
+    var btn = document.getElementById('autobanToggle');
+    var isCurrentlyEnabled = btn.textContent.indexOf('Disable') !== -1;
+    btn.textContent = 'Saving...';
+    fetch(API_BASE + '/admin/autoban', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + adminPassword, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: !isCurrentlyEnabled })
+    })
+    .then(function() { loadAutobanStatus(); })
+    .catch(function() { loadAutobanStatus(); });
   });
 
   // ===== BANNED PLAYERS =====

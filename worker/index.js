@@ -19,6 +19,7 @@ export class LiveVisitors {
     this.resetSchedule = null; // lazy-loaded: { enabled, nextResetAt, intervalMs }
     this.hallOfFame = null; // lazy-loaded: array of weekly snapshots
     this.bannedPlayers = null; // lazy-loaded: { [nameLower]: { until, reason } }
+    this.autobanEnabled = null; // lazy-loaded: boolean (default true)
     this._scoreRateTracker = {}; // in-memory: { [nameLower]: { updates: [timestamps], lastScore } }
     this.activeGames = new Map();      // gameId → GameState
     this.pendingChallenges = new Map(); // chalId → ChallengeState
@@ -265,7 +266,70 @@ export class LiveVisitors {
     await this.state.storage.put("bannedPlayers", this.bannedPlayers);
   }
 
+  // Game autoclicker detection: tracks raw tap timestamps per player per game.
+  // Returns true if the player should be rejected (tapping too fast / too uniform).
+  checkGameTapRate(playerName, gameId) {
+    var key = playerName.toLowerCase() + ':' + gameId;
+    if (!this._gameTapTracker) this._gameTapTracker = {};
+    if (!this._gameTapTracker[key]) {
+      this._gameTapTracker[key] = { taps: [], flagged: false };
+    }
+    var tracker = this._gameTapTracker[key];
+    var now = Date.now();
+    tracker.taps.push(now);
+
+    // Only analyze once we have enough taps
+    if (tracker.taps.length < 10) return false;
+
+    // Keep only the last 20 taps to bound memory
+    if (tracker.taps.length > 20) tracker.taps = tracker.taps.slice(-20);
+
+    // Calculate intervals between consecutive taps
+    var intervals = [];
+    for (var i = 1; i < tracker.taps.length; i++) {
+      intervals.push(tracker.taps[i] - tracker.taps[i - 1]);
+    }
+
+    // Check 1: Average CPS over recent taps — reject if > 25 CPS
+    var avgInterval = intervals.reduce(function(a, b) { return a + b; }, 0) / intervals.length;
+    if (avgInterval < 40) { // 40ms = 25 CPS
+      tracker.flagged = true;
+      return true;
+    }
+
+    // Check 2: Interval uniformity — humans have jitter, bots don't.
+    // Calculate standard deviation of intervals. Very low stddev = bot.
+    var mean = avgInterval;
+    var variance = intervals.reduce(function(sum, v) { return sum + (v - mean) * (v - mean); }, 0) / intervals.length;
+    var stddev = Math.sqrt(variance);
+    // Coefficient of variation (stddev / mean). Humans typically > 0.15, bots < 0.05
+    var cv = mean > 0 ? stddev / mean : 0;
+    if (cv < 0.05 && avgInterval < 150) { // very uniform AND fast
+      tracker.flagged = true;
+      return true;
+    }
+
+    return false;
+  }
+
+  cleanupGameTapTracker(gameId) {
+    if (!this._gameTapTracker) return;
+    var keys = Object.keys(this._gameTapTracker);
+    for (var i = 0; i < keys.length; i++) {
+      if (keys[i].indexOf(':' + gameId) !== -1) {
+        delete this._gameTapTracker[keys[i]];
+      }
+    }
+  }
+
   async checkAutoClickerAndBan(name, score, stats) {
+    // Check if autoban is disabled by admin
+    if (this.autobanEnabled === null) {
+      this.autobanEnabled = (await this.state.storage.get("autobanEnabled"));
+      if (this.autobanEnabled === undefined) this.autobanEnabled = true; // default: enabled
+    }
+    if (!this.autobanEnabled) return false;
+
     var key = name.toLowerCase();
     var banned = await this.loadBannedPlayers();
     if (banned[key]) return true; // already banned
@@ -296,22 +360,29 @@ export class LiveVisitors {
     var coinsPerClick = Math.max(1, (stats && stats.coinsPerClick) || 1);
     var coinsPerSec = (stats && stats.coinsPerSecond) || 0;
 
-    // Subtract expected auto-income from score delta
-    var autoIncome = coinsPerSec * timeDelta;
-    var clickIncome = Math.max(0, scoreDelta - autoIncome);
-    var impliedCPS = clickIncome / coinsPerClick / timeDelta;
+    // Use the more generous of last-seen and current values to avoid
+    // timing artifacts when upgrades are bought or boosts expire mid-interval
+    var effectiveCPC = Math.max(coinsPerClick, tracker.lastCoinsPerClick || coinsPerClick);
+    var effectiveCPS = Math.max(coinsPerSec, tracker.lastCoinsPerSecond || coinsPerSec);
+    tracker.lastCoinsPerClick = coinsPerClick;
+    tracker.lastCoinsPerSecond = coinsPerSec;
 
-    // If clicking faster than 30 CPS sustained, that's suspicious
-    // (most fast human tappers max out around 12-15 CPS)
-    if (impliedCPS > 30) {
+    // Subtract expected auto-income with a 20% buffer for timing variance
+    var autoIncome = effectiveCPS * timeDelta * 1.2;
+    var clickIncome = Math.max(0, scoreDelta - autoIncome);
+    var impliedCPS = clickIncome / effectiveCPC / timeDelta;
+
+    // If clicking faster than 50 CPS sustained, that's suspicious
+    // (most fast human tappers max out around 12-15 CPS; 50 gives generous headroom)
+    if (impliedCPS > 50) {
       tracker.suspiciousCount++;
     } else {
       // Decay suspicion faster than it builds
       tracker.suspiciousCount = Math.max(0, tracker.suspiciousCount - 2);
     }
 
-    // If suspicious for 15+ consecutive checks (~75 seconds at 5s intervals), ban
-    if (tracker.suspiciousCount >= 15) {
+    // If suspicious for 20+ consecutive checks (~100 seconds at 5s intervals), ban
+    if (tracker.suspiciousCount >= 20) {
         var banDuration = 30 * 60 * 1000; // 30 minutes
         banned[key] = {
           until: now + banDuration,
@@ -539,6 +610,7 @@ export class LiveVisitors {
       for (var i = 0; i < game.players.length; i++) await this.awardWinnings(game.players[i], share);
     }
     this.broadcastGroupGame(game); await this.resolveSpectatorBets(game);
+    this.cleanupGameTapTracker(game.id);
     var self = this; setTimeout(function() { self.activeGames.delete(game.id); self.groupLobbies.delete(game.id); }, 60000);
   }
 
@@ -567,6 +639,8 @@ export class LiveVisitors {
     if (game._ended || game.winner) return;
     if (game.type === 'lastclick') {
       if (move !== 'tap' || !game.roundStartAt || Date.now() > game.roundEndAt || !game.alive.includes(playerName)) return;
+      // Autoclicker detection: reject inhuman tap rates
+      if (this.checkGameTapRate(playerName, game.id)) return;
       game.roundClicks[playerName] = (game.roundClicks[playerName] || 0) + 1;
     } else if (game.type === 'auction') {
       if (game.revealed || !game.players.includes(playerName)) return;
@@ -1142,6 +1216,8 @@ export class LiveVisitors {
       if (move !== 'tap') return;
       if (!game.cdStartAt) return; // not started yet
       if (Date.now() > game.cdEndAt) return; // time's up
+      // Autoclicker detection: reject inhuman tap rates
+      if (this.checkGameTapRate(playerName, game.id)) return;
       if (isP1) game.cdP1Taps++;
       else game.cdP2Taps++;
       // Send real-time tap counts to both players
@@ -1366,6 +1442,7 @@ export class LiveVisitors {
     // Notify spectators + resolve bets
     this.broadcastToSpectators(game);
     await this.resolveSpectatorBets(game);
+    this.cleanupGameTapTracker(game.id);
     setTimeout(() => { self.activeGames.delete(game.id); }, 60000);
     this.scheduleBroadcast();
   }
@@ -1602,6 +1679,22 @@ export class LiveVisitors {
         return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
       }
       return new Response(JSON.stringify({ error: "Not banned" }), { status: 404, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Admin: get autoban status
+    if (url.pathname === "/admin/autoban" && request.method === "GET") {
+      if (this.autobanEnabled === null) {
+        this.autobanEnabled = (await this.state.storage.get("autobanEnabled"));
+        if (this.autobanEnabled === undefined) this.autobanEnabled = true;
+      }
+      return new Response(JSON.stringify({ enabled: this.autobanEnabled }), { headers: { "Content-Type": "application/json" } });
+    }
+    // Admin: toggle autoban
+    if (url.pathname === "/admin/autoban" && request.method === "POST") {
+      var abBody = await request.json();
+      this.autobanEnabled = !!abBody.enabled;
+      await this.state.storage.put("autobanEnabled", this.autobanEnabled);
+      return new Response(JSON.stringify({ enabled: this.autobanEnabled }), { headers: { "Content-Type": "application/json" } });
     }
 
     // Admin: get/set reset schedule
@@ -2688,8 +2781,8 @@ export class LiveVisitors {
 
           // Autoclicker detection (fire-and-forget async — bans take effect on next update)
           this.checkAutoClickerAndBan(info.name, Math.floor(msg.score), {
-            coinsPerClick: Math.floor(msg.coinsPerClick || 0),
-            coinsPerSecond: Math.floor(msg.coinsPerSecond || 0)
+            coinsPerClick: msg.coinsPerClick || 0,
+            coinsPerSecond: msg.coinsPerSecond || 0
           });
 
           // Check epoch BEFORE accepting the score into memory
@@ -5054,6 +5147,33 @@ export default {
       const lvObj = env.LIVE_VISITORS.get(lvId);
       const res = await lvObj.fetch(new Request("https://dummy/admin/unban", {
         method: "POST", body: JSON.stringify({ playerName: reqBody.playerName }),
+      }));
+      const body = await res.text();
+      return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Admin: get autoban status
+    if (url.pathname === "/admin/autoban" && request.method === "GET") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      }
+      const lvId = env.LIVE_VISITORS.idFromName("global");
+      const lvObj = env.LIVE_VISITORS.get(lvId);
+      const res = await lvObj.fetch(new Request("https://dummy/admin/autoban"));
+      const body = await res.text();
+      return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Admin: toggle autoban
+    if (url.pathname === "/admin/autoban" && request.method === "POST") {
+      if (!(await verifyAdmin(request, env))) {
+        return corsResponse(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
+      }
+      const reqBody = await request.json();
+      const lvId = env.LIVE_VISITORS.idFromName("global");
+      const lvObj = env.LIVE_VISITORS.get(lvId);
+      const res = await lvObj.fetch(new Request("https://dummy/admin/autoban", {
+        method: "POST", body: JSON.stringify({ enabled: reqBody.enabled }),
       }));
       const body = await res.text();
       return corsResponse(body, { status: res.status, headers: { "Content-Type": "application/json" } });
