@@ -272,39 +272,46 @@ export class LiveVisitors {
 
     // Track score update rate
     if (!this._scoreRateTracker[key]) {
-      this._scoreRateTracker[key] = { updates: [], lastScore: 0, suspiciousCount: 0 };
+      this._scoreRateTracker[key] = { updates: [], lastScore: score, lastTime: Date.now(), suspiciousCount: 0, initialized: false };
     }
     var tracker = this._scoreRateTracker[key];
     var now = Date.now();
-    tracker.updates.push(now);
-    // Keep only last 60 seconds of updates
-    while (tracker.updates.length > 0 && tracker.updates[0] < now - 60000) tracker.updates.shift();
 
-    // Detection heuristics:
-    // 1. Score increase rate: if gaining more than 50 coins per second per coinsPerClick
-    //    for sustained periods, suspicious
-    var coinsPerClick = (stats && stats.coinsPerClick) || 1;
-    var coinsPerSec = (stats && stats.coinsPerSecond) || 0;
+    // Skip the first update (initial sync — delta would be huge)
+    if (!tracker.initialized) {
+      tracker.lastScore = score;
+      tracker.lastTime = now;
+      tracker.initialized = true;
+      return false;
+    }
+
+    var timeDelta = (now - tracker.lastTime) / 1000; // seconds
     var scoreDelta = score - tracker.lastScore;
-    var timeDelta = now - (tracker.updates.length > 1 ? tracker.updates[tracker.updates.length - 2] : now);
     tracker.lastScore = score;
+    tracker.lastTime = now;
 
-    if (timeDelta > 0 && scoreDelta > 0) {
-      // Calculate implied clicks per second from score increase
-      // scoreDelta = clicks * coinsPerClick + coinsPerSec * (timeDelta/1000)
-      var autoIncome = coinsPerSec * (timeDelta / 1000);
-      var clickIncome = scoreDelta - autoIncome;
-      var impliedCPS = clickIncome / Math.max(1, coinsPerClick) / Math.max(0.1, timeDelta / 1000);
+    // Need at least 2 seconds between checks to avoid noise
+    if (timeDelta < 2) return false;
 
-      // If clicking faster than 25 CPS sustained, that's suspicious
-      if (impliedCPS > 25) {
-        tracker.suspiciousCount++;
-      } else {
-        tracker.suspiciousCount = Math.max(0, tracker.suspiciousCount - 1);
-      }
+    var coinsPerClick = Math.max(1, (stats && stats.coinsPerClick) || 1);
+    var coinsPerSec = (stats && stats.coinsPerSecond) || 0;
 
-      // 2. If suspicious for 12+ consecutive updates (~60 seconds at 5s intervals), ban
-      if (tracker.suspiciousCount >= 12) {
+    // Subtract expected auto-income from score delta
+    var autoIncome = coinsPerSec * timeDelta;
+    var clickIncome = Math.max(0, scoreDelta - autoIncome);
+    var impliedCPS = clickIncome / coinsPerClick / timeDelta;
+
+    // If clicking faster than 30 CPS sustained, that's suspicious
+    // (most fast human tappers max out around 12-15 CPS)
+    if (impliedCPS > 30) {
+      tracker.suspiciousCount++;
+    } else {
+      // Decay suspicion faster than it builds
+      tracker.suspiciousCount = Math.max(0, tracker.suspiciousCount - 2);
+    }
+
+    // If suspicious for 15+ consecutive checks (~75 seconds at 5s intervals), ban
+    if (tracker.suspiciousCount >= 15) {
         var banDuration = 30 * 60 * 1000; // 30 minutes
         banned[key] = {
           until: now + banDuration,
