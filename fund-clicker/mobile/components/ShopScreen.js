@@ -36,6 +36,7 @@ import {
   isPaymentsEnabled,
 } from "../lib/payments";
 import { playUpgrade } from "../lib/sounds";
+import { headingStyle, scoreStyle, bodyStyle, cardBorderStyle } from "../lib/theme-styles";
 import t from "../lib/i18n";
 
 // ─── TARGET PICKER MODAL ──────────────────────────────────────────────────────
@@ -245,11 +246,11 @@ export default function ShopScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.header}>{t("shop")}</Text>
+      <Text style={[styles.header, headingStyle(theme)]}>{t("shop")}</Text>
       <View style={styles.balanceRow}>
         <View>
           <Text style={styles.balanceLabel}>{t("balance")}</Text>
-          <Text style={[styles.balanceValue, { color: theme.primary }]}>{formatNumber(gameState.coins)}</Text>
+          <Text style={[styles.balanceValue, scoreStyle(theme), { color: theme.primary }]}>{formatNumber(gameState.coins)}</Text>
         </View>
         {myCredits > 0 && (
           <View style={[styles.creditsBadge, { borderColor: theme.accent || "#e94560" }]}>

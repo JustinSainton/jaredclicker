@@ -20,6 +20,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import t from "../../lib/i18n";
 import { hashPin } from "../../lib/crypto";
+import { headingStyle } from "../../lib/theme-styles";
 import { useOrg } from "../../context/OrgContext";
 import { GameProvider, useGame } from "../../context/GameContext";
 import ClickerScreen from "../../components/ClickerScreen";
@@ -115,7 +116,7 @@ function AuthGate({ orgSlug, children }) {
             ) : null}
           </View>
 
-          <Text style={[styles.authTitle, { color: theme.primary }]}>
+          <Text style={[styles.authTitle, headingStyle(theme), { color: theme.primary }]}>
             {mode === "register" ? t("joinTheGame") : t("welcomeBack")}
           </Text>
           <Text style={styles.authSubtitle}>

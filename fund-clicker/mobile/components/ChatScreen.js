@@ -20,6 +20,7 @@ import * as Haptics from "../lib/haptics";
 import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
 import t from "../lib/i18n";
+import { headingStyle, bodyStyle } from "../lib/theme-styles";
 
 // Unique ID generator for messages without server IDs
 let _msgId = 0;

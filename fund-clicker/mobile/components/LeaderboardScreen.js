@@ -8,6 +8,7 @@ import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
 import { useGameState } from "../hooks/useGameState";
 import { formatNumber } from "../lib/gameEngine";
+import { headingStyle, scoreStyle, cardBorderStyle } from "../lib/theme-styles";
 import t from "../lib/i18n";
 
 export default function LeaderboardScreen() {
@@ -71,7 +72,7 @@ export default function LeaderboardScreen() {
             </Text>
           )}
         </View>
-        <Text style={[styles.score, isMe && { color: theme.primary }]}>
+        <Text style={[styles.score, scoreStyle(theme), isMe && { color: theme.primary }]}>
           {formatNumber(item.score)}
         </Text>
       </View>

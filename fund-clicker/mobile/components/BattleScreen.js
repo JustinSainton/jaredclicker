@@ -17,6 +17,7 @@ import CampaignsList from "./CampaignsList";
 import GroupGameLobby from "./GroupGameLobby";
 import { formatNumber as fmtNum } from "../lib/gameEngine";
 import t from "../lib/i18n";
+import { headingStyle, scoreStyle } from "../lib/theme-styles";
 
 const GAME_TYPES = [
   { key: "coinflip", labelKey: "coinFlip", icon: "\uD83E\uDE99" },
@@ -113,7 +114,7 @@ export default function BattleScreen() {
       {subTab === "group" ? <GroupGameLobby /> : null}
       {subTab !== "battle" ? null : (
       <View style={{ flex: 1, padding: 16 }}>
-      <Text style={styles.header}>{t("battle")}</Text>
+      <Text style={[styles.header, headingStyle(theme)]}>{t("battle")}</Text>
 
       {/* Challenge sent waiting state */}
       {challengeSentTo && (
