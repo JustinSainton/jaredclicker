@@ -237,6 +237,42 @@
       box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
     }
 
+    .unfreeze-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      background: linear-gradient(135deg, #065f46, #059669);
+      border-color: #34d399;
+      color: #fff;
+      animation: unfreezeGlow 1.5s ease-in-out infinite;
+    }
+
+    .unfreeze-btn:hover {
+      background: linear-gradient(135deg, #059669, #10b981);
+      box-shadow: 0 4px 12px rgba(52, 211, 153, 0.4);
+    }
+
+    @keyframes unfreezeGlow {
+      0%, 100% { box-shadow: 0 0 4px rgba(52, 211, 153, 0.3); }
+      50% { box-shadow: 0 0 12px rgba(52, 211, 153, 0.6); }
+    }
+
+    .frozen-badge {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      font-family: 'Press Start 2P', monospace;
+      animation: frozenPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes frozenPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
     .give-btn {
       padding: 6px 14px;
       font-size: 12px;
@@ -431,18 +467,22 @@
     });
   }
 
+  var activeSabotages = [];
+
   function loadScores() {
     showTbodyMessage('Loading...', 'loading');
 
-    fetch(API_BASE + '/admin/leaderboard', {
-      headers: { 'Authorization': 'Bearer ' + adminPassword }
-    })
-    .then(function(res) {
-      if (!res.ok) throw new Error('Failed to load');
-      return res.json();
-    })
-    .then(function(data) {
-      renderScores(data);
+    Promise.all([
+      fetch(API_BASE + '/admin/leaderboard', {
+        headers: { 'Authorization': 'Bearer ' + adminPassword }
+      }).then(function(res) { return res.json(); }),
+      fetch(API_BASE + '/debug-state').then(function(res) { return res.json(); })
+    ])
+    .then(function(results) {
+      var scores = results[0];
+      var debugState = results[1];
+      activeSabotages = (debugState.sabotages || []).filter(function(s) { return s.expiresAt > Date.now(); });
+      renderScores(scores);
     })
     .catch(function(err) {
       showTbodyMessage(err.message, 'error');
@@ -502,15 +542,43 @@
       var btnGroup = document.createElement('div');
       btnGroup.className = 'btn-group';
 
-      var freezeBtn = document.createElement('button');
-      freezeBtn.className = 'freeze-btn';
-      freezeBtn.textContent = 'Freeze';
-      freezeBtn.setAttribute('data-name', scores[i].name);
-      freezeBtn.addEventListener('click', function() {
-        var name = this.getAttribute('data-name');
-        adminFreeze(name);
-      });
-      btnGroup.appendChild(freezeBtn);
+      // Check if this player is currently frozen/sabotaged
+      var playerSab = null;
+      for (var si = 0; si < activeSabotages.length; si++) {
+        if (activeSabotages[si].targetName.toLowerCase() === scores[i].name.toLowerCase()) {
+          playerSab = activeSabotages[si];
+          break;
+        }
+      }
+
+      if (playerSab) {
+        // Show UNFREEZE button + frozen badge on name
+        var badge = document.createElement('span');
+        badge.className = 'frozen-badge';
+        var minsLeft = Math.max(1, Math.ceil((playerSab.expiresAt - Date.now()) / 60000));
+        badge.textContent = (playerSab.freeze ? 'FROZEN' : 'SLOWED') + ' ' + minsLeft + 'm';
+        nameTd.appendChild(badge);
+
+        var unfreezeBtn = document.createElement('button');
+        unfreezeBtn.className = 'unfreeze-btn';
+        unfreezeBtn.textContent = 'Unfreeze';
+        unfreezeBtn.setAttribute('data-name', scores[i].name);
+        unfreezeBtn.addEventListener('click', function() {
+          var name = this.getAttribute('data-name');
+          adminUnfreeze(name);
+        });
+        btnGroup.appendChild(unfreezeBtn);
+      } else {
+        var freezeBtn = document.createElement('button');
+        freezeBtn.className = 'freeze-btn';
+        freezeBtn.textContent = 'Freeze';
+        freezeBtn.setAttribute('data-name', scores[i].name);
+        freezeBtn.addEventListener('click', function() {
+          var name = this.getAttribute('data-name');
+          adminFreeze(name);
+        });
+        btnGroup.appendChild(freezeBtn);
+      }
 
       var giveBtn = document.createElement('button');
       giveBtn.className = 'give-btn';
@@ -584,6 +652,29 @@
     })
     .then(function() {
       alert(name + ' has been FROZEN for ' + label + '!');
+      loadScores();
+    })
+    .catch(function(err) {
+      alert('Error: ' + err.message);
+    });
+  }
+
+  function adminUnfreeze(name) {
+    if (!confirm('Remove freeze/sabotage from "' + name + '"?')) return;
+
+    fetch(API_BASE + '/unsabotage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ targetName: name })
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('Failed to unfreeze');
+      return res.json();
+    })
+    .then(function() {
+      alert(name + ' has been unfrozen!');
       loadScores();
     })
     .catch(function(err) {
