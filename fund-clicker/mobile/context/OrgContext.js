@@ -101,6 +101,28 @@ export function OrgProvider({ children }) {
       surface: vibeTheme.surface || "#16213e",
       text: vibeTheme.text || "#ffffff",
       textMuted: vibeTheme.textMuted || "#8888aa",
+      success: vibeTheme.success || "#4ade80",
+      danger: vibeTheme.danger || "#ef4444",
+
+      // Typography (from vibe)
+      headingFont: vibeTheme.headingFont || null,
+      bodyFont: vibeTheme.bodyFont || null,
+      scoreFont: vibeTheme.scoreFont || null,
+      labelFont: vibeTheme.labelFont || null,
+
+      // Visual effects (from vibe)
+      textShadow: vibeTheme.textShadow || null,
+      scoreTextShadow: vibeTheme.scoreTextShadow || null,
+      glowRadius: vibeTheme.glowRadius || 10,
+      glowColor: vibeTheme.glowColor || "rgba(255,215,0,0.3)",
+      glowColorSubtle: vibeTheme.glowColorSubtle || "rgba(255,215,0,0.08)",
+      borderWidth: vibeTheme.borderWidth || 1,
+      backgroundGradient: vibeTheme.backgroundGradient || null,
+
+      // Sizing + animation
+      coinSize: vibeTheme.coinSize || 180,
+      animationStyle: vibeTheme.animationStyle || "smooth",
+      animationDuration: vibeTheme.animationDuration || 300,
 
       // Branding
       currencyName: config.currency_name || "coins",

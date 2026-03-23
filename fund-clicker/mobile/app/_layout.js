@@ -5,10 +5,11 @@ import { Stack } from "expo-router";
 import { OrgProvider } from "../context/OrgContext";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { AppState } from "react-native";
+import { AppState, ActivityIndicator, View } from "react-native";
 import { initSounds } from "../lib/sounds";
 import { forceSave } from "../hooks/useGameState";
 import { StripeProvider, isStripeAvailable } from "../lib/stripe-provider";
+import { useAppFonts } from "../lib/fonts";
 
 const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder";
 
@@ -28,6 +29,8 @@ function AppContent() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useAppFonts();
+
   useEffect(() => {
     initSounds();
   }, []);
@@ -40,6 +43,15 @@ export default function RootLayout() {
     });
     return () => sub?.remove();
   }, []);
+
+  // Wait for fonts to load before rendering app
+  if (!fontsLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#1a1a2e", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#FFD700" />
+      </View>
+    );
+  }
 
   if (isStripeAvailable && STRIPE_PUBLISHABLE_KEY && !STRIPE_PUBLISHABLE_KEY.includes("placeholder")) {
     return (
