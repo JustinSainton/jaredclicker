@@ -8,6 +8,7 @@
 
 import { Alert } from "react-native";
 import * as Haptics from "./haptics";
+import { executePayment } from "./payment-executor";
 import { api } from "./api";
 
 // ─── PAYMENT TYPES ───────────────────────────────────────────────────────────
@@ -82,46 +83,16 @@ export async function processPayment(stripe, orgSlug, {
       throw new Error("Failed to create payment — no client secret returned");
     }
 
-    // Step 2: Initialize PaymentSheet
-    const { error: initError } = await stripe.initPaymentSheet({
-      paymentIntentClientSecret: clientSecret,
-      merchantDisplayName: "Fund Clicker",
-      style: "alwaysDark",
-      appearance: {
-        colors: {
-          primary: "#8b5cf6",
-          background: "#16213e",
-          componentBackground: "#1a1a2e",
-          componentText: "#ffffff",
-          secondaryText: "#a1a1aa",
-          placeholderText: "#71717a",
-          icon: "#a78bfa",
-        },
-        shapes: {
-          borderRadius: 12,
-          borderWidth: 1,
-        },
-      },
-      returnURL: "fundclicker://payment-complete",
-    });
-
-    if (initError) {
-      throw new Error(initError.message || "Failed to initialize payment");
+    // Step 2-3: Execute payment via platform-specific flow
+    // Native: PaymentSheet | Web: Stripe.js
+    const payResult = await executePayment(stripe, clientSecret, { description });
+    if (!payResult.success) {
+      if (payResult.cancelled) return { success: false, cancelled: true };
+      if (payResult.error) return { success: false, error: payResult.error };
+      return { success: false, error: "Payment was not completed" };
     }
 
-    // Step 3: Present PaymentSheet
-    const { error: presentError } = await stripe.presentPaymentSheet();
-
-    if (presentError) {
-      if (presentError.code === "Canceled") {
-        // User cancelled — not an error
-        return { success: false, cancelled: true };
-      }
-      throw new Error(presentError.message || "Payment failed");
-    }
-
-    // Step 4: Payment succeeded. Hand off fulfillment to the backend so
-    // entitlements are tied to Stripe state, not client trust.
+    // Step 4: Payment succeeded — hand off fulfillment to backend
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     let backendConfirmed = false;
