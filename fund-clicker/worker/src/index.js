@@ -83,11 +83,12 @@ const PURCHASE_SPECS = {
   coin_cut: { actorField: "attackerName", transactionType: "coin_cut", supported: true },
   break_free: { actorField: "playerName", transactionType: "sabotage", supported: true },
   skin_purchase: { actorField: "playerName", transactionType: "skin", supported: true },
-  custom_skin: { actorField: "playerName", transactionType: "custom", supported: false },
-  coin_cut_campaign: { actorField: "contributorName", transactionType: "campaign", supported: false },
-  total_wipe_campaign: { actorField: "contributorName", transactionType: "campaign", supported: false },
-  double_or_nothing: { actorField: "playerName", transactionType: "double_or_nothing", supported: false },
-  rematch: { actorField: "playerName", transactionType: "rematch", supported: false },
+  custom_skin: { actorField: "playerName", transactionType: "custom", supported: true },
+  custom_coin: { actorField: "playerName", transactionType: "custom_coin", supported: true },
+  coin_cut_campaign: { actorField: "contributorName", transactionType: "campaign", supported: true },
+  total_wipe_campaign: { actorField: "contributorName", transactionType: "campaign", supported: true },
+  double_or_nothing: { actorField: "playerName", transactionType: "double_or_nothing", supported: true },
+  rematch: { actorField: "playerName", transactionType: "rematch", supported: true },
 };
 
 export class ValidationError extends Error {
@@ -242,6 +243,20 @@ export function resolveExpectedAmount(type, metadata) {
       if (!amount) throw new ValidationError("Invalid skin");
       return amount;
     }
+    case "custom_skin":
+      return 999; // $9.99 — AI-generated full skin pack
+    case "custom_coin":
+      return 399; // $3.99 — AI-generated custom face coin
+    case "coin_cut_campaign":
+    case "total_wipe_campaign": {
+      const cents = Number(metadata.cents || 0);
+      if (cents < 100 || cents > 10000) throw new ValidationError("Campaign contribution must be $1-$100");
+      return cents;
+    }
+    case "double_or_nothing":
+      return 99; // $0.99
+    case "rematch":
+      return 199; // $1.99
     default:
       throw new ValidationError("This purchase type is not available in production yet");
   }
@@ -287,6 +302,52 @@ async function applyPaymentEntitlement(env, orgId, paymentIntentId, type, metada
           skinId: metadata.skinId,
         },
       });
+      return;
+
+    case "custom_skin":
+      // AI-generated skin pack — generation happens async after payment
+      // The DO stores the payment reference; generation is triggered separately
+      await callInternalOrgRoute(env, orgId, "/skins/save-custom", {
+        body: {
+          paymentIntentId,
+          playerName: metadata.playerName,
+          description: metadata.description || "",
+          status: "paid_pending_generation",
+        },
+      });
+      return;
+
+    case "custom_coin":
+      // AI-generated custom face coin — payment captured, generation triggered separately
+      // Store the payment reference in DO for async generation
+      await callInternalOrgRoute(env, orgId, "/skins/save-custom", {
+        body: {
+          paymentIntentId,
+          playerName: metadata.playerName,
+          type: "custom_coin",
+          description: metadata.description || "Custom face coin",
+          status: "paid_pending_generation",
+        },
+      });
+      return;
+
+    case "coin_cut_campaign":
+    case "total_wipe_campaign":
+      await callInternalOrgRoute(env, orgId, "/campaign/contribute", {
+        body: {
+          paymentIntentId,
+          campaignId: metadata.campaignId,
+          contributorName: metadata.contributorName,
+          cents: Number(metadata.cents || 0),
+          premiumCents: Number(metadata.premiumCents || 0),
+        },
+      });
+      return;
+
+    case "double_or_nothing":
+    case "rematch":
+      // These are handled by the battle system — payment is the entitlement
+      // The game server creates the rematch/double-or-nothing game on payment confirmation
       return;
 
     default:
@@ -585,7 +646,8 @@ async function handleOrgRoutes(slug, subpath, url, request, env) {
       // Custom skins: ~$0.50-0.80 in Gemini tokens for a full 6-asset skin pack
       // The 10% buffer in calculateTotalFee protects against cost variance
       const AI_COST_ESTIMATES = {
-        custom_skin: 80, // 80 cents estimated for full skin generation
+        custom_skin: 80,  // 80 cents — full 6-asset skin pack via Gemini
+        custom_coin: 50,  // 50 cents — single coin image with reference photo
       };
       const apiCostCents = AI_COST_ESTIMATES[purchaseType] || 0;
 
