@@ -2,7 +2,7 @@
 // Wired into GameContext: pendingChallenge, currentGame, gameResult
 import React from "react";
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import { useGame } from "../../context/GameContext";
 import { useOrg } from "../../context/OrgContext";
 import RPSGame from "./RPSGame";

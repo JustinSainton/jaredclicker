@@ -4,9 +4,10 @@
 // push notification registration, and app state persistence.
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
-import { AppState, Alert, Vibration } from "react-native";
+import { AppState, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../lib/haptics";
+import { vibrate } from "../lib/haptics";
 import { api } from "../lib/api";
 
 const GameContext = createContext(null);
@@ -199,7 +200,7 @@ export function GameProvider({ children, orgSlug }) {
       case "challengeReceived":
         setPendingChallenge(msg.challenge);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Vibration.vibrate([0, 200, 100, 200]); // Double buzz
+        vibrate([0, 200, 100, 200]); // Double buzz
         break;
 
       case "challengeSent":
@@ -282,7 +283,7 @@ export function GameProvider({ children, orgSlug }) {
       case "coinCutEvent":
         setCoinCutEvent(msg);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Vibration.vibrate(500);
+        vibrate(500);
         break;
 
       // ── Ban

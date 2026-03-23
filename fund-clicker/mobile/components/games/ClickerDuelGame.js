@@ -1,7 +1,7 @@
 // Clicker Duel — 10-second tap battle
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import t from "../../lib/i18n";
 
 export default function ClickerDuelGame({ game, playerName, onMove, theme }) {

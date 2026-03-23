@@ -7,7 +7,7 @@
 // - Error classification (user cancel vs payment failure vs network)
 
 import { Alert } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "./haptics";
 import { api } from "./api";
 
 // ─── PAYMENT TYPES ───────────────────────────────────────────────────────────

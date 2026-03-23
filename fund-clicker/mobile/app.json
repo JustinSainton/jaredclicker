@@ -13,7 +13,7 @@
       "backgroundColor": "#1a1a2e"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.fundclicker.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -33,11 +33,15 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "backgroundColor": "#1a1a2e",
+      "name": "Fund Clicker",
+      "description": "Turn fundraising into a game your community can't stop playing"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
       [
         "expo-notifications",
         {

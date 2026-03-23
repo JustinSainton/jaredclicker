@@ -1,7 +1,7 @@
 // Trivia — speed + knowledge battle
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import t from "../../lib/i18n";
 
 export default function TriviaGame({ game, playerName, onMove, theme }) {

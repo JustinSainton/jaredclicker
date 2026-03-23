@@ -1,20 +1,30 @@
 // Client-side cryptography utilities
 // PIN hashing before transmission — defense in depth even over HTTPS
+import { Platform } from "react-native";
 
 /**
  * Hash a PIN using SHA-256 before sending to server.
- * This ensures the raw PIN never leaves the device even if HTTPS is compromised
- * (MITM proxy, compromised CA, debug logging, etc.)
+ * Web: uses native crypto.subtle (available in all modern browsers)
+ * Native: uses expo-crypto
+ * Fallback: sends raw (server hashes anyway)
  */
 export async function hashPin(pin) {
-  // React Native doesn't have crypto.subtle, so we use a pure-JS SHA-256
-  // In production with expo-crypto, use Crypto.digestStringAsync
+  // Web: use native Web Crypto API
+  if (Platform.OS === "web" && typeof crypto !== "undefined" && crypto.subtle) {
+    try {
+      const data = new TextEncoder().encode(pin);
+      const buf = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    } catch {
+      return pin;
+    }
+  }
+
+  // Native: use expo-crypto
   try {
     const { digestStringAsync, CryptoDigestAlgorithm } = require("expo-crypto");
     return await digestStringAsync(CryptoDigestAlgorithm.SHA256, pin);
   } catch {
-    // Fallback: send raw (server hashes with SHA-256 anyway)
-    // This should only happen in development/Expo Go
     return pin;
   }
 }

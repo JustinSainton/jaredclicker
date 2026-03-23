@@ -1,27 +1,16 @@
 // Root layout — wraps entire app with providers
-// StripeProvider is conditional: only rendered with a real publishable key.
-// Without Stripe, payments are disabled but everything else works.
+// StripeProvider is platform-split: native uses @stripe/stripe-react-native,
+// web uses a no-op wrapper. See lib/stripe-provider.{native,web}.js
 import { Stack } from "expo-router";
 import { OrgProvider } from "../context/OrgContext";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState } from "react-native";
 import { initSounds } from "../lib/sounds";
 import { forceSave } from "../hooks/useGameState";
+import { StripeProvider, isStripeAvailable } from "../lib/stripe-provider";
 
-// Stripe is optional — only load if publishable key is set
-const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
-
-// Conditionally import Stripe to avoid crash on web or when key is missing
-let StripeProvider = null;
-if (Platform.OS !== "web" && STRIPE_PUBLISHABLE_KEY && !STRIPE_PUBLISHABLE_KEY.includes("placeholder")) {
-  try {
-    const stripe = require("@stripe/stripe-react-native");
-    StripeProvider = stripe.StripeProvider;
-  } catch {
-    // Stripe SDK not available — payments disabled
-  }
-}
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder";
 
 function AppContent() {
   return (
@@ -52,8 +41,7 @@ export default function RootLayout() {
     return () => sub?.remove();
   }, []);
 
-  // Wrap with StripeProvider only if available and configured
-  if (StripeProvider) {
+  if (isStripeAvailable && STRIPE_PUBLISHABLE_KEY && !STRIPE_PUBLISHABLE_KEY.includes("placeholder")) {
     return (
       <StripeProvider
         publishableKey={STRIPE_PUBLISHABLE_KEY}

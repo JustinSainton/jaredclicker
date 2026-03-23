@@ -3,7 +3,7 @@
 // Ships auto-placed by server. Turn-based firing.
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import t from "../../lib/i18n";
 
 const GRID_SIZE = 8;

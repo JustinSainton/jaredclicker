@@ -14,7 +14,7 @@ import {
   Modal,
   FlatList,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../lib/haptics";
 import { useStripeSafe } from "../lib/stripe-safe";
 import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";

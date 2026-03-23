@@ -10,6 +10,9 @@ import { Platform, NativeModules } from "react-native";
 
 function getDeviceLocale() {
   try {
+    if (Platform.OS === "web") {
+      return (typeof navigator !== "undefined" && (navigator.language || navigator.languages?.[0])) || "en";
+    }
     if (Platform.OS === "ios") {
       return (
         NativeModules.SettingsManager?.settings?.AppleLocale ||

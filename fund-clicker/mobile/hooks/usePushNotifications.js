@@ -1,33 +1,44 @@
 // Push Notifications — register for Expo Push, handle incoming notifications,
 // subscribe token to backend per-org, handle tap-to-navigate
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Platform, Alert, AppState } from "react-native";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
+import { Platform, AppState } from "react-native";
 import { useRouter } from "expo-router";
 import { api } from "../lib/api";
 
-// Configure notification behavior when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    const data = notification.request.content.data;
-    // Show banners for battle challenges and sabotages even when app is open
-    const alwaysShow = ["challenge", "sabotage", "coincut", "battle_win", "battle_loss", "campaign"];
-    const shouldShow = alwaysShow.includes(data?.category);
-    return {
-      shouldShowAlert: shouldShow,
-      shouldPlaySound: shouldShow,
-      shouldSetBadge: true,
-      shouldShowBanner: shouldShow,
-    };
-  },
-});
+// Load expo-notifications only on native (crashes on web)
+let Notifications = null;
+let Constants = null;
+if (Platform.OS !== "web") {
+  try {
+    Notifications = require("expo-notifications");
+    Constants = require("expo-constants");
+    // Configure notification behavior when app is in foreground
+    Notifications.setNotificationHandler({
+      handleNotification: async (notification) => {
+        const data = notification.request.content.data;
+        const alwaysShow = ["challenge", "sabotage", "coincut", "battle_win", "battle_loss", "campaign"];
+        const shouldShow = alwaysShow.includes(data?.category);
+        return {
+          shouldShowAlert: shouldShow,
+          shouldPlaySound: shouldShow,
+          shouldSetBadge: true,
+          shouldShowBanner: shouldShow,
+        };
+      },
+    });
+  } catch {}
+}
 
 export default function usePushNotifications(orgSlug, playerName, playerToken = null) {
   const [expoPushToken, setExpoPushToken] = useState(null);
   const [notification, setNotification] = useState(null);
   const notificationListener = useRef(null);
   const responseListener = useRef(null);
+
+  // Web: push notifications not supported (would need Web Push API + service worker)
+  if (Platform.OS === "web" || !Notifications) {
+    return { expoPushToken: null, notification: null };
+  }
   const router = useRouter();
   const registered = useRef(false);
 

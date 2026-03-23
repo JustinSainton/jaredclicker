@@ -3,7 +3,7 @@
 // tab toggle between Weekly and Hall of Fame, online indicators, i18n
 import React, { useState, useMemo } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../lib/haptics";
 import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
 import { useGameState } from "../hooks/useGameState";

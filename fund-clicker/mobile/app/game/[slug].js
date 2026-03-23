@@ -15,7 +15,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import t from "../../lib/i18n";

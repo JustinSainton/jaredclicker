@@ -3,7 +3,7 @@
 // with fewer wrong guesses (or finishes first if tied) wins.
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import t from "../../lib/i18n";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
