@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   compPlayer: { flex: 1, alignItems: "center" },
   compName: { fontSize: 14, color: "#aaa", fontWeight: "600" },
   compTime: { fontSize: 24, fontWeight: "800", color: "#fff", marginTop: 4 },
-  compVs: { fontSize: 14, color: "#666" },
+  compVs: { fontSize: 14, color: "#aaa" },
   result: {
     marginTop: 24, padding: 20, borderRadius: 16,
     borderWidth: 2, alignItems: "center", width: "100%",

@@ -25,6 +25,8 @@ import { headingStyle } from "../../lib/theme-styles";
 import { useLayout } from "../../hooks/useLayout";
 import { useOrg } from "../../context/OrgContext";
 import { GameProvider, useGame } from "../../context/GameContext";
+import { useGameState } from "../../hooks/useGameState";
+import { formatNumber } from "../../lib/gameEngine";
 import ClickerScreen from "../../components/ClickerScreen";
 import LeaderboardScreen from "../../components/LeaderboardScreen";
 import BattleScreen from "../../components/BattleScreen";
@@ -32,6 +34,8 @@ import ShopScreen from "../../components/ShopScreen";
 import ChatScreen from "../../components/ChatScreen";
 import ActiveGameModal from "../../components/games/ActiveGameModal";
 import BanOverlay from "../../components/BanOverlay";
+let GlassView;
+try { GlassView = require("expo-glass-effect").GlassView; } catch { GlassView = null; }
 import ProfileScreen from "../../components/ProfileScreen";
 import SkinsScreen from "../../components/SkinsScreen";
 
@@ -207,7 +211,8 @@ function AuthGate({ orgSlug, children }) {
 
 function GameTabs() {
   const { org, theme } = useOrg();
-  const { connected, chatMessages, player } = useGame();
+  const { connected, chatMessages, player, totalRaised, leaderboard } = useGame();
+  const { gameState } = useGameState();
   const router = useRouter();
   const layout = useLayout();
   const [activeTab, setActiveTab] = useState("click");
@@ -265,16 +270,7 @@ function GameTabs() {
       {/* Top bar with org name, connection status, and settings */}
       <SafeAreaView edges={["top"]} style={[styles.topBarSafe, { backgroundColor: theme.secondary }]}>
         <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => {
-              Haptics.selectionAsync();
-              router.back();
-            }}
-          >
-            <Text style={styles.backBtnText}>{"\u2190"}</Text>
-          </TouchableOpacity>
-          <View style={styles.topBarCenter}>
+          <View style={styles.topBarLeft}>
             <Text style={[styles.orgName, { color: theme.primary }]} numberOfLines={1}>
               {org?.name || t("appName")}
             </Text>
@@ -283,18 +279,29 @@ function GameTabs() {
               <Text style={styles.statusText}>
                 {connected ? t("connected") : t("reconnecting")}
               </Text>
+              {gameState?.coinsPerSecond > 0 && (
+                <Text style={[styles.statusText, { marginLeft: 8, color: "#4ade80" }]}>
+                  {formatNumber(gameState.coinsPerSecond)}/sec
+                </Text>
+              )}
             </View>
           </View>
-          <View style={styles.topBarRight}>
-            <TouchableOpacity
-              style={[styles.playerBadge, { borderColor: theme.primary + "44" }]}
-              onPress={() => { Haptics.selectionAsync(); setShowProfile(true); }}
-            >
-              <Text style={[styles.playerBadgeText, { color: theme.primary }]}>
-                {player?.name?.slice(0, 8) || "?"}
+          {totalRaised?.totalRaisedCents > 0 && (
+            <View style={styles.raisedPill}>
+              <Text style={styles.raisedPillText}>
+                ${(totalRaised.totalRaisedCents / 100).toFixed(2)}
               </Text>
-            </TouchableOpacity>
-          </View>
+              <Text style={styles.raisedPillLabel}>raised</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            style={[styles.playerBadge, { borderColor: theme.primary + "44" }]}
+            onPress={() => { Haptics.selectionAsync(); setShowProfile(true); }}
+          >
+            <Text style={[styles.playerBadgeText, { color: theme.primary }]}>
+              {player?.name?.slice(0, 8) || "?"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
 
@@ -355,7 +362,35 @@ function GameTabs() {
       </View>{/* end mainArea */}
 
       {/* Bottom tab bar (phone only — hidden on tablet/desktop where sidebar is used) */}
-      {!useSidebar && <SafeAreaView edges={["bottom"]} style={styles.tabBarSafe}>
+      {!useSidebar && (GlassView ? (
+        <GlassView style={styles.tabBarGlass} glassEffectStyle="regular" colorScheme="dark">
+          <SafeAreaView edges={["bottom"]} style={styles.tabBarGlassInner}>
+            <View style={[styles.tabBar, { borderTopColor: "transparent", backgroundColor: "transparent" }]}>
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <TouchableOpacity key={tab.key} style={styles.tab} onPress={() => handleTabPress(tab.key)} activeOpacity={0.7}>
+                    <View style={styles.tabInner}>
+                      {tab.iconKey ? (
+                        <Image source={{ uri: tabIconBaseUrl + tab.iconKey + ".png" }} style={[styles.tabIconImage, !isActive && { opacity: 0.5 }, isActive && { transform: [{ scale: 1.1 }] }]} />
+                      ) : (
+                        <Text style={[styles.tabIcon, isActive && { transform: [{ scale: 1.15 }] }]}>{tab.icon}</Text>
+                      )}
+                      {tab.badge > 0 && (
+                        <View style={[styles.tabBadge, { backgroundColor: theme.accent || "#ef4444" }]}>
+                          <Text style={styles.tabBadgeText}>{tab.badge > 99 ? "99+" : tab.badge}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.tabLabel, isActive && { color: theme.primary, fontWeight: "700" }]}>{tab.label}</Text>
+                    {isActive && <View style={[styles.tabIndicator, { backgroundColor: theme.primary }]} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </SafeAreaView>
+        </GlassView>
+      ) : <SafeAreaView edges={["bottom"]} style={styles.tabBarSafe}>
         <View style={[styles.tabBar, { borderTopColor: theme.primary + "22" }]}>
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -398,7 +433,7 @@ function GameTabs() {
             );
           })}
         </View>
-      </SafeAreaView>}
+      </SafeAreaView>)}
 
       {/* Active game overlay (challenges, battle UIs) */}
       <ActiveGameModal />
@@ -490,8 +525,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: "#333",
     color: "#fff", fontSize: 16, fontWeight: "500",
   },
-  authPinInput: { letterSpacing: 8, textAlign: "center", fontSize: 24 },
-  authHint: { fontSize: 11, color: "#555", marginTop: 6 },
+  authPinInput: { letterSpacing: 4, textAlign: "center", fontSize: 24 },
+  authHint: { fontSize: 11, color: "#999", marginTop: 6 },
   authButton: { borderRadius: 14, padding: 16, alignItems: "center", marginTop: 8 },
   authButtonText: { fontSize: 17, fontWeight: "700" },
   authSwitchBtn: { padding: 12, marginTop: 8 },
@@ -504,20 +539,19 @@ const styles = StyleSheet.create({
   topBarSafe: {},
   topBar: {
     flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 16, paddingVertical: 8, gap: 12,
+    paddingHorizontal: 14, paddingVertical: 8, gap: 10,
   },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    justifyContent: "center", alignItems: "center",
-  },
-  backBtnText: { fontSize: 18, color: "#fff", fontWeight: "600" },
-  topBarCenter: { flex: 1, alignItems: "center" },
-  orgName: { fontSize: 18, fontWeight: "800", letterSpacing: 0.3 },
+  topBarLeft: { flex: 1 },
+  orgName: { fontSize: 16, fontWeight: "800" },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 10, color: "#888" },
-  topBarRight: {},
+  raisedPill: {
+    backgroundColor: "rgba(74,222,128,0.12)", borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 4, alignItems: "center",
+  },
+  raisedPillText: { fontSize: 14, fontWeight: "800", color: "#4ade80" },
+  raisedPillLabel: { fontSize: 8, color: "#4ade80", fontWeight: "600", textTransform: "uppercase", letterSpacing: 1 },
   playerBadge: {
     borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4,
   },
@@ -558,6 +592,8 @@ const styles = StyleSheet.create({
   tabHidden: { display: "none" },
 
   // Tab bar
+  tabBarGlass: { position: "absolute", bottom: 0, left: 0, right: 0 },
+  tabBarGlassInner: {},
   tabBarSafe: { backgroundColor: "#0a0a14" },
   tabBar: {
     flexDirection: "row", borderTopWidth: 1,
@@ -567,7 +603,7 @@ const styles = StyleSheet.create({
   tabInner: { position: "relative" },
   tabIcon: { fontSize: 20, textAlign: "center" },
   tabIconImage: { width: 28, height: 28, borderRadius: 6 },
-  tabLabel: { fontSize: 10, color: "#666", marginTop: 2, fontWeight: "500" },
+  tabLabel: { fontSize: 10, color: "#aaa", marginTop: 2, fontWeight: "500" },
   tabIndicator: {
     position: "absolute", top: -7, left: "30%", right: "30%",
     height: 2, borderRadius: 1,

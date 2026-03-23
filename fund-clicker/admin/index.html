@@ -290,9 +290,272 @@ h1 em,h1 i{font-style:italic;color:var(--accent)}
 .actions{display:flex;justify-content:space-between;align-items:center;margin-top:28px}
 .actions-right{display:flex;gap:12px}
 
+/* ─── DASHBOARD ──────────────────────────── */
+.dash{display:none;min-height:100vh}
+.dash.active{display:grid;grid-template-columns:260px 1fr}
+.dash-nav{
+  background:var(--surface);border-right:1px solid var(--border);
+  padding:32px 0;position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;
+}
+.dash-nav-logo{
+  font-family:'Playfair Display',serif;font-size:20px;
+  padding:0 28px 28px;border-bottom:1px solid var(--border);
+  margin-bottom:12px;
+}
+.dash-nav-logo b{font-weight:700;font-style:italic;color:var(--gold)}
+.dash-nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 28px;font-size:14px;font-weight:500;
+  color:var(--text-2);cursor:pointer;transition:all 0.2s;
+  border-left:3px solid transparent;
+}
+.dash-nav-item:hover{color:var(--text);background:rgba(255,255,255,0.02)}
+.dash-nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-glow);font-weight:600}
+.dash-nav-item svg{width:18px;height:18px;opacity:0.6;flex-shrink:0}
+.dash-nav-item.active svg{opacity:1}
+.dash-nav-spacer{flex:1}
+.dash-nav-footer{padding:16px 28px;border-top:1px solid var(--border);font-size:12px;color:var(--text-3)}
+.dash-nav-footer a{color:var(--text-2);text-decoration:none}
+.dash-nav-footer a:hover{color:var(--gold)}
+
+.dash-body{padding:40px 48px;overflow-y:auto}
+.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px}
+.dash-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:500}
+.dash-title i{color:var(--accent)}
+.dash-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--green-dim);color:var(--green);
+  font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px;
+}
+.dash-badge::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* Stat cards */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:20px 24px;
+  transition:border-color 0.2s;
+}
+.stat-card:hover{border-color:var(--border-focus)}
+.stat-label{font-size:12px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px}
+.stat-value{font-size:28px;font-weight:800;margin-top:6px;letter-spacing:-0.5px}
+.stat-sub{font-size:12px;color:var(--text-3);margin-top:4px}
+
+/* Join code card */
+.join-card{
+  background:linear-gradient(135deg,var(--card) 0%,var(--elevated) 100%);
+  border:1px solid var(--border);border-radius:14px;
+  padding:24px;display:flex;align-items:center;gap:24px;
+  margin-bottom:32px;
+}
+.join-code-big{
+  font-size:32px;font-weight:800;letter-spacing:8px;color:var(--gold);
+  text-shadow:0 0 30px var(--gold-glow);user-select:all;
+}
+.join-meta{flex:1}
+.join-meta-label{font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.join-meta-desc{font-size:13px;color:var(--text-2)}
+
+/* Dashboard panels */
+.dash-panels{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}
+.dash-panel{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:24px;
+}
+.dash-panel-title{
+  font-size:14px;font-weight:700;color:var(--text);
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);
+}
+.dash-panel-title .btn{padding:6px 14px;font-size:12px;border-radius:8px}
+
+/* Leaderboard table */
+.lb-table{width:100%}
+.lb-row{
+  display:flex;align-items:center;gap:12px;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);
+  font-size:14px;
+}
+.lb-row:last-child{border-bottom:none}
+.lb-rank{width:28px;text-align:center;font-weight:800;color:var(--text-3);font-size:13px}
+.lb-rank.gold{color:var(--gold)}
+.lb-rank.silver{color:#c0c0c0}
+.lb-rank.bronze{color:#cd7f32}
+.lb-name{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-score{font-weight:700;font-variant-numeric:tabular-nums;color:var(--gold)}
+.lb-actions{display:flex;gap:4px}
+.lb-btn{
+  background:none;border:1px solid var(--border);border-radius:6px;
+  padding:3px 8px;font-size:11px;color:var(--text-3);cursor:pointer;
+  font-family:inherit;transition:all 0.15s;
+}
+.lb-btn:hover{border-color:var(--text-3);color:var(--text)}
+.lb-btn.danger:hover{border-color:var(--rose);color:var(--rose)}
+
+/* Banned list */
+.ban-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);
+  font-size:14px;
+}
+.ban-name{font-weight:500}
+.ban-reason{font-size:12px;color:var(--text-3)}
+
+/* Settings panel */
+.setting-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.setting-row:last-child{border-bottom:none}
+.setting-label{font-size:14px;font-weight:500}
+.setting-desc{font-size:12px;color:var(--text-3);margin-top:2px}
+.toggle{
+  position:relative;width:44px;height:24px;
+  background:var(--border);border-radius:12px;
+  cursor:pointer;transition:background 0.2s;
+  border:none;padding:0;
+}
+.toggle.on{background:var(--accent-solid)}
+.toggle::after{
+  content:'';position:absolute;top:2px;left:2px;
+  width:20px;height:20px;border-radius:50%;
+  background:#fff;transition:transform 0.2s;
+}
+.toggle.on::after{transform:translateX(20px)}
+
+/* Transactions */
+.tx-row{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);
+  font-size:13px;
+}
+.tx-type{
+  padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.5px;
+}
+.tx-type.sabotage{background:rgba(240,96,112,0.1);color:var(--rose)}
+.tx-type.coins{background:rgba(212,168,38,0.1);color:var(--gold)}
+.tx-type.skin{background:rgba(167,139,250,0.1);color:var(--accent)}
+.tx-type.battle{background:rgba(52,211,153,0.1);color:var(--green)}
+.tx-amount{font-weight:700;color:var(--green);margin-left:auto;font-variant-numeric:tabular-nums}
+.tx-date{color:var(--text-3);font-size:12px;width:80px;text-align:right}
+
+/* Dashboard sections */
+.dash-section{display:none}
+.dash-section.active{display:block}
+
+/* Full-width panel */
+.dash-panel-full{grid-column:1/-1}
+
+/* Empty state */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-3)}
+.empty-state-icon{font-size:40px;margin-bottom:12px;opacity:0.5}
+.empty-state-text{font-size:14px}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;right:24px;z-index:10000;
+  background:var(--green);color:var(--bg);
+  padding:12px 24px;border-radius:10px;
+  font-size:14px;font-weight:600;
+  transform:translateY(80px);opacity:0;
+  transition:all 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{background:var(--rose);color:#fff}
+
+/* Confirm modal */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.6);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;opacity:0;pointer-events:none;
+  transition:opacity 0.2s;
+}
+.modal-overlay.show{opacity:1;pointer-events:auto}
+.modal-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:32px;max-width:400px;width:90%;
+  transform:scale(0.95);transition:transform 0.2s;
+}
+.modal-overlay.show .modal-box{transform:scale(1)}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:8px}
+.modal-text{font-size:14px;color:var(--text-2);margin-bottom:24px;line-height:1.6}
+.modal-actions{display:flex;gap:12px;justify-content:flex-end}
+
+/* ─── PHOTO CARDS ────────────────────────── */
+.photo-card{
+  background:var(--elevated);border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;position:relative;
+}
+.photo-card img{width:100%;height:120px;object-fit:cover;display:block}
+.photo-card-info{padding:8px 10px}
+.photo-card-name{
+  width:100%;background:none;border:none;border-bottom:1px solid var(--border);
+  color:var(--text);font-family:inherit;font-size:12px;padding:4px 0;
+  outline:none;
+}
+.photo-card-name:focus{border-color:var(--accent)}
+.photo-card-delete{
+  position:absolute;top:6px;right:6px;
+  background:rgba(0,0,0,0.7);color:var(--rose);
+  border:none;border-radius:50%;width:24px;height:24px;
+  font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity 0.15s;
+}
+.photo-card:hover .photo-card-delete{opacity:1}
+
+/* ─── TRIVIA ROWS ────────────────────────── */
+.trivia-row{
+  display:flex;gap:8px;margin-bottom:8px;align-items:center;
+}
+.trivia-row input{
+  flex:1;background:var(--elevated);border:1px solid var(--border);
+  border-radius:8px;padding:8px 12px;color:var(--text);
+  font-family:inherit;font-size:13px;outline:none;
+}
+.trivia-row input:focus{border-color:var(--accent)}
+.trivia-remove{
+  background:none;border:none;color:var(--text-3);
+  cursor:pointer;font-size:16px;padding:4px;
+}
+.trivia-remove:hover{color:var(--rose)}
+
+/* ─── UPGRADE NAME ROWS ──────────────────── */
+.upgrade-row{
+  display:flex;gap:8px;margin-bottom:8px;align-items:center;
+}
+.upgrade-row .upgrade-default{
+  width:120px;font-size:12px;color:var(--text-3);flex-shrink:0;
+}
+.upgrade-row input{
+  flex:1;background:var(--elevated);border:1px solid var(--border);
+  border-radius:8px;padding:8px 12px;color:var(--text);
+  font-family:inherit;font-size:13px;outline:none;
+}
+.upgrade-row input:focus{border-color:var(--accent)}
+
 /* ─── RESPONSIVE ──────────────────────────── */
 @media(max-width:900px){
   .wizard{grid-template-columns:1fr}
+  .dash.active{grid-template-columns:1fr}
+  .dash-nav{
+    position:fixed;top:0;left:0;right:0;height:auto;
+    flex-direction:row;padding:8px 16px;z-index:100;
+    border-right:none;border-bottom:1px solid var(--border);
+    background:rgba(7,7,11,0.95);backdrop-filter:blur(20px);
+    overflow-x:auto;
+  }
+  .dash-nav-logo{padding:0 12px 0 0;margin-bottom:0;border-bottom:none;font-size:16px}
+  .dash-nav-item{padding:8px 12px;font-size:12px;border-left:none;border-bottom:2px solid transparent;white-space:nowrap}
+  .dash-nav-item.active{border-bottom-color:var(--accent);border-left-color:transparent}
+  .dash-nav-item svg{display:none}
+  .dash-nav-spacer,.dash-nav-footer{display:none}
+  .dash-body{padding:72px 20px 32px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .dash-panels{grid-template-columns:1fr}
+  .join-card{flex-direction:column;text-align:center}
   .rail{
     position:fixed;top:0;left:0;right:0;height:auto;
     flex-direction:row;padding:12px 20px;z-index:100;
@@ -466,6 +729,483 @@ h1 em,h1 i{font-style:italic;color:var(--accent)}
   </div>
 </div>
 
+<!-- ════ DASHBOARD ════ -->
+<div class="dash" id="dashboard">
+  <nav class="dash-nav">
+    <div class="dash-nav-logo">Fund<b>Clicker</b></div>
+    <div class="dash-nav-item active" data-section="overview" onclick="switchSection('overview')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Overview
+    </div>
+    <div class="dash-nav-item" data-section="players" onclick="switchSection('players')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Players
+    </div>
+    <div class="dash-nav-item" data-section="revenue" onclick="switchSection('revenue')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Revenue
+    </div>
+    <div class="dash-nav-item" data-section="content" onclick="switchSection('content')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+      Content
+    </div>
+    <div class="dash-nav-item" data-section="settings" onclick="switchSection('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </div>
+    <div class="dash-nav-spacer"></div>
+    <div class="dash-nav-footer">
+      <a href="#" onclick="logOut(); return false">Log out</a>
+    </div>
+  </nav>
+
+  <div class="dash-body">
+    <!-- OVERVIEW SECTION -->
+    <div class="dash-section active" id="sec-overview">
+      <div class="dash-header">
+        <div>
+          <div class="dash-title" id="dashOrgName">Your <i>Fundraiser</i></div>
+        </div>
+        <div class="dash-badge" id="dashLiveBadge"><span id="dashLiveCount">0</span>&nbsp;online</div>
+      </div>
+
+      <div class="join-card" style="flex-wrap:wrap">
+        <div id="qrCodeContainer" style="width:120px;height:120px;background:var(--elevated);border-radius:12px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          <span style="color:var(--text-3);font-size:12px">QR</span>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <div class="join-meta-label">Join Code</div>
+          <div class="join-code-big" id="dashJoinCode">------</div>
+          <div class="join-meta-desc" style="margin-top:8px">Players scan the QR or enter this code in the app</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-secondary" onclick="copyCode()">Copy Code</button>
+          <button class="btn btn-secondary" onclick="copyJoinLink()">Copy Link</button>
+          <button class="btn btn-secondary" onclick="downloadQR()">Download QR</button>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Players Online</div>
+          <div class="stat-value" id="statOnline">--</div>
+          <div class="stat-sub" id="statTotalPlayers">-- total registered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Revenue</div>
+          <div class="stat-value" id="statRevenue">$0</div>
+          <div class="stat-sub" id="statTxCount">0 transactions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Net to You</div>
+          <div class="stat-value" id="statNet">$0</div>
+          <div class="stat-sub">After 3% platform fee</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Score Epoch</div>
+          <div class="stat-value" id="statEpoch">--</div>
+          <div class="stat-sub" id="statResetInfo">--</div>
+        </div>
+      </div>
+
+      <div class="dash-panels">
+        <div class="dash-panel">
+          <div class="dash-panel-title">
+            Leaderboard
+            <button class="btn btn-secondary" onclick="confirmAction('Reset all scores?','This will zero out every player\\'s score and increment the epoch.', resetAllScores)">Reset All</button>
+          </div>
+          <div id="dashLeaderboard" class="lb-table">
+            <div class="empty-state"><div class="empty-state-icon">&#x1F3C6;</div><div class="empty-state-text">No scores yet</div></div>
+          </div>
+        </div>
+        <div class="dash-panel">
+          <div class="dash-panel-title">
+            Active Sabotages &amp; Campaigns
+          </div>
+          <div id="dashSabotages">
+            <div class="empty-state"><div class="empty-state-icon">&#x1F4A3;</div><div class="empty-state-text">No active sabotages</div></div>
+          </div>
+          <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Campaigns</div>
+            <div id="dashCampaigns">
+              <div class="empty-state" style="padding:12px"><div class="empty-state-text">No active campaigns</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAYERS SECTION -->
+    <div class="dash-section" id="sec-players">
+      <div class="dash-header">
+        <div class="dash-title">Player <i>Management</i></div>
+      </div>
+
+      <div class="dash-panels">
+        <div class="dash-panel">
+          <div class="dash-panel-title">All Players (by score)</div>
+          <div id="dashAllPlayers" class="lb-table">
+            <div class="empty-state"><div class="empty-state-text">Loading...</div></div>
+          </div>
+        </div>
+        <div class="dash-panel">
+          <div class="dash-panel-title">Banned Players</div>
+          <div id="dashBanned">
+            <div class="empty-state"><div class="empty-state-icon">&#x1F6AB;</div><div class="empty-state-text">No banned players</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-panels">
+        <div class="dash-panel">
+          <div class="dash-panel-title">Admin Actions</div>
+          <div class="field" style="margin-bottom:14px">
+            <label>Add Coins to Player</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="addCoinsName" placeholder="Player name" style="flex:2;background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px">
+              <input type="number" id="addCoinsAmount" placeholder="Amount" style="flex:1;background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px">
+              <button class="btn btn-primary" style="padding:10px 20px;font-size:13px" onclick="addCoins()">Give</button>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Reset Individual Player</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="resetPlayerName" placeholder="Player name" style="flex:1;background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px">
+              <button class="btn btn-secondary" style="padding:10px 20px;font-size:13px;border-color:var(--rose);color:var(--rose)" onclick="resetPlayer()">Reset</button>
+            </div>
+          </div>
+        </div>
+        <div class="dash-panel">
+          <div class="dash-panel-title">Hide Photos (Luke)</div>
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:12px">Temporarily hide random photo pop-ups for a specific player.</p>
+          <div class="field" style="margin-bottom:12px">
+            <label>Player Name</label>
+            <input type="text" id="hideLukeName" placeholder="Player name" style="background:var(--elevated)">
+          </div>
+          <div class="field" style="margin-bottom:12px">
+            <label>Duration</label>
+            <select id="hideLukeDuration" style="background:var(--elevated);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;color:var(--text);font-family:inherit;font-size:15px;width:100%">
+              <option value="60">1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="360">6 hours</option>
+              <option value="720">12 hours</option>
+              <option value="1440">24 hours</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="hideLuke()">Hide Photos</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVENUE SECTION -->
+    <div class="dash-section" id="sec-revenue">
+      <div class="dash-header">
+        <div class="dash-title">Revenue <i>Overview</i></div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Gross Revenue</div>
+          <div class="stat-value" id="revGross">$0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Platform Fees (3%)</div>
+          <div class="stat-value" id="revFees" style="color:var(--rose)">$0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Net to Organization</div>
+          <div class="stat-value" id="revNet" style="color:var(--green)">$0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Transactions</div>
+          <div class="stat-value" id="revCount">0</div>
+        </div>
+      </div>
+
+      <div class="dash-panels">
+        <div class="dash-panel dash-panel-full">
+          <div class="dash-panel-title">Recent Transactions</div>
+          <div id="dashTransactions">
+            <div class="empty-state"><div class="empty-state-icon">&#x1F4B3;</div><div class="empty-state-text">No transactions yet</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-panels">
+        <div class="dash-panel dash-panel-full">
+          <div class="dash-panel-title">
+            Stripe Connect
+            <span id="stripeStatus" style="font-size:12px;font-weight:500;color:var(--text-3)"></span>
+          </div>
+          <div id="stripeSection">
+            <p style="font-size:14px;color:var(--text-2);margin-bottom:16px">Connect your Stripe account to receive payments directly from players.</p>
+            <button class="btn btn-primary" onclick="connectStripe()">Connect Stripe &rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT SECTION -->
+    <div class="dash-section" id="sec-content">
+      <div class="dash-header">
+        <div class="dash-title">Game <i>Content</i></div>
+      </div>
+
+      <!-- Custom Coin -->
+      <div class="dash-panels">
+        <div class="dash-panel">
+          <div class="dash-panel-title">Custom Coin Image</div>
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Upload a custom coin image for your fundraiser. PNG recommended, square aspect ratio.</p>
+          <div style="display:flex;align-items:center;gap:20px">
+            <div id="coinPreview" style="width:80px;height:80px;border-radius:50%;border:2px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--elevated);flex-shrink:0">
+              <span style="font-size:36px">&#x1FA99;</span>
+            </div>
+            <div style="flex:1">
+              <input type="file" id="coinFile" accept="image/*" style="display:none" onchange="uploadCoin()">
+              <button class="btn btn-primary" style="width:100%" onclick="document.getElementById('coinFile').click()">Upload Coin Image</button>
+              <div id="coinUploadStatus" style="font-size:12px;color:var(--text-3);margin-top:8px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Freeze Player -->
+        <div class="dash-panel">
+          <div class="dash-panel-title">Freeze Player</div>
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Temporarily prevent a player from earning coins.</p>
+          <div class="field" style="margin-bottom:12px">
+            <label>Player Name</label>
+            <input type="text" id="freezeName" placeholder="Enter player name" style="background:var(--elevated)">
+          </div>
+          <div class="field" style="margin-bottom:12px">
+            <label>Duration (minutes)</label>
+            <select id="freezeDuration" style="background:var(--elevated);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;color:var(--text);font-family:inherit;font-size:15px;width:100%">
+              <option value="2">2 minutes</option>
+              <option value="5" selected>5 minutes</option>
+              <option value="10">10 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="360">6 hours</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width:100%;background:var(--rose)" onclick="freezePlayer()">Freeze Player</button>
+        </div>
+      </div>
+
+      <!-- Photos -->
+      <div class="dash-panels">
+        <div class="dash-panel dash-panel-full">
+          <div class="dash-panel-title">
+            Random Photos
+            <span style="font-size:12px;font-weight:400;color:var(--text-3)">Photos appear randomly during gameplay</span>
+          </div>
+          <div style="margin-bottom:16px">
+            <input type="file" id="photoFile" accept="image/*" style="display:none" onchange="uploadPhoto()">
+            <button class="btn btn-secondary" onclick="document.getElementById('photoFile').click()">+ Upload Photo</button>
+            <span id="photoUploadStatus" style="font-size:12px;color:var(--text-3);margin-left:12px"></span>
+          </div>
+          <div id="photoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+            <div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">&#x1F4F7;</div><div class="empty-state-text">No photos uploaded yet</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Trivia -->
+      <div class="dash-panels">
+        <div class="dash-panel">
+          <div class="dash-panel-title">
+            Custom Trivia Questions
+            <button class="btn btn-secondary" style="padding:4px 12px;font-size:11px" onclick="addTriviaRow()">+ Add</button>
+          </div>
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:12px">Add org-specific trivia. If you add 5+ questions, they replace the 100 default questions during gameplay.</p>
+          <div id="triviaList"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="saveTrivia()">Save Trivia</button>
+          <details style="margin-top:16px">
+            <summary style="font-size:12px;color:var(--text-3);cursor:pointer">View 100 default trivia questions</summary>
+            <div id="defaultTriviaList" style="max-height:300px;overflow-y:auto;margin-top:8px;font-size:12px;color:var(--text-3);line-height:1.8"></div>
+          </details>
+        </div>
+
+        <!-- Upgrade Names -->
+        <div class="dash-panel">
+          <div class="dash-panel-title">Custom Upgrade Names</div>
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:12px">Rename the in-game upgrades to match your theme. Leave blank to use defaults.</p>
+          <div id="upgradeNamesList"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="saveUpgradeNames()">Save Names</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS SECTION -->
+    <div class="dash-section" id="sec-settings">
+      <div class="dash-header">
+        <div class="dash-title">Game <i>Settings</i></div>
+      </div>
+
+      <div class="dash-panels">
+        <div class="dash-panel">
+          <div class="dash-panel-title">Moderation</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Auto-ban Cheaters</div>
+              <div class="setting-desc">Automatically ban players detected using autoclickers (50+ CPS)</div>
+            </div>
+            <button class="toggle" id="toggleAutoban" onclick="toggleAutoban()"></button>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Weekly Score Reset</div>
+              <div class="setting-desc">Automatically reset all scores every Monday at midnight UTC</div>
+            </div>
+            <button class="toggle" id="toggleWeeklyReset" onclick="toggleWeeklyReset()"></button>
+          </div>
+        </div>
+        <div class="dash-panel">
+          <div class="dash-panel-title">Organization</div>
+          <div class="field" style="margin-bottom:14px">
+            <label>Organization Name</label>
+            <input type="text" id="settingOrgName" style="background:var(--elevated)">
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label>Currency Name</label>
+            <input type="text" id="settingCurrency" placeholder="coins" style="background:var(--elevated)">
+          </div>
+          <button class="btn btn-primary" style="width:100%" onclick="saveOrgSettings()">Save Changes</button>
+        </div>
+      </div>
+
+      <div class="dash-panels">
+        <div class="dash-panel">
+          <div class="dash-panel-title">Branding</div>
+          <div class="color-row">
+            <div class="color-field"><label>Primary</label><div class="color-wrap"><input type="color" id="settingPrimary"><input type="text" id="settingPrimaryHex"></div></div>
+            <div class="color-field"><label>Accent</label><div class="color-wrap"><input type="color" id="settingAccent"><input type="text" id="settingAccentHex"></div></div>
+          </div>
+          <div class="color-row">
+            <div class="color-field"><label>Background</label><div class="color-wrap"><input type="color" id="settingBg"><input type="text" id="settingBgHex"></div></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveBranding()">Update Branding</button>
+        </div>
+        <div class="dash-panel">
+          <div class="dash-panel-title">Danger Zone</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label" style="color:var(--rose)">Reset All Scores</div>
+              <div class="setting-desc">Zero out every player's score. This cannot be undone.</div>
+            </div>
+            <button class="btn btn-secondary" style="border-color:var(--rose);color:var(--rose);padding:8px 16px;font-size:13px" onclick="confirmAction('Reset ALL scores?','Every player will lose their score. This cannot be undone.',resetAllScores)">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">Confirm</div>
+    <div class="modal-text" id="modalText">Are you sure?</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modalConfirmBtn" style="background:var(--rose)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PLATFORM ADMIN ════ -->
+<div class="dash" id="platformAdmin">
+  <nav class="dash-nav">
+    <div class="dash-nav-logo">Fund<b>Clicker</b> <span style="font-size:10px;color:var(--accent);margin-left:6px">PLATFORM</span></div>
+    <div class="dash-nav-item active" data-psection="poverview" onclick="switchPSection('poverview')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Overview
+    </div>
+    <div class="dash-nav-item" data-psection="porgs" onclick="switchPSection('porgs')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Organizations
+    </div>
+    <div class="dash-nav-item" data-psection="ptransactions" onclick="switchPSection('ptransactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Transactions
+    </div>
+    <div class="dash-nav-spacer"></div>
+    <div class="dash-nav-footer">
+      <a href="#" onclick="exitPlatformAdmin(); return false">&larr; Back to org admin</a>
+    </div>
+  </nav>
+
+  <div class="dash-body">
+    <!-- PLATFORM OVERVIEW -->
+    <div class="dash-section active" id="psec-poverview">
+      <div class="dash-header">
+        <div class="dash-title">Platform <i>Overview</i></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Organizations</div><div class="stat-value" id="pStatOrgs">--</div></div>
+        <div class="stat-card"><div class="stat-label">Total Players</div><div class="stat-value" id="pStatPlayers">--</div></div>
+        <div class="stat-card"><div class="stat-label">Gross Revenue</div><div class="stat-value" id="pStatGross">$0</div></div>
+        <div class="stat-card"><div class="stat-label">Platform Fees (3%)</div><div class="stat-value" id="pStatFees" style="color:var(--green)">$0</div></div>
+      </div>
+      <div class="dash-panels">
+        <div class="dash-panel dash-panel-full">
+          <div class="dash-panel-title">Top Organizations by Revenue</div>
+          <div id="pTopOrgs">
+            <div class="empty-state"><div class="empty-state-text">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLATFORM ORGS -->
+    <div class="dash-section" id="psec-porgs">
+      <div class="dash-header">
+        <div class="dash-title">All <i>Organizations</i></div>
+      </div>
+      <div class="dash-panels">
+        <div class="dash-panel dash-panel-full">
+          <div id="pOrgsList">
+            <div class="empty-state"><div class="empty-state-text">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLATFORM TRANSACTIONS -->
+    <div class="dash-section" id="psec-ptransactions">
+      <div class="dash-header">
+        <div class="dash-title">Recent <i>Transactions</i></div>
+      </div>
+      <div class="dash-panels">
+        <div class="dash-panel dash-panel-full">
+          <div id="pTxList">
+            <div class="empty-state"><div class="empty-state-icon">&#x1F4B3;</div><div class="empty-state-text">No transactions yet</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Platform Login Modal -->
+<div class="modal-overlay" id="platformLoginModal">
+  <div class="modal-box">
+    <div class="modal-title">Platform Admin</div>
+    <div class="modal-text">Log in with your platform admin credentials.</div>
+    <div class="error-msg" id="errPlatform"></div>
+    <div class="field"><label>Email</label><input type="email" id="pLoginEmail" placeholder="admin@fundclicker.com"></div>
+    <div class="field"><label>Password</label><input type="password" id="pLoginPassword" placeholder="Password"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closePlatformLogin()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPlatformLogin()">Log In</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
 <script>
 var API = 'https://api.fundclicker.com/api/v1';
 var authToken = null;
@@ -624,18 +1364,806 @@ function copyJoinCode(){
   var btn=event.target;var o=btn.textContent;btn.textContent='Copied!';setTimeout(function(){btn.textContent=o},2000);
 }
 
-function goToDashboard(){alert('Dashboard coming soon! Your org slug: '+(orgData?orgData.slug:''))}
+function goToDashboard(){
+  document.querySelector('.wizard').style.display='none';
+  var d=document.getElementById('dashboard');
+  d.classList.add('active');
+  if(orgData){
+    document.getElementById('dashOrgName').innerHTML=orgData.name+' <i>Dashboard</i>';
+    document.getElementById('dashJoinCode').textContent=orgData.joinCode||'------';
+  }
+  loadDashboardData();
+  loadQRCode();
+  // Auto-refresh every 15s
+  if(window._dashInterval) clearInterval(window._dashInterval);
+  window._dashInterval=setInterval(loadDashboardData,15000);
+}
+
+// ─── DASHBOARD DATA ─────────────────────────
+var dashData={stats:null,dashboard:null,banned:null,autoban:null,resetSchedule:null,orgInfo:null};
+
+async function loadDashboardData(){
+  if(!authToken||!orgData) return;
+  try{
+    var [meRes,dashRes,statsRes,bannedRes,autobanRes,schedRes,campaignsRes]=await Promise.all([
+      apiCall('/platform/me'),
+      apiCall('/platform/dashboard'),
+      orgApiCall('/admin/stats'),
+      orgApiCall('/admin/banned'),
+      orgApiCall('/admin/autoban'),
+      orgApiCall('/admin/reset-schedule'),
+      orgApiCall('/admin/campaigns'),
+    ]);
+    dashData.orgInfo=meRes;
+    dashData.dashboard=dashRes;
+    dashData.stats=statsRes;
+    dashData.banned=bannedRes;
+    dashData.autoban=autobanRes;
+    dashData.resetSchedule=schedRes;
+    dashData.campaigns=campaignsRes;
+    // Enrich orgData with join code from /me
+    if(meRes&&meRes.org&&meRes.org.joinCode){
+      orgData.joinCode=meRes.org.joinCode;
+      document.getElementById('dashJoinCode').textContent=meRes.org.joinCode;
+    }
+    renderDashboard();
+  }catch(e){console.error('Dashboard load error:',e)}
+}
+
+function orgApiCall(path,options){
+  options=options||{};
+  var h={'Content-Type':'application/json'};
+  if(authToken) h.Authorization='Bearer '+authToken;
+  var fo={method:options.method||'GET',headers:h};
+  if(options.body) fo.body=JSON.stringify(options.body);
+  return fetch(API+'/orgs/'+orgData.slug+path,fo).then(function(r){return r.json()});
+}
+
+function renderDashboard(){
+  var s=dashData.stats;
+  var d=dashData.dashboard;
+  var info=dashData.orgInfo;
+
+  // Stats cards
+  if(s){
+    document.getElementById('statOnline').textContent=s.connectedPlayers||0;
+    document.getElementById('dashLiveCount').textContent=s.connectedPlayers||0;
+    document.getElementById('statTotalPlayers').textContent=(s.totalPlayers||0)+' total registered';
+    document.getElementById('statEpoch').textContent=s.scoreEpoch||0;
+  }
+
+  // Revenue from dashboard
+  if(d&&d.summary){
+    var gross=(d.summary.gross||0)/100;
+    var fees=(d.summary.fees||0)/100;
+    var net=(d.summary.net||0)/100;
+    document.getElementById('statRevenue').textContent='$'+gross.toFixed(2);
+    document.getElementById('statNet').textContent='$'+net.toFixed(2);
+    document.getElementById('statTxCount').textContent=(d.summary.count||0)+' transactions';
+    document.getElementById('revGross').textContent='$'+gross.toFixed(2);
+    document.getElementById('revFees').textContent='$'+fees.toFixed(2);
+    document.getElementById('revNet').textContent='$'+net.toFixed(2);
+    document.getElementById('revCount').textContent=d.summary.count||0;
+  }
+
+  // Reset schedule info
+  if(dashData.resetSchedule){
+    var rs=dashData.resetSchedule;
+    if(rs.enabled&&rs.nextResetAt){
+      var next=new Date(rs.nextResetAt);
+      document.getElementById('statResetInfo').textContent='Next reset: '+next.toLocaleDateString();
+    }else{
+      document.getElementById('statResetInfo').textContent='Weekly reset: off';
+    }
+  }
+
+  // Stripe status
+  if(info&&info.stripe){
+    var ss=document.getElementById('stripeStatus');
+    if(info.stripe.chargesEnabled){
+      ss.textContent='\u2705 Connected';ss.style.color='var(--green)';
+      document.getElementById('stripeSection').innerHTML='<p style="font-size:14px;color:var(--green)">Stripe is connected and accepting payments.</p>';
+    }else if(info.stripe.onboardingComplete){
+      ss.textContent='\u23F3 Pending review';ss.style.color='var(--gold)';
+    }
+  }
+
+  // Leaderboard
+  renderLeaderboard(s?s.topScores:[]);
+
+  // Sabotages
+  renderSabotages(s?s.activeSabotages:[]);
+
+  // Banned
+  renderBanned(dashData.banned);
+
+  // Campaigns
+  renderCampaigns(dashData.campaigns?dashData.campaigns.campaigns:[]);
+
+  // Transactions
+  renderTransactions(d?d.recentTransactions:[]);
+
+  // Settings
+  if(info){
+    var cfg=info.config||{};
+    document.getElementById('settingOrgName').value=info.org?info.org.name:'';
+    document.getElementById('settingCurrency').value=cfg.currency_name||'coins';
+    setColorField('settingPrimary',cfg.primary_color||'#a78bfa');
+    setColorField('settingAccent',cfg.accent_color||'#fbbf24');
+    setColorField('settingBg',cfg.secondary_color||'#1a1a2e');
+  }
+
+  // Toggles
+  var ab=document.getElementById('toggleAutoban');
+  if(dashData.autoban) ab.className='toggle'+(dashData.autoban.enabled?' on':'');
+  var wr=document.getElementById('toggleWeeklyReset');
+  if(dashData.resetSchedule) wr.className='toggle'+(dashData.resetSchedule.enabled?' on':'');
+}
+
+function setColorField(base,val){
+  var pk=document.getElementById(base);
+  var hx=document.getElementById(base+'Hex');
+  if(pk) pk.value=val;
+  if(hx) hx.value=val;
+}
+
+function renderLeaderboard(scores){
+  var el=document.getElementById('dashLeaderboard');
+  var el2=document.getElementById('dashAllPlayers');
+  if(!scores||!scores.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1F3C6;</div><div class="empty-state-text">No scores yet</div></div>';
+    if(el2) el2.innerHTML=el.innerHTML;
+    return;
+  }
+  var html='';
+  scores.forEach(function(s,i){
+    var rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    html+='<div class="lb-row"><div class="lb-rank '+rc+'">'+(i+1)+'</div><div class="lb-name">'+esc(s.name)+'</div><div class="lb-score">'+fmtNum(s.score)+'</div></div>';
+  });
+  el.innerHTML=html;
+
+  // Full player list with action buttons
+  var html2='';
+  scores.forEach(function(s,i){
+    var rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    html2+='<div class="lb-row"><div class="lb-rank '+rc+'">'+(i+1)+'</div><div class="lb-name">'+esc(s.name)+'</div><div class="lb-score">'+fmtNum(s.score)+'</div>';
+    html2+='<div class="lb-actions">';
+    html2+='<button class="lb-btn" onclick="quickGiveCoins(\''+esc(s.name)+'\')">+Coins</button>';
+    html2+='<button class="lb-btn" onclick="quickResetPlayer(\''+esc(s.name)+'\')">Reset</button>';
+    html2+='<button class="lb-btn danger" onclick="quickBanPlayer(\''+esc(s.name)+'\')">Freeze</button>';
+    html2+='<button class="lb-btn danger" onclick="quickDeletePlayer(\''+esc(s.name)+'\')">Delete</button>';
+    html2+='</div></div>';
+  });
+  if(el2) el2.innerHTML=html2;
+}
+
+function renderSabotages(sabs){
+  var el=document.getElementById('dashSabotages');
+  if(!sabs||!sabs.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1F4A3;</div><div class="empty-state-text">No active sabotages</div></div>';
+    return;
+  }
+  var html='';
+  sabs.forEach(function(s){
+    var left=Math.max(0,Math.round((s.expiresAt-Date.now())/1000));
+    html+='<div class="ban-item"><div><div class="ban-name">'+esc(s.type)+' on '+esc(s.target)+'</div><div class="ban-reason">By '+esc(s.by)+' \u2022 '+left+'s remaining</div></div></div>';
+  });
+  el.innerHTML=html;
+}
+
+function renderBanned(banned){
+  var el=document.getElementById('dashBanned');
+  if(!banned||typeof banned!=='object'||!Object.keys(banned).length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1F6AB;</div><div class="empty-state-text">No banned players</div></div>';
+    return;
+  }
+  var html='';
+  Object.keys(banned).forEach(function(name){
+    var b=banned[name];
+    html+='<div class="ban-item"><div><div class="ban-name">'+esc(name)+'</div><div class="ban-reason">'+(b.reason||'autoclicker')+' \u2022 '+new Date(b.bannedAt).toLocaleDateString()+'</div></div>';
+    html+='<button class="btn btn-secondary" style="padding:6px 14px;font-size:12px;border-radius:8px" onclick="unbanPlayer(\''+esc(name)+'\')">Unban</button></div>';
+  });
+  el.innerHTML=html;
+}
+
+function renderTransactions(txs){
+  var el=document.getElementById('dashTransactions');
+  if(!txs||!txs.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1F4B3;</div><div class="empty-state-text">No transactions yet</div></div>';
+    return;
+  }
+  var html='';
+  txs.forEach(function(tx){
+    var typeClass='coins';
+    var t=tx.type||tx.purchase_type||'purchase';
+    if(t.indexOf('sabotage')>=0) typeClass='sabotage';
+    else if(t.indexOf('skin')>=0) typeClass='skin';
+    else if(t.indexOf('battle')>=0||t.indexOf('rematch')>=0) typeClass='battle';
+    var date=tx.created_at?new Date(tx.created_at).toLocaleDateString():'';
+    html+='<div class="tx-row"><div class="tx-type '+typeClass+'">'+esc(t)+'</div>';
+    html+='<div style="flex:1;color:var(--text-2)">'+esc(tx.player_name||'')+'</div>';
+    html+='<div class="tx-amount">$'+((tx.amount_cents||0)/100).toFixed(2)+'</div>';
+    html+='<div class="tx-date">'+date+'</div></div>';
+  });
+  el.innerHTML=html;
+}
+
+function renderCampaigns(camps){
+  var el=document.getElementById('dashCampaigns');
+  if(!camps||!camps.length){
+    el.innerHTML='<div class="empty-state" style="padding:12px"><div class="empty-state-text">No active campaigns</div></div>';
+    return;
+  }
+  var html='';
+  camps.forEach(function(c){
+    var progress=((c.raisedCents||0)/100).toFixed(2);
+    var goal=((c.goalCents||0)/100).toFixed(2);
+    var type=c.type||'cut';
+    var typeClass=type==='wipe'?'sabotage':'coins';
+    html+='<div class="ban-item"><div>';
+    html+='<div class="ban-name"><span class="tx-type '+typeClass+'" style="margin-right:8px">'+esc(type)+'</span>'+esc(c.targetName||'')+'</div>';
+    html+='<div class="ban-reason">$'+progress+' / $'+goal+' by '+esc(c.creatorName||'')+'</div>';
+    html+='</div>';
+    html+='<button class="btn btn-secondary" style="padding:6px 14px;font-size:12px;border-radius:8px;border-color:var(--rose);color:var(--rose)" onclick="cancelCampaign(\''+esc(c.id)+'\')">Cancel</button></div>';
+  });
+  el.innerHTML=html;
+}
+
+// ─── DASHBOARD ACTIONS ──────────────────────
+function switchSection(name){
+  document.querySelectorAll('.dash-section').forEach(function(s){s.classList.remove('active')});
+  document.querySelectorAll('.dash-nav-item').forEach(function(n){n.classList.remove('active')});
+  var sec=document.getElementById('sec-'+name);
+  if(sec) sec.classList.add('active');
+  var nav=document.querySelector('[data-section="'+name+'"]');
+  if(nav) nav.classList.add('active');
+  if(name==='content') loadContentData();
+}
+
+function copyCode(){
+  var code=orgData?orgData.joinCode:'';
+  if(navigator.clipboard) navigator.clipboard.writeText(code);
+  showToast('Join code copied!');
+}
+
+function copyJoinLink(){
+  var code=orgData?orgData.joinCode:'';
+  var link='https://api.fundclicker.com/join/'+code;
+  if(navigator.clipboard) navigator.clipboard.writeText(link);
+  showToast('Join link copied!');
+}
+
+function loadQRCode(){
+  if(!orgData||!orgData.joinCode) return;
+  var container=document.getElementById('qrCodeContainer');
+  var qrUrl=API.replace('/api/v1','')+'/qr/'+orgData.joinCode;
+  container.innerHTML='<img src="'+qrUrl+'" style="width:100%;height:100%;object-fit:contain" alt="QR Code">';
+}
+
+function downloadQR(){
+  if(!orgData||!orgData.joinCode) return;
+  var qrUrl=API.replace('/api/v1','')+'/qr/'+orgData.joinCode;
+  var a=document.createElement('a');
+  a.href=qrUrl;a.download='fundclicker-'+orgData.joinCode+'.svg';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  showToast('QR code downloaded!');
+}
+
+async function resetAllScores(){
+  closeModal();
+  try{await orgApiCall('/admin/reset-scores',{method:'POST',body:{}});showToast('All scores reset');loadDashboardData()}
+  catch(e){showToast('Error: '+e.message,true)}
+}
+
+async function unbanPlayer(name){
+  try{await orgApiCall('/admin/unban',{method:'POST',body:{playerName:name}});showToast(name+' unbanned');loadDashboardData()}
+  catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+async function addCoins(){
+  var name=document.getElementById('addCoinsName').value.trim();
+  var amount=parseInt(document.getElementById('addCoinsAmount').value)||0;
+  if(!name||amount<=0){showToast('Enter player name and positive amount',true);return}
+  try{await orgApiCall('/admin/add-coins',{method:'POST',body:{playerName:name,amount:amount}});showToast('Gave '+fmtNum(amount)+' coins to '+name);document.getElementById('addCoinsName').value='';document.getElementById('addCoinsAmount').value='';loadDashboardData()}
+  catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+async function resetPlayer(){
+  var name=document.getElementById('resetPlayerName').value.trim();
+  if(!name){showToast('Enter player name',true);return}
+  confirmAction('Reset '+name+'?','This will zero out their score.',async function(){
+    closeModal();
+    try{await orgApiCall('/admin/reset-player',{method:'POST',body:{playerName:name}});showToast(name+' reset');document.getElementById('resetPlayerName').value='';loadDashboardData()}
+    catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+  });
+}
+
+function quickResetPlayer(name){
+  confirmAction('Reset '+name+'?','Their score will be set to 0.',async function(){
+    closeModal();
+    try{await orgApiCall('/admin/reset-player',{method:'POST',body:{playerName:name}});showToast(name+' reset');loadDashboardData()}
+    catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+  });
+}
+
+function quickBanPlayer(name){
+  confirmAction('Freeze '+name+'?','They will not be able to earn coins for 5 minutes.',async function(){
+    closeModal();
+    try{
+      await orgApiCall('/admin/freeze',{method:'POST',body:{playerName:name,durationMin:5}});
+      showToast(name+' frozen for 5 minutes');loadDashboardData();
+    }catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+  });
+}
+
+async function toggleAutoban(){
+  var current=dashData.autoban?dashData.autoban.enabled:true;
+  try{var r=await orgApiCall('/admin/autoban',{method:'POST',body:{enabled:!current}});dashData.autoban=r;document.getElementById('toggleAutoban').className='toggle'+(r.enabled?' on':'');showToast('Auto-ban '+(r.enabled?'enabled':'disabled'))}
+  catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+async function toggleWeeklyReset(){
+  var current=dashData.resetSchedule?dashData.resetSchedule.enabled:false;
+  try{var r=await orgApiCall('/admin/reset-schedule',{method:'POST',body:{enabled:!current}});dashData.resetSchedule=r;document.getElementById('toggleWeeklyReset').className='toggle'+(r.enabled?' on':'');showToast('Weekly reset '+(r.enabled?'enabled':'disabled'))}
+  catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+async function saveOrgSettings(){
+  var name=document.getElementById('settingOrgName').value.trim();
+  var currency=document.getElementById('settingCurrency').value.trim();
+  try{
+    if(name) await apiCall('/platform/org',{method:'PUT',body:{name:name}});
+    if(currency) await apiCall('/platform/config',{method:'PUT',body:{currency_name:currency}});
+    if(name&&orgData) orgData.name=name;
+    showToast('Settings saved');loadDashboardData();
+  }catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+async function saveBranding(){
+  var p=document.getElementById('settingPrimary').value;
+  var a=document.getElementById('settingAccent').value;
+  var bg=document.getElementById('settingBg').value;
+  try{
+    await apiCall('/platform/config',{method:'PUT',body:{primary_color:p,accent_color:a,secondary_color:bg}});
+    showToast('Branding updated');loadDashboardData();
+  }catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+function logOut(){
+  authToken=null;orgData=null;
+  if(window._dashInterval) clearInterval(window._dashInterval);
+  document.getElementById('dashboard').classList.remove('active');
+  document.querySelector('.wizard').style.display='';
+  showLogin();
+}
+
+// ─── HELPERS ────────────────────────────────
+function showToast(msg,isError){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast'+(isError?' error':'')+' show';
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(function(){t.classList.remove('show')},3000);
+}
+
+var _modalCallback=null;
+function confirmAction(title,text,callback){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalText').textContent=text;
+  _modalCallback=callback;
+  document.getElementById('modalConfirmBtn').onclick=callback;
+  document.getElementById('confirmModal').classList.add('show');
+}
+function closeModal(){document.getElementById('confirmModal').classList.remove('show')}
+
+async function cancelCampaign(id){
+  confirmAction('Cancel this campaign?','The campaign will be terminated. Any funds already contributed will remain.',async function(){
+    closeModal();
+    try{await orgApiCall('/admin/cancel-campaign',{method:'POST',body:{campaignId:id}});showToast('Campaign cancelled');loadDashboardData()}
+    catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+  });
+}
+
+function quickDeletePlayer(name){
+  confirmAction('Delete '+name+'?','This completely removes them from the leaderboard. Their score will be gone.',async function(){
+    closeModal();
+    try{await orgApiCall('/admin/delete-score',{method:'POST',body:{playerName:name}});showToast(name+' deleted from leaderboard');loadDashboardData()}
+    catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+  });
+}
+
+function quickGiveCoins(name){
+  var amount=prompt('How many coins to give "'+name+'"?\n\nExamples: 1000, 1000000, 1e9 (1 billion)');
+  if(!amount) return;
+  var n=Number(amount);
+  if(!n||n<=0){showToast('Enter a positive number',true);return}
+  orgApiCall('/admin/add-coins',{method:'POST',body:{playerName:name,amount:Math.floor(n)}})
+    .then(function(){showToast('Gave '+fmtNum(Math.floor(n))+' coins to '+name);loadDashboardData()})
+    .catch(function(e){showToast('Error: '+(e.message||'Failed'),true)});
+}
+
+async function hideLuke(){
+  var name=document.getElementById('hideLukeName').value.trim();
+  var dur=document.getElementById('hideLukeDuration').value;
+  if(!name){showToast('Enter player name',true);return}
+  try{
+    var r=await orgApiCall('/admin/hide-luke',{method:'POST',body:{playerName:name,durationMinutes:Number(dur)}});
+    var expires=new Date(r.expiresAt);
+    showToast('Photos hidden for '+name+' until '+expires.toLocaleTimeString());
+    document.getElementById('hideLukeName').value='';
+  }catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function fmtNum(n){return Number(n||0).toLocaleString()}
+
+// ─── CONTENT: COIN UPLOAD ───────────────────
+async function uploadCoin(){
+  var file=document.getElementById('coinFile').files[0];
+  if(!file) return;
+  var status=document.getElementById('coinUploadStatus');
+  status.textContent='Uploading...';status.style.color='var(--text-2)';
+  var fd=new FormData();fd.append('coin',file);
+  try{
+    var h={};if(authToken) h.Authorization='Bearer '+authToken;
+    var r=await fetch(API+'/orgs/'+orgData.slug+'/admin/upload-coin',{method:'POST',headers:h,body:fd});
+    var d=await r.json();
+    if(d.ok){
+      status.textContent='Coin uploaded!';status.style.color='var(--green)';
+      var preview=document.getElementById('coinPreview');
+      preview.innerHTML='<img src="'+API.replace('/api/v1','')+d.url+'?t='+Date.now()+'" style="width:100%;height:100%;object-fit:cover">';
+    }else{status.textContent='Error: '+(d.error||'Failed');status.style.color='var(--rose)'}
+  }catch(e){status.textContent='Error: '+e.message;status.style.color='var(--rose)'}
+}
+
+// ─── CONTENT: FREEZE ────────────────────────
+async function freezePlayer(){
+  var name=document.getElementById('freezeName').value.trim();
+  var dur=document.getElementById('freezeDuration').value;
+  if(!name){showToast('Enter player name',true);return}
+  try{
+    await orgApiCall('/admin/freeze',{method:'POST',body:{playerName:name,durationMin:Number(dur)}});
+    showToast(name+' frozen for '+dur+' minutes');
+    document.getElementById('freezeName').value='';
+    loadDashboardData();
+  }catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+// ─── CONTENT: PHOTOS ────────────────────────
+async function loadPhotos(){
+  try{
+    var r=await orgApiCall('/admin/photos');
+    renderPhotos(r.photos||[]);
+  }catch(e){console.error('Load photos error:',e)}
+}
+
+function renderPhotos(photos){
+  var el=document.getElementById('photoGrid');
+  if(!photos.length){
+    el.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">&#x1F4F7;</div><div class="empty-state-text">No photos uploaded yet</div></div>';
+    return;
+  }
+  var baseUrl=API.replace('/api/v1','');
+  var html='';
+  photos.forEach(function(p){
+    html+='<div class="photo-card">';
+    html+='<img src="'+baseUrl+p.url+'" alt="">';
+    html+='<button class="photo-card-delete" onclick="deletePhoto(\''+esc(p.key)+'\')">&times;</button>';
+    html+='<div class="photo-card-info">';
+    html+='<input class="photo-card-name" placeholder="Display name" value="'+esc(p.displayName||'')+'" onblur="setPhotoName(\''+esc(p.key)+'\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">';
+    html+='</div></div>';
+  });
+  el.innerHTML=html;
+}
+
+async function uploadPhoto(){
+  var file=document.getElementById('photoFile').files[0];
+  if(!file) return;
+  var status=document.getElementById('photoUploadStatus');
+  status.textContent='Uploading...';
+  var fd=new FormData();fd.append('photo',file);
+  try{
+    var h={};if(authToken) h.Authorization='Bearer '+authToken;
+    var r=await fetch(API+'/orgs/'+orgData.slug+'/admin/upload-photo',{method:'POST',headers:h,body:fd});
+    var d=await r.json();
+    if(d.ok){status.textContent='Uploaded!';loadPhotos()}
+    else{status.textContent='Error: '+(d.error||'Failed')}
+  }catch(e){status.textContent='Error: '+e.message}
+  document.getElementById('photoFile').value='';
+  setTimeout(function(){status.textContent=''},3000);
+}
+
+async function deletePhoto(key){
+  if(!confirm('Delete this photo?')) return;
+  try{await orgApiCall('/admin/delete-photo',{method:'POST',body:{key:key}});showToast('Photo deleted');loadPhotos()}
+  catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+async function setPhotoName(key,name){
+  try{await orgApiCall('/admin/set-photo-name',{method:'POST',body:{key:key,displayName:name}})}
+  catch(e){console.error('Set photo name error:',e)}
+}
+
+// ─── CONTENT: TRIVIA ────────────────────────
+var currentTrivia=[];
+
+function renderTriviaEditor(trivia){
+  currentTrivia=trivia||[];
+  var el=document.getElementById('triviaList');
+  if(!currentTrivia.length){
+    el.innerHTML='<div style="font-size:13px;color:var(--text-3);text-align:center;padding:16px">No custom trivia yet. Click + Add to create one.</div>';
+    return;
+  }
+  var html='';
+  currentTrivia.forEach(function(q,i){
+    html+='<div class="trivia-row"><input value="'+esc(q.question||q)+'" data-idx="'+i+'" placeholder="Question text"><button class="trivia-remove" onclick="removeTriviaRow('+i+')">&times;</button></div>';
+  });
+  el.innerHTML=html;
+}
+
+function addTriviaRow(){
+  currentTrivia.push('');
+  renderTriviaEditor(currentTrivia);
+  var inputs=document.querySelectorAll('#triviaList .trivia-row input');
+  if(inputs.length) inputs[inputs.length-1].focus();
+}
+
+function removeTriviaRow(idx){
+  currentTrivia.splice(idx,1);
+  renderTriviaEditor(currentTrivia);
+}
+
+async function saveTrivia(){
+  var inputs=document.querySelectorAll('#triviaList .trivia-row input');
+  var trivia=[];
+  inputs.forEach(function(inp){
+    var v=inp.value.trim();
+    if(v) trivia.push(v);
+  });
+  try{
+    await apiCall('/platform/config',{method:'PUT',body:{custom_trivia:trivia}});
+    currentTrivia=trivia;
+    showToast('Trivia saved ('+trivia.length+' questions)');
+  }catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+// ─── CONTENT: UPGRADE NAMES ─────────────────
+var DEFAULT_UPGRADES=['Click Power','Auto Clicker','Super Click','Mega Tap','Click Storm','Multiplier','Speed Boost','Chain Click','Lucky Click','Click Frenzy','Gold Rush','Click Master','Turbo Tap','Ultra Click','Power Surge','Mega Rush','Super Storm','Click Titan','Speed Master','Fortune Click','Diamond Hands','Click Legend','Midas Touch','Nova Burst','Storm Surge','Phoenix Click','Quantum Tap','Galaxy Click'];
+var currentUpgradeNames={};
+
+function renderUpgradeEditor(names){
+  currentUpgradeNames=names||{};
+  var el=document.getElementById('upgradeNamesList');
+  var html='';
+  DEFAULT_UPGRADES.slice(0,10).forEach(function(name,i){
+    var key='upgrade_'+i;
+    var custom=currentUpgradeNames[key]||'';
+    html+='<div class="upgrade-row"><div class="upgrade-default">'+esc(name)+'</div><input value="'+esc(custom)+'" data-key="'+key+'" placeholder="Custom name (optional)"></div>';
+  });
+  el.innerHTML=html;
+}
+
+async function saveUpgradeNames(){
+  var inputs=document.querySelectorAll('#upgradeNamesList .upgrade-row input');
+  var names={};
+  inputs.forEach(function(inp){
+    var v=inp.value.trim();
+    if(v) names[inp.dataset.key]=v;
+  });
+  try{
+    await apiCall('/platform/config',{method:'PUT',body:{upgrade_names:names}});
+    currentUpgradeNames=names;
+    showToast('Upgrade names saved');
+  }catch(e){showToast('Error: '+(e.message||'Failed'),true)}
+}
+
+// Default trivia bank (matches server DEFAULT_TRIVIA_BANK — 100 questions)
+var DEFAULT_TRIVIA=['How many hearts does an octopus have?','What is a group of flamingos called?','Which animal can sleep for 3 years?','What animal has the longest pregnancy?','How many noses does a slug have?','What is the only mammal that can truly fly?','Which bird can fly backwards?','What color is a hippo\'s sweat?','How many brains does a leech have?','What animal has the largest eye?','What country has the most islands?','What is the driest continent on Earth?','What is the smallest country in the world?','What country has more pyramids than Egypt?','What capital city is the highest above sea level?','What is the only continent with no active volcanoes?','What country has a flag that is not rectangular?','What ocean is the Bermuda Triangle in?','What was the shortest war in history?','Who was the first woman to win a Nobel Prize?','What ancient wonder was in Alexandria?','How long did the Hundred Years\' War last?','What was invented first: lighter or match?','Who painted the ceiling of the Sistine Chapel?','What year did the Titanic sink?','Which ancient civilization invented paper?','What was the first toy advertised on TV?','What is the hardest natural substance?','How many bones does a shark have?','What planet rains diamonds?','What percentage of the ocean is unexplored?','How long is one day on Venus?','What is the most abundant gas in Earth\'s atmosphere?','What temperature are Celsius and Fahrenheit equal?','What color does gold turn when nano-sized?','What nut is used to make marzipan?','What is the most stolen food in the world?','What fruit floats in water?','What spice is the most expensive by weight?','What food never spoils?','What country invented ice cream?','What vegetable was first grown in space?','What is the fear of long words called?','How many dimples does a golf ball have?','What is the dot over the letter \'i\' called?','How long is the longest hiccuping spree?','What is the national animal of Scotland?','What was the first message sent over the internet?','How many muscles does a cat have in each ear?','What is the only letter not in any US state name?','How long does sunlight take to reach Earth?','What planet has the most moons?','What is the hottest planet in our solar system?','How old is the universe?','What planet spins on its side?','How many bones does an adult human have?','What is the smallest bone in the body?','What organ uses 20% of your oxygen?','How many times does the heart beat per day?','What is the most spoken language in the world?','What is the longest English word with no vowels?','How many official languages does South Africa have?','What is the oldest known written language?','How long is an Olympic swimming pool?','What sport was first played on the moon?','What country invented chess?','How wide is an NBA basketball hoop in inches?','What instrument has 47 strings?','How many keys does a standard piano have?','What note is a standard tuning fork?','What year was the first iPhone released?','What was the first computer virus called?','How many bits in a byte?','What company created the first hard drive?','What is the only even prime number?','What is a googol?','What number is considered unlucky in Japan?','What is the Mona Lisa\'s real name?','What artist cut off his own ear?','What color do you get mixing all colors of light?','What is the most visited museum in the world?','How many Rubik\'s Cube combinations are there?','What is the speed of light in km/s?','What element has the chemical symbol \'Au\'?','Which planet has the Great Red Spot?','What blood type is the universal donor?','How many teeth does an adult human have?','What is the largest organ in the human body?','What is the rarest blood type?','How many time zones does Russia span?','What is the deepest point in the ocean?','How many cards are in a standard deck?','What is the only letter that doesn\'t appear in the periodic table?','How many rings are on the Olympic flag?','What is the longest bone in the human body?','What gas makes soda fizzy?','What is the only metal that is liquid at room temperature?','How many sides does a dodecagon have?','What country gifted the Statue of Liberty to the US?','What is the largest desert in the world?'];
+
+function renderDefaultTrivia(){
+  var el=document.getElementById('defaultTriviaList');
+  if(!el) return;
+  var html='';
+  DEFAULT_TRIVIA.forEach(function(q,i){
+    html+='<div style="padding:2px 0">'+(i+1)+'. '+esc(q)+'</div>';
+  });
+  el.innerHTML=html;
+}
+
+// ─── CONTENT: LOAD ALL ──────────────────────
+function loadContentData(){
+  loadPhotos();
+  renderDefaultTrivia();
+  if(dashData.orgInfo&&dashData.orgInfo.config){
+    var cfg=dashData.orgInfo.config;
+    renderTriviaEditor(JSON.parse(cfg.custom_trivia||'[]'));
+    renderUpgradeEditor(JSON.parse(cfg.upgrade_names||'{}'));
+    // Coin preview
+    if(cfg.coin_image_key){
+      var baseUrl=API.replace('/api/v1','');
+      var preview=document.getElementById('coinPreview');
+      if(preview) preview.innerHTML='<img src="'+baseUrl+'/orgs-assets/'+orgData.slug+'/coin.png?t='+Date.now()+'" style="width:100%;height:100%;object-fit:cover">';
+    }
+  }
+}
 
 async function submitLogin(){
   clearError('errLogin');
   var email=document.getElementById('loginEmail').value.trim();
   var pw=document.getElementById('loginPassword').value;
   if(!email||!pw){showError('errLogin','Email and password required');return}
-  try{var r=await apiCall('/platform/login',{method:'POST',body:{email:email,password:pw}});authToken=r.token;orgData=r.org;goToDashboard()}
+  try{var r=await apiCall('/platform/login',{method:'POST',body:{email:email,password:pw}});authToken=r.token;orgData={id:r.org.id,slug:r.org.slug,name:r.org.name,joinCode:r.org.joinCode||''};goToDashboard()}
   catch(e){showError('errLogin',e.message)}
 }
 
+// ─── PLATFORM ADMIN ─────────────────────────
+var platformToken=null;
+
+function checkPlatformRoute(){
+  if(window.location.hash==='#platform'||window.location.pathname==='/platform'){
+    showPlatformLogin();
+  }
+}
+
+function showPlatformLogin(){
+  document.getElementById('platformLoginModal').classList.add('show');
+}
+function closePlatformLogin(){
+  document.getElementById('platformLoginModal').classList.remove('show');
+}
+
+async function submitPlatformLogin(){
+  var email=document.getElementById('pLoginEmail').value.trim();
+  var pw=document.getElementById('pLoginPassword').value;
+  if(!email||!pw){showError('errPlatform','Email and password required');return}
+  try{
+    var r=await apiCall('/platform/superadmin/login',{method:'POST',body:{email:email,password:pw}});
+    platformToken=r.token;
+    closePlatformLogin();
+    enterPlatformAdmin();
+  }catch(e){showError('errPlatform',e.message)}
+}
+
+function enterPlatformAdmin(){
+  document.querySelector('.wizard').style.display='none';
+  document.getElementById('dashboard').classList.remove('active');
+  document.getElementById('platformAdmin').classList.add('active');
+  loadPlatformData();
+}
+
+function exitPlatformAdmin(){
+  document.getElementById('platformAdmin').classList.remove('active');
+  document.querySelector('.wizard').style.display='';
+  window.location.hash='';
+  if(authToken&&orgData) goToDashboard();
+  else showLogin();
+}
+
+async function platformApiCall(path){
+  var h={'Content-Type':'application/json','Authorization':'Bearer '+platformToken};
+  var r=await fetch(API+'/platform'+path,{headers:h});
+  return r.json();
+}
+
+async function platformApiPost(path,body){
+  var h={'Content-Type':'application/json','Authorization':'Bearer '+platformToken};
+  var r=await fetch(API+'/platform'+path,{method:'PUT',headers:h,body:JSON.stringify(body)});
+  return r.json();
+}
+
+async function loadPlatformData(){
+  if(!platformToken) return;
+  try{
+    var [stats,orgs]=await Promise.all([
+      platformApiCall('/superadmin/stats'),
+      platformApiCall('/superadmin/orgs'),
+    ]);
+    renderPlatformData(stats,orgs);
+  }catch(e){console.error('Platform load error:',e)}
+}
+
+function renderPlatformData(stats,orgsData){
+  document.getElementById('pStatOrgs').textContent=stats.orgs||0;
+  document.getElementById('pStatPlayers').textContent=stats.players||0;
+  document.getElementById('pStatGross').textContent='$'+((stats.grossRevenue||0)/100).toFixed(2);
+  document.getElementById('pStatFees').textContent='$'+((stats.platformFees||0)/100).toFixed(2);
+
+  // Top orgs
+  var topEl=document.getElementById('pTopOrgs');
+  var topOrgs=stats.topOrgs||[];
+  if(!topOrgs.length){topEl.innerHTML='<div class="empty-state"><div class="empty-state-text">No organizations yet</div></div>';
+  }else{
+    var html='';
+    topOrgs.forEach(function(o,i){
+      html+='<div class="lb-row"><div class="lb-rank '+(i<3?['gold','silver','bronze'][i]:'')+'">'+(i+1)+'</div>';
+      html+='<div class="lb-name">'+esc(o.name)+'</div>';
+      html+='<div class="lb-score">$'+((o.gross||0)/100).toFixed(2)+'</div>';
+      html+='<div style="color:var(--text-3);font-size:12px;width:60px;text-align:right">'+((o.fees||0)/100).toFixed(2)+' fee</div></div>';
+    });
+    topEl.innerHTML=html;
+  }
+
+  // All orgs list
+  var orgsEl=document.getElementById('pOrgsList');
+  var orgs=orgsData.orgs||[];
+  if(!orgs.length){orgsEl.innerHTML='<div class="empty-state"><div class="empty-state-text">No organizations</div></div>';
+  }else{
+    var html2='';
+    orgs.forEach(function(o){
+      var status=o.status||'active';
+      var statusColor=status==='active'?'var(--green)':status==='suspended'?'var(--rose)':'var(--gold)';
+      var stripe=o.stripe_account_id?'\u2705 Stripe':'<span style="color:var(--text-3)">\u274C No Stripe</span>';
+      html2+='<div class="ban-item" style="gap:16px">';
+      var joinCode=o.join_code||'';
+      html2+='<div style="width:48px;height:48px;flex-shrink:0;border-radius:8px;overflow:hidden;background:var(--elevated)">'+(joinCode?'<img src="'+API.replace('/api/v1','')+'/qr/'+joinCode+'" style="width:100%;height:100%">':'')+'</div>';
+      html2+='<div style="flex:1"><div class="ban-name">'+esc(o.name)+'</div><div class="ban-reason">'+esc(o.slug)+' \u2022 Code: '+(joinCode||'N/A')+' \u2022 '+o.admin_count+' admin(s) \u2022 '+stripe+'</div></div>';
+      html2+='<div style="display:flex;gap:8px;align-items:center">';
+      html2+='<span style="color:'+statusColor+';font-size:12px;font-weight:700;text-transform:uppercase">'+status+'</span>';
+      if(status==='active'){
+        html2+='<button class="lb-btn danger" onclick="suspendOrg(\''+o.id+'\')">Suspend</button>';
+      }else if(status==='suspended'){
+        html2+='<button class="lb-btn" onclick="activateOrg(\''+o.id+'\')">Activate</button>';
+      }
+      html2+='</div></div>';
+    });
+    orgsEl.innerHTML=html2;
+  }
+
+  // Transactions
+  var txEl=document.getElementById('pTxList');
+  var txs=stats.recentTransactions||[];
+  if(!txs.length){txEl.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1F4B3;</div><div class="empty-state-text">No transactions yet</div></div>';
+  }else{
+    var html3='';
+    txs.forEach(function(tx){
+      var date=tx.created_at?new Date(tx.created_at).toLocaleDateString():'';
+      html3+='<div class="tx-row"><div class="tx-type coins">'+esc(tx.purchase_type||tx.type||'purchase')+'</div>';
+      html3+='<div style="flex:1;color:var(--text-2)">'+esc(tx.org_name||'')+' \u2022 '+esc(tx.player_name||'')+'</div>';
+      html3+='<div class="tx-amount">$'+((tx.amount_cents||0)/100).toFixed(2)+'</div>';
+      html3+='<div class="tx-date">'+date+'</div></div>';
+    });
+    txEl.innerHTML=html3;
+  }
+}
+
+function switchPSection(name){
+  document.querySelectorAll('#platformAdmin .dash-section').forEach(function(s){s.classList.remove('active')});
+  document.querySelectorAll('#platformAdmin .dash-nav-item').forEach(function(n){n.classList.remove('active')});
+  var sec=document.getElementById('psec-'+name);
+  if(sec) sec.classList.add('active');
+  var nav=document.querySelector('#platformAdmin [data-psection="'+name+'"]');
+  if(nav) nav.classList.add('active');
+}
+
+async function suspendOrg(orgId){
+  if(!confirm('Suspend this organization?')) return;
+  await platformApiPost('/superadmin/org-status',{orgId:orgId,status:'suspended'});
+  showToast('Organization suspended');loadPlatformData();
+}
+
+async function activateOrg(orgId){
+  await platformApiPost('/superadmin/org-status',{orgId:orgId,status:'active'});
+  showToast('Organization activated');loadPlatformData();
+}
+
+// Check for #platform on load
+window.addEventListener('hashchange',checkPlatformRoute);
+checkPlatformRoute();
+
 renderVibeGrid();
+
+// Wire dashboard color pickers
+['settingPrimary','settingAccent','settingBg'].forEach(function(base){
+  var pk=document.getElementById(base);
+  var hx=document.getElementById(base+'Hex');
+  if(pk&&hx){
+    pk.addEventListener('input',function(){hx.value=pk.value});
+    hx.addEventListener('input',function(){if(/^#[0-9a-fA-F]{6}$/.test(hx.value))pk.value=hx.value});
+  }
+});
+
+// Close modal on overlay click
+document.getElementById('confirmModal').addEventListener('click',function(e){if(e.target===this)closeModal()});
 </script>
 </body>
 </html>

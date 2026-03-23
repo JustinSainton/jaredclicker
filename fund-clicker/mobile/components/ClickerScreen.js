@@ -11,6 +11,7 @@ import {
   Modal,
   Image,
   ImageBackground,
+  ScrollView,
 } from "react-native";
 import * as Haptics from "../lib/haptics";
 import { useGame } from "../context/GameContext";
@@ -32,7 +33,7 @@ import {
   ACHIEVEMENTS,
 } from "../lib/gameEngine";
 import { useGameState } from "../hooks/useGameState";
-import { scoreStyle, headingStyle, floatNumberStyle, labelStyle, glowStyle, springConfig } from "../lib/theme-styles";
+import { scoreStyle, headingStyle, bodyStyle, floatNumberStyle, labelStyle, glowStyle, springConfig, cardStyle } from "../lib/theme-styles";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -42,7 +43,7 @@ function FloatingNumber({ x, y, text, onDone, theme }) {
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }).start(onDone);
+    Animated.timing(anim, { toValue: 1, duration: 1000, useNativeDriver: true }).start(onDone);
   }, []);
 
   return (
@@ -53,10 +54,10 @@ function FloatingNumber({ x, y, text, onDone, theme }) {
         {
           left: x - 30,
           top: y - 20,
-          opacity: anim.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 0.8, 0] }),
+          opacity: anim.interpolate({ inputRange: [0, 0.6, 1], outputRange: [1, 0.9, 0] }),
           transform: [
-            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -120] }) },
-            { scale: anim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.8, 1.3, 1] }) },
+            { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -140] }) },
+            { scale: anim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.8, 1.4, 1.5] }) },
           ],
         },
       ]}
@@ -100,52 +101,76 @@ function AchievementToast({ achievement, onDone }) {
 
 // ─── PHOTO EVENT MODAL ────────────────────────────────────────────────────────
 
-function PhotoEventModal({ visible, bonus, onDismiss, theme, characterPhotos }) {
+function PhotoEventModal({ visible, bonus, onDismiss, theme, characterPhotos, onHide }) {
   const [canDismiss, setCanDismiss] = useState(false);
   const [photoUrl, setPhotoUrl] = useState(null);
+  const [charName, setCharName] = useState(null);
+  const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setCanDismiss(false);
+      scaleAnim.setValue(0);
+      Animated.spring(scaleAnim, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }).start();
       const timer = setTimeout(() => setCanDismiss(true), 1500);
-      // Pick a random character photo if org has them
       if (characterPhotos && characterPhotos.length > 0) {
         const photo = characterPhotos[Math.floor(Math.random() * characterPhotos.length)];
-        setPhotoUrl(typeof photo === "string" ? photo : photo.url);
+        setPhotoUrl(typeof photo === "string" ? photo : (photo.url || null));
+        setCharName(typeof photo === "object" ? (photo.name || null) : null);
       } else {
         setPhotoUrl(null);
+        setCharName(null);
       }
       return () => clearTimeout(timer);
     }
   }, [visible, characterPhotos]);
 
-  const messages = [
-    t("characterAppeared"),
-    "A WILD CHARACTER APPEARS!",
+  const name = charName || "Someone";
+  const messages = charName ? [
+    `${name} APPEARED!`,
+    `${name} is watching you!`,
+    `${name} spotted in the wild!`,
+    `Oh no, it's ${name}!`,
+    `You can't escape ${name}!`,
+    `${name} is judging your clicks!`,
+    `${name} demands more clicks!`,
+    `${name} has entered the chat!`,
+  ] : [
     "SURPRISE APPEARANCE!",
-    "YOU FOUND THEM!",
-    "CHARACTER IS WATCHING!",
+    "A wild character appears!",
+    "Someone is watching!",
+    "You found them!",
+    "Character spotted!",
   ];
 
   return (
     <Modal transparent visible={visible} animationType="fade">
-        <Pressable
+      <Pressable
         style={styles.photoOverlay}
         onPress={canDismiss ? onDismiss : undefined}
       >
-        {photoUrl ? (
-          <Image source={{ uri: photoUrl }} style={styles.photoImage} resizeMode="contain" />
-        ) : (
-          <Text style={styles.photoEmoji}>{"\uD83D\uDE2E"}</Text>
-        )}
-        <Text style={styles.photoTitle}>
-          {messages[Math.floor(Math.random() * messages.length)]}
-        </Text>
-        <Text style={[styles.photoBonus, { color: theme.primary }]}>
-          +{formatNumber(bonus)} {theme.currencyName}!
-        </Text>
+        <Animated.View style={[styles.photoContainer, { transform: [{ scale: scaleAnim }] }]}>
+          <Text style={[styles.photoTitle, { color: theme.primary, textShadowColor: theme.glowColor || "rgba(255,215,0,0.5)" }]}>
+            {messages[Math.floor(Math.random() * messages.length)]}
+          </Text>
+          {photoUrl ? (
+            <View style={[styles.photoFrame, { borderColor: theme.primary }]}>
+              <Image source={{ uri: photoUrl }} style={styles.photoImage} resizeMode="cover" />
+            </View>
+          ) : (
+            <Text style={styles.photoEmoji}>{"\uD83D\uDE2E"}</Text>
+          )}
+          <Text style={[styles.photoBonus, scoreStyle(theme), { color: theme.success || "#4ade80" }]}>
+            +{formatNumber(bonus)} bonus {theme.currencyName}!
+          </Text>
+          {onHide && (
+            <Pressable style={styles.hideButton} onPress={onHide}>
+              <Text style={styles.hideButtonText}>Hide for 1 Hour — $1.99</Text>
+            </Pressable>
+          )}
+        </Animated.View>
         <Text style={styles.photoDismiss}>
-          {canDismiss ? t("tapToDismiss") : t("admireForAMoment")}
+          {canDismiss ? "tap anywhere to dismiss" : ""}
         </Text>
       </Pressable>
     </Modal>
@@ -169,11 +194,29 @@ function SabotageBanner({ state, theme }) {
   );
 }
 
+// ─── RESET COUNTDOWN ─────────────────────────────────────────────────────────
+
+function ResetCountdown({ nextResetAt }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  const diff = Math.max(0, nextResetAt - now);
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+  return <Text style={{ color: "#fbbf24", fontWeight: "800" }}>{days}d {hours}h {mins}m {secs}s</Text>;
+}
+
 // ─── MAIN CLICKER SCREEN ──────────────────────────────────────────────────────
 
 export default function ClickerScreen() {
-  const { player, updateScore, scoreEpoch, sabotages, connected, totalRaised, scoreCorrection } = useGame();
+  const { player, updateScore, scoreEpoch, sabotages, connected, totalRaised, scoreCorrection, nextResetAt } = useGame();
   const { org, theme } = useOrg();
+  const [showResetBanner, setShowResetBanner] = useState(true);
+  const [showRaisedBanner, setShowRaisedBanner] = useState(true);
 
   // Shared game state (synced with ShopScreen and other tabs)
   const { gameState, setGameState } = useGameState();
@@ -271,6 +314,7 @@ export default function ClickerScreen() {
   // Click handler
   const handlePress = useCallback((evt) => {
     if (!isClickAllowed()) return;
+    if (photoEvent) return; // Don't process clicks while photo modal is showing
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     playCoinClick();
@@ -309,7 +353,7 @@ export default function ClickerScreen() {
       Animated.timing(scaleAnim, { toValue: 0.88, duration: theme.animation?.coinPressDuration || 40, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1, friction: spring.friction, tension: spring.tension, useNativeDriver: true }),
     ]).start();
-  }, [scaleAnim]);
+  }, [scaleAnim, photoEvent]);
 
   // Remove floater
   const removeFloater = useCallback((id) => {
@@ -348,17 +392,28 @@ export default function ClickerScreen() {
       imageStyle={{ opacity: 0.4 }}
       resizeMode="cover"
     >
+      <ScrollView contentContainerStyle={styles.scrollContent} bounces={false} showsVerticalScrollIndicator={false}>
+      {/* Weekly reset countdown (dismissible) */}
+      {nextResetAt && showResetBanner && (
+        <Pressable style={styles.resetBanner} onPress={() => setShowResetBanner(false)}>
+          <Text style={styles.resetText}>
+            {"\u23F3"} Weekly Reset in <ResetCountdown nextResetAt={nextResetAt} />
+          </Text>
+          <Text style={styles.bannerDismiss}>{"\u2715"}</Text>
+        </Pressable>
+      )}
+
       {/* Sabotage banner */}
       <SabotageBanner state={gameState} theme={theme} />
 
-      {/* Total raised banner */}
-      {totalRaised && totalRaised.totalRaisedCents > 0 && (
-        <View style={styles.raisedBanner}>
+      {/* Total raised banner (dismissible) */}
+      {showRaisedBanner && totalRaised && totalRaised.totalRaisedCents > 0 && (
+        <Pressable style={styles.raisedBanner} onPress={() => setShowRaisedBanner(false)}>
           <Text style={styles.raisedText}>
             {"\uD83D\uDCB0"} ${(totalRaised.totalRaisedCents / 100).toFixed(2)} raised
-            {totalRaised.transactionCount > 0 ? ` (${totalRaised.transactionCount} donations)` : ""}
           </Text>
-        </View>
+          <Text style={styles.bannerDismiss}>{"\u2715"}</Text>
+        </Pressable>
       )}
 
       {/* Score display */}
@@ -381,7 +436,7 @@ export default function ClickerScreen() {
         </View>
         {/* Rank */}
         <View style={styles.rankRow}>
-          <Text style={styles.rankName}>{rank.name}</Text>
+          <Text style={[styles.rankName, { color: theme.primary }]}>{rank.name}</Text>
           <View style={styles.rankBar}>
             <View style={[styles.rankFill, { width: rankProgress + "%", backgroundColor: theme.primary }]} />
           </View>
@@ -443,7 +498,7 @@ export default function ClickerScreen() {
       <View style={styles.quickStats}>
         <View style={styles.quickStat}>
           <Text style={styles.qsLabel}>{t("sightings")}</Text>
-          <Text style={[styles.qsValue, scoreStyle(theme), { color: theme.primary }]}>{gameState.sightings}</Text>
+          <Text style={[styles.qsValue, { color: theme.primary }]}>{gameState.sightings}</Text>
         </View>
         <View style={styles.quickStat}>
           <Text style={styles.qsLabel}>{t("upgrades")}</Text>
@@ -467,6 +522,8 @@ export default function ClickerScreen() {
         </Text>
       </View>
 
+      </ScrollView>
+
       {/* Floating numbers */}
       {floaters.map((f) => (
         <FloatingNumber key={f.id} x={f.x} y={f.y} text={f.text} theme={theme} onDone={() => removeFloater(f.id)} />
@@ -480,6 +537,10 @@ export default function ClickerScreen() {
           onDismiss={dismissPhoto}
           theme={theme}
           characterPhotos={theme.characterPhotos}
+          onHide={() => {
+            dismissPhoto();
+            // TODO: wire to Stripe payment for "Hide Luke for 1 Hour — $1.99"
+          }}
         />
       )}
 
@@ -496,30 +557,42 @@ export default function ClickerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "space-between" },
+  container: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: "space-between", paddingBottom: 80 },
+  // Reset banner
+  resetBanner: {
+    backgroundColor: "rgba(251,191,36,0.1)", paddingVertical: 8, paddingHorizontal: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    borderBottomWidth: 1, borderBottomColor: "rgba(251,191,36,0.15)",
+  },
+  resetText: { fontSize: 12, fontWeight: "700", color: "#fbbf24", flex: 1, textAlign: "center" },
+  bannerDismiss: { color: "#aaa", fontSize: 14, paddingLeft: 12 },
   // Total raised
   raisedBanner: {
-    backgroundColor: "rgba(74,222,128,0.1)", paddingVertical: 6, paddingHorizontal: 16,
-    alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(74,222,128,0.2)",
+    backgroundColor: "rgba(74,222,128,0.1)", paddingVertical: 8, paddingHorizontal: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    borderBottomWidth: 1, borderBottomColor: "rgba(74,222,128,0.2)",
   },
-  raisedText: { fontSize: 12, fontWeight: "700", color: "#4ade80" },
+  raisedText: { fontSize: 13, fontWeight: "700", color: "#4ade80", flex: 1, textAlign: "center" },
   // Sabotage
   sabotageBanner: {
-    paddingVertical: 6, paddingHorizontal: 16, alignItems: "center",
+    paddingVertical: 8, paddingHorizontal: 16, alignItems: "center",
+    shadowColor: "#ef4444", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 8,
   },
-  sabotageText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  sabotageText: { color: "#fff", fontSize: 13, fontWeight: "800", letterSpacing: 0.5 },
   // Score
   scoreSection: { alignItems: "center", paddingTop: 8 },
-  score: { fontSize: 44, fontWeight: "900", fontVariant: ["tabular-nums"] },
-  currencyLabel: { fontSize: 14, color: "#888", textTransform: "uppercase", letterSpacing: 3, marginTop: 2 },
-  statsRow: { flexDirection: "row", marginTop: 6, gap: 12, alignItems: "center" },
-  stat: { fontSize: 13, color: "#aaa", fontWeight: "500" },
-  statSep: { fontSize: 13, color: "#444" },
+  score: { fontSize: 42, fontWeight: "900", fontVariant: ["tabular-nums"] },
+  currencyLabel: { fontSize: 11, color: "#aaa", textTransform: "uppercase", letterSpacing: 4, marginTop: 4 },
+  statsRow: { flexDirection: "row", marginTop: 8, gap: 12, alignItems: "center" },
+  stat: { fontSize: 13, color: "#ccc", fontWeight: "600" },
+  statSep: { fontSize: 13, color: "#555" },
   // Rank
-  rankRow: { flexDirection: "row", alignItems: "center", marginTop: 8, gap: 8 },
-  rankName: { fontSize: 12, color: "#FFD700", fontWeight: "700" },
-  rankBar: { width: 80, height: 4, backgroundColor: "#333", borderRadius: 2, overflow: "hidden" },
-  rankFill: { height: "100%", borderRadius: 2 },
+  rankRow: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 8 },
+  rankName: { fontSize: 13, fontWeight: "700" },
+  rankBar: { width: 100, height: 6, backgroundColor: "#333", borderRadius: 3, overflow: "hidden" },
+  rankFill: { height: "100%", borderRadius: 3 },
   // Coin
   coinSection: { alignItems: "center", justifyContent: "center", flex: 1 },
   coinOuter: { alignItems: "center", justifyContent: "center" },
@@ -534,16 +607,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5, shadowRadius: 20, elevation: 10,
   },
   coinEmoji: { fontSize: 72 },
-  clickHint: { color: "#666", fontSize: 12, marginTop: 12 },
+  clickHint: { color: "#aaa", fontSize: 12, marginTop: 12 },
   // Quick stats
   quickStats: { flexDirection: "row", paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
-  quickStat: { flex: 1, backgroundColor: "#16213e", borderRadius: 10, padding: 10, alignItems: "center" },
-  qsLabel: { fontSize: 10, color: "#888", fontWeight: "600", textTransform: "uppercase" },
+  quickStat: { flex: 1, backgroundColor: "rgba(0,0,0,0.3)", borderRadius: 10, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" },
+  qsLabel: { fontSize: 9, color: "#aaa", fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 },
   qsValue: { fontSize: 18, fontWeight: "800", marginTop: 2 },
   // Connection
-  connectionBar: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, paddingBottom: 4 },
-  connectionDot: { width: 6, height: 6, borderRadius: 3 },
-  connectionText: { fontSize: 10, color: "#666" },
+  connectionBar: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, paddingBottom: 6, paddingTop: 4 },
+  connectionDot: { width: 7, height: 7, borderRadius: 4 },
+  connectionText: { fontSize: 11, color: "#aaa", fontWeight: "500" },
   // Floating numbers
   floatingNumber: {
     position: "absolute", fontWeight: "900", fontSize: 22, color: "#FFD700",
@@ -552,23 +625,49 @@ const styles = StyleSheet.create({
   },
   // Photo event
   photoOverlay: {
-    flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center",
+    flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", alignItems: "center",
+    paddingHorizontal: 24,
   },
-  photoImage: { width: 200, height: 200, borderRadius: 20, marginBottom: 20 },
-  photoEmoji: { fontSize: 100, marginBottom: 20 },
-  photoTitle: { fontSize: 24, fontWeight: "900", color: "#fff", textAlign: "center" },
-  photoBonus: { fontSize: 28, fontWeight: "900", marginTop: 12 },
-  photoDismiss: { fontSize: 14, color: "#888", marginTop: 24 },
+  photoContainer: { alignItems: "center", width: "100%" },
+  photoFrame: {
+    width: SCREEN_WIDTH - 48, aspectRatio: 0.85, borderRadius: 12,
+    borderWidth: 4, borderColor: "#FFD700", overflow: "hidden",
+    shadowColor: "#FFD700", shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5, shadowRadius: 20, elevation: 10,
+    marginVertical: 16,
+  },
+  photoImage: { width: "100%", height: "100%" },
+  photoEmoji: { fontSize: 100, marginVertical: 20 },
+  photoTitle: {
+    fontSize: 26, fontWeight: "900", color: "#FFD700", textAlign: "center",
+    textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 0,
+    letterSpacing: 1,
+  },
+  photoBonus: {
+    fontSize: 24, fontWeight: "900", marginTop: 4,
+    textShadowColor: "rgba(0,0,0,0.5)", textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2,
+  },
+  photoDismiss: { fontSize: 13, color: "#888", marginTop: 24, position: "absolute", bottom: 60 },
+  hideButton: {
+    marginTop: 16, paddingVertical: 14, paddingHorizontal: 32,
+    borderRadius: 12, overflow: "hidden",
+    backgroundColor: "#9333ea",
+    shadowColor: "#9333ea", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, shadowRadius: 12, elevation: 6,
+  },
+  hideButtonText: { color: "#fff", fontSize: 16, fontWeight: "800", textAlign: "center" },
   // Achievement toast
   achievementToast: {
     position: "absolute", top: 100, left: 20, right: 20,
-    backgroundColor: "#16213e", borderRadius: 12, padding: 14,
-    flexDirection: "row", alignItems: "center", gap: 12,
-    borderWidth: 1, borderColor: "#FFD700",
+    borderRadius: 14, padding: 16,
+    flexDirection: "row", alignItems: "center", gap: 14,
+    borderWidth: 2, borderColor: "#FFD700",
     shadowColor: "#FFD700", shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3, shadowRadius: 10, elevation: 10, zIndex: 1000,
+    shadowOpacity: 0.4, shadowRadius: 15, elevation: 12, zIndex: 1000,
+    // Gradient approximation
+    backgroundColor: "#2a2a4a",
   },
-  achievementEmoji: { fontSize: 32 },
-  achievementLabel: { fontSize: 11, color: "#FFD700", fontWeight: "700" },
+  achievementEmoji: { fontSize: 36 },
+  achievementLabel: { fontSize: 10, color: "#4ade80", fontWeight: "800", textTransform: "uppercase", letterSpacing: 2 },
   achievementName: { fontSize: 14, color: "#fff", fontWeight: "600", marginTop: 2 },
 });

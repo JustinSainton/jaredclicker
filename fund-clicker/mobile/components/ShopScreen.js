@@ -32,6 +32,8 @@ import {
   buySabotageCredits,
   buyCoinCut,
   buyBreakFree,
+  buyCoinPack,
+  buyHideLuke,
   formatPrice,
   isPaymentsEnabled,
 } from "../lib/payments";
@@ -137,6 +139,45 @@ export default function ShopScreen() {
   }, [stripe, org?.slug, player?.name, paymentsEnabled, myCredits]);
 
   // ─── COIN CUT PURCHASE ─────────────────────────────────────────────
+  const handleBuyCoinPack = useCallback(async (pack) => {
+    if (!paymentsEnabled) {
+      Alert.alert(t("paymentsNotReady"), t("connectStripePrompt"));
+      return;
+    }
+    setBuying(pack.id);
+    const result = await buyCoinPack(stripe, org.slug, {
+      playerName: player.name,
+      packId: pack.id,
+      priceCents: pack.price,
+      coins: pack.coins,
+      playerToken: player.token,
+    });
+    setBuying(null);
+    if (result.success) {
+      Alert.alert("Coins Added!", `${formatNumber(pack.coins)} ${theme.currencyName} have been added to your balance!`);
+    } else if (result.error) {
+      Alert.alert(t("purchaseFailed"), result.error);
+    }
+  }, [stripe, org?.slug, player?.name, player?.token, paymentsEnabled, theme]);
+
+  const handleHideLuke = useCallback(async () => {
+    if (!paymentsEnabled) {
+      Alert.alert(t("paymentsNotReady"), t("connectStripePrompt"));
+      return;
+    }
+    setBuying("hide_luke");
+    const result = await buyHideLuke(stripe, org.slug, {
+      playerName: player.name,
+      playerToken: player.token,
+    });
+    setBuying(null);
+    if (result.success) {
+      Alert.alert("Photos Hidden!", "Photo events are hidden for 1 hour. Enjoy the peace!");
+    } else if (result.error) {
+      Alert.alert(t("purchaseFailed"), result.error);
+    }
+  }, [stripe, org?.slug, player?.name, player?.token, paymentsEnabled]);
+
   const handleCoinCut = useCallback((percentage) => {
     if (!paymentsEnabled) {
       Alert.alert(t("paymentsNotReady"), t("connectStripePrompt"));
@@ -307,7 +348,7 @@ export default function ShopScreen() {
             <View style={styles.upgradeLeft}>
               <Text style={styles.upgradeEmoji}>{upgrade.emoji}</Text>
               <View style={styles.upgradeInfo}>
-                <Text style={[styles.upgradeName, !canAfford && { color: "#555" }]}>
+                <Text style={[styles.upgradeName, !canAfford && { color: "#999" }]}>
                   {upgrade.name}
                   {owned > 0 && <Text style={styles.ownedBadge}> x{owned}</Text>}
                 </Text>
@@ -386,6 +427,49 @@ export default function ShopScreen() {
         </TouchableOpacity>
       ))}
 
+      {/* ─── COIN PACKS ────────────────────────────────────────────── */}
+      <Text style={[styles.sectionTitle, { marginTop: 28 }]}>{"\uD83D\uDCB0"} Coin Packs</Text>
+      <Text style={styles.sectionDesc}>
+        Buy {theme.currencyName} instantly with real money!
+      </Text>
+      {[
+        { id: "starter", label: "Starter Pack", coins: 50000, price: 199, emoji: "\uD83D\uDCE6" },
+        { id: "grinder", label: "Grinder Pack", coins: 500000, price: 499, emoji: "\uD83D\uDD25" },
+        { id: "baller", label: "Baller Pack", coins: 5000000, price: 999, emoji: "\uD83D\uDCB8" },
+        { id: "whale", label: "Whale Pack", coins: 100000000, price: 1999, emoji: "\uD83D\uDC33" },
+      ].map((pack) => (
+        <TouchableOpacity
+          key={pack.id}
+          style={styles.shopItem}
+          onPress={() => handleBuyCoinPack?.(pack)}
+          disabled={!!buying}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.itemName}>{pack.emoji} {pack.label}</Text>
+            <Text style={styles.itemDesc}>{formatNumber(pack.coins)} {theme.currencyName}</Text>
+          </View>
+          <View style={[styles.priceTag, { backgroundColor: theme.primary }]}>
+            <Text style={[styles.priceText, { color: "#1a1a2e" }]}>{formatPrice(pack.price)}</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
+
+      {/* ─── HIDE PHOTOS ─────────────────────────────────────────── */}
+      <Text style={[styles.sectionTitle, { marginTop: 28 }]}>{"\uD83D\uDE48"} Hide Photo Events</Text>
+      <TouchableOpacity
+        style={styles.shopItem}
+        onPress={() => handleHideLuke?.()}
+        disabled={!!buying}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.itemName}>{"\uD83D\uDE48"} Hide for 1 Hour</Text>
+          <Text style={styles.itemDesc}>Stop random photo pop-ups while you play</Text>
+        </View>
+        <View style={[styles.priceTag, { backgroundColor: "#9333ea" }]}>
+          <Text style={styles.priceText}>$1.99</Text>
+        </View>
+      </TouchableOpacity>
+
       {/* ─── REVENUE NOTICE ────────────────────────────────────────── */}
       <View style={styles.notice}>
         <Text style={styles.noticeText}>
@@ -440,8 +524,8 @@ const styles = StyleSheet.create({
   // Upgrades
   upgradeItem: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: "#16213e", borderRadius: 12, padding: 12, marginBottom: 6,
-    borderWidth: 1, borderColor: "#1e2a45",
+    backgroundColor: "rgba(0,0,0,0.25)", borderRadius: 12, padding: 12, marginBottom: 6,
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.06)",
   },
   upgradeLeft: { flexDirection: "row", flex: 1, alignItems: "center", gap: 10 },
   upgradeEmoji: { fontSize: 26, width: 34, textAlign: "center" },
@@ -451,8 +535,8 @@ const styles = StyleSheet.create({
   upgradeDesc: { fontSize: 11, color: "#888", marginTop: 2 },
   upgradeType: { fontSize: 9, fontWeight: "800", letterSpacing: 1, marginTop: 3 },
   costTag: { backgroundColor: "#222", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, minWidth: 60, alignItems: "center" },
-  costText: { fontSize: 13, fontWeight: "800", color: "#666" },
-  moreUpgrades: { color: "#555", textAlign: "center", marginTop: 8, marginBottom: 8, fontSize: 13, fontStyle: "italic" },
+  costText: { fontSize: 13, fontWeight: "800", color: "#aaa" },
+  moreUpgrades: { color: "#999", textAlign: "center", marginTop: 8, marginBottom: 8, fontSize: 13, fontStyle: "italic" },
   // Shop items (real-money purchases)
   shopItem: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
@@ -492,5 +576,5 @@ const styles = StyleSheet.create({
   },
   targetName: { fontSize: 16, color: "#fff", fontWeight: "600" },
   targetScore: { fontSize: 14, fontWeight: "700" },
-  targetEmpty: { color: "#666", textAlign: "center", padding: 40, fontSize: 14 },
+  targetEmpty: { color: "#aaa", textAlign: "center", padding: 40, fontSize: 14 },
 });

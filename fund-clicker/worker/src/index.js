@@ -2,7 +2,7 @@
 // Thin layer that maps /api/v1/orgs/:slug/* → per-org Durable Object instances
 // All game logic lives in OrgGameInstance (extracted from LiveVisitors)
 
-import { createToken, verifyToken, hashPassword, verifyPassword, needsPasswordRehash, extractBearer, requireAdmin, generateJoinCode, isValidSlug, slugify } from "./auth.js";
+import { createToken, verifyToken, hashPassword, verifyPassword, needsPasswordRehash, extractBearer, requireAdmin, requirePlatformAdmin, generateJoinCode, isValidSlug, slugify } from "./auth.js";
 import { getConnectOAuthURL, exchangeOAuthCode, createPaymentIntent, getAccountStatus, createAccountLink, verifyWebhookSignature, getPaymentIntent, calculatePlatformFee, calculateTotalFee } from "./stripe.js";
 
 export { OrgGameInstance } from "./org-game.js";
@@ -89,6 +89,8 @@ const PURCHASE_SPECS = {
   total_wipe_campaign: { actorField: "contributorName", transactionType: "campaign", supported: true },
   double_or_nothing: { actorField: "playerName", transactionType: "double_or_nothing", supported: true },
   rematch: { actorField: "playerName", transactionType: "rematch", supported: true },
+  coin_pack: { actorField: "playerName", transactionType: "coin_pack", supported: true },
+  hide_luke: { actorField: "playerName", transactionType: "hide_luke", supported: true },
 };
 
 export class ValidationError extends Error {
@@ -257,6 +259,15 @@ export function resolveExpectedAmount(type, metadata) {
       return 99; // $0.99
     case "rematch":
       return 199; // $1.99
+    case "coin_pack": {
+      const COIN_PACK_PRICES = { starter: 199, grinder: 499, baller: 999, whale: 1999 };
+      const packId = String(metadata.packId || "");
+      const amount = COIN_PACK_PRICES[packId];
+      if (!amount) throw new ValidationError("Invalid coin pack");
+      return amount;
+    }
+    case "hide_luke":
+      return 199; // $1.99
     default:
       throw new ValidationError("This purchase type is not available in production yet");
   }
@@ -347,7 +358,23 @@ async function applyPaymentEntitlement(env, orgId, paymentIntentId, type, metada
     case "double_or_nothing":
     case "rematch":
       // These are handled by the battle system — payment is the entitlement
-      // The game server creates the rematch/double-or-nothing game on payment confirmation
+      return;
+
+    case "coin_pack": {
+      const COIN_PACK_AMOUNTS = { starter: 50000, grinder: 500000, baller: 5000000, whale: 100000000 };
+      const coins = COIN_PACK_AMOUNTS[metadata.packId] || 0;
+      if (coins > 0) {
+        await callInternalOrgRoute(env, orgId, "/admin/add-coins", {
+          body: { playerName: metadata.playerName, amount: coins },
+        });
+      }
+      return;
+    }
+
+    case "hide_luke":
+      await callInternalOrgRoute(env, orgId, "/admin/hide-luke", {
+        body: { playerName: metadata.playerName, durationMinutes: 60 },
+      });
       return;
 
     default:
@@ -534,12 +561,138 @@ export default {
       return jsonResponse({ status: "ok", version: "1.0.0" });
     }
 
+    // ── Debug: path inspection
+    if (url.pathname === "/debug-path") {
+      return jsonResponse({ pathname: url.pathname, host: url.host, origin: url.origin });
+    }
+
+    // ── Giphy GIF search proxy
+    if (url.pathname === "/api/v1/gifs/search" && request.method === "GET") {
+      const q = url.searchParams.get("q") || "funny";
+      const limit = Math.min(Number(url.searchParams.get("limit")) || 20, 30);
+      const giphyKey = env.GIPHY_API_KEY || "GlVGYHkr3WSBnllca54iNt0yFbjz7L65"; // Giphy public beta key
+      const giphyUrl = `https://api.giphy.com/v1/gifs/search?api_key=${giphyKey}&q=${encodeURIComponent(q)}&limit=${limit}&rating=pg-13`;
+      try {
+        const res = await fetch(giphyUrl);
+        const data = await res.json();
+        const gifs = (data.data || []).map(g => ({
+          id: g.id,
+          title: g.title || "",
+          url: g.images?.fixed_height?.url || g.images?.original?.url || "",
+          preview: g.images?.fixed_height_small?.url || g.images?.preview_gif?.url || g.images?.fixed_height?.url || "",
+          width: Number(g.images?.fixed_height?.width) || 200,
+          height: Number(g.images?.fixed_height?.height) || 200,
+        }));
+        return jsonResponse({ gifs });
+      } catch (e) {
+        return jsonResponse({ gifs: [], error: e.message });
+      }
+    }
+
+    if (url.pathname === "/api/v1/gifs/trending" && request.method === "GET") {
+      const limit = Math.min(Number(url.searchParams.get("limit")) || 20, 30);
+      const giphyKey = env.GIPHY_API_KEY || "GlVGYHkr3WSBnllca54iNt0yFbjz7L65";
+      const giphyUrl = `https://api.giphy.com/v1/gifs/trending?api_key=${giphyKey}&limit=${limit}&rating=pg-13`;
+      try {
+        const res = await fetch(giphyUrl);
+        const data = await res.json();
+        const gifs = (data.data || []).map(g => ({
+          id: g.id,
+          title: g.title || "",
+          url: g.images?.fixed_height?.url || g.images?.original?.url || "",
+          preview: g.images?.fixed_height_small?.url || g.images?.preview_gif?.url || g.images?.fixed_height?.url || "",
+          width: Number(g.images?.fixed_height?.width) || 200,
+          height: Number(g.images?.fixed_height?.height) || 200,
+        }));
+        return jsonResponse({ gifs });
+      } catch (e) {
+        return jsonResponse({ gifs: [], error: e.message });
+      }
+    }
+
+    // ── QR code generator: /qr/:code — returns SVG QR code
+    const qrMatch = url.pathname.match(/^\/qr\/([A-Za-z0-9]{4,8})$/);
+    if (qrMatch) {
+      const code = qrMatch[1].toUpperCase();
+      const joinUrl = `https://api.fundclicker.com/join/${code}`;
+      // Use a simple QR code via external service (reliable, no dependencies)
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(joinUrl)}&bgcolor=07070b&color=d4a826&format=svg`;
+      const qrRes = await fetch(qrApiUrl);
+      if (!qrRes.ok) return errorResponse("QR generation failed", 500);
+      const svg = await qrRes.text();
+      return new Response(svg, { headers: { "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=86400", ...corsHeaders } });
+    }
+
+    // ── Join deep link: /join/:code — smart redirect page for QR codes
+    const joinMatch = url.pathname.match(/^\/join\/([A-Za-z0-9]{4,8})$/);
+    if (joinMatch) {
+      const code = joinMatch[1].toUpperCase();
+      const org = await lookupOrgByJoinCode(env.DB, code);
+      const orgName = org ? org.name : "Fund Clicker";
+      const orgSlug = org ? org.slug : "";
+      // Serve an HTML page that attempts deep link → app store → web fallback
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Join ${orgName} on Fund Clicker</title>
+<meta property="og:title" content="Join ${orgName} on Fund Clicker">
+<meta property="og:description" content="Tap to join the ${orgName} fundraiser and start clicking!">
+<meta property="og:image" content="https://fundclicker.com/og-image.png">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,system-ui,sans-serif;background:#07070b;color:#f2f2f6;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
+.card{background:#14141e;border:1px solid #22222e;border-radius:20px;padding:48px 32px;max-width:400px;width:100%}
+h1{font-size:28px;margin-bottom:8px}
+h1 b{color:#d4a826;font-style:italic}
+.org{font-size:18px;color:#a0a0b8;margin-bottom:24px}
+.code{font-size:48px;font-weight:800;letter-spacing:8px;color:#d4a826;text-shadow:0 0 30px rgba(212,168,38,0.3);margin:24px 0;user-select:all}
+.btn{display:block;width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;margin-bottom:12px;text-align:center}
+.btn-primary{background:#8b5cf6;color:#fff}
+.btn-secondary{background:#1c1c28;color:#f2f2f6;border:1px solid #22222e}
+.stores{display:flex;gap:12px;margin-top:16px;justify-content:center}
+.stores a{color:#a0a0b8;font-size:13px;text-decoration:none}
+.stores a:hover{color:#d4a826}
+.hint{font-size:13px;color:#5a5a72;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>Fund<b>Clicker</b></h1>
+<p class="org">${orgName}</p>
+<div class="code">${code}</div>
+<a class="btn btn-primary" id="openApp" href="fundclicker://join/${code}">Open in App</a>
+<a class="btn btn-secondary" href="https://admin.fundclicker.com">Open on Web</a>
+<div class="stores">
+<a href="https://apps.apple.com/app/fund-clicker/id0000000000">App Store</a>
+<span style="color:#333">|</span>
+<a href="https://play.google.com/store/apps/details?id=com.fundclicker.app">Google Play</a>
+</div>
+<p class="hint">Enter code <strong>${code}</strong> in the app to join</p>
+</div>
+<script>
+// Try deep link first, fall back gracefully
+setTimeout(function(){
+  var a=document.getElementById('openApp');
+  a.textContent='Download the App';
+  a.href='https://apps.apple.com/app/fund-clicker/id0000000000';
+},2500);
+</script>
+</body>
+</html>`;
+      return new Response(html, { status: 200, headers: { "Content-Type": "text/html;charset=utf-8", ...corsHeaders } });
+    }
+
     // ── Serve assets from R2 (vibe assets, org-specific assets like coins/photos/skins)
-    if ((url.pathname.startsWith("/vibes/") || url.pathname.startsWith("/orgs-assets/")) && request.method === "GET") {
-      // Map URL paths to R2 keys:
-      //   /vibes/retro-arcade/coin.png → vibes/retro-arcade/coin.png
-      //   /orgs-assets/jared-clicker/coin.png → orgs/jared-clicker/coin.png
-      let key = url.pathname.slice(1);
+    if (url.pathname.startsWith("/vibes/") || url.pathname.startsWith("/orgs-assets/") || url.pathname.includes("/vibes/") || url.pathname.includes("/orgs-assets/")) {
+      let p = url.pathname;
+      // Strip any prefix (e.g. /api/v1) to get the asset path
+      const vibeIdx = p.indexOf("/vibes/");
+      const orgIdx = p.indexOf("/orgs-assets/");
+      if (vibeIdx >= 0) p = p.slice(vibeIdx);
+      else if (orgIdx >= 0) p = p.slice(orgIdx);
+      let key = p.slice(1); // strip leading /
       if (key.startsWith("orgs-assets/")) {
         key = "orgs/" + key.slice("orgs-assets/".length);
       }
@@ -727,7 +880,103 @@ async function handleOrgRoutes(slug, subpath, url, request, env) {
     if (!claims || claims.orgId !== org.id) {
       return errorResponse("Unauthorized", 401);
     }
-    // Forward admin requests to DO
+
+    // ── Photo management (needs R2 — handled in worker, not DO)
+    if (subpath === "/admin/photos" && request.method === "GET") {
+      const prefix = `orgs/${org.slug}/photos/`;
+      const list = await env.ASSETS.list({ prefix });
+      const photos = (list.objects || []).map(o => ({
+        key: o.key.replace(prefix, ""),
+        fullKey: o.key,
+        size: o.size,
+        uploaded: o.uploaded,
+        url: `/orgs-assets/${org.slug}/photos/${o.key.replace(prefix, "")}`,
+      }));
+      // Load display names from org config
+      const config = await getOrgConfig(env.DB, org.id);
+      const charPhotos = JSON.parse(config?.character_photos || "[]");
+      for (const p of photos) {
+        const match = charPhotos.find(cp => cp.key === p.key);
+        if (match) p.displayName = match.displayName;
+      }
+      return jsonResponse({ photos });
+    }
+
+    if (subpath === "/admin/upload-photo" && request.method === "POST") {
+      const formData = await request.formData();
+      const file = formData.get("photo");
+      if (!file) return errorResponse("No file provided");
+      const key = `orgs/${org.slug}/photos/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      await env.ASSETS.put(key, file.stream(), {
+        httpMetadata: { contentType: file.type },
+      });
+      return jsonResponse({ ok: true, key: key.replace(`orgs/${org.slug}/photos/`, ""), url: `/orgs-assets/${org.slug}/photos/${key.replace(`orgs/${org.slug}/photos/`, "")}` });
+    }
+
+    if (subpath === "/admin/delete-photo" && request.method === "POST") {
+      const body = await request.json();
+      if (!body.key) return errorResponse("key required");
+      const fullKey = `orgs/${org.slug}/photos/${body.key}`;
+      await env.ASSETS.delete(fullKey);
+      // Remove from character_photos config
+      const config = await getOrgConfig(env.DB, org.id);
+      const charPhotos = JSON.parse(config?.character_photos || "[]").filter(cp => cp.key !== body.key);
+      await env.DB.prepare("UPDATE org_config SET character_photos = ?, updated_at = datetime('now') WHERE org_id = ?")
+        .bind(JSON.stringify(charPhotos), org.id).run();
+      return jsonResponse({ ok: true, deleted: body.key });
+    }
+
+    if (subpath === "/admin/set-photo-name" && request.method === "POST") {
+      const body = await request.json();
+      const key = String(body.key || "");
+      const displayName = String(body.displayName || "").slice(0, 30);
+      if (!key) return errorResponse("key required");
+      const config = await getOrgConfig(env.DB, org.id);
+      const charPhotos = JSON.parse(config?.character_photos || "[]");
+      const existing = charPhotos.find(cp => cp.key === key);
+      if (existing) { existing.displayName = displayName; }
+      else { charPhotos.push({ key, displayName }); }
+      await env.DB.prepare("UPDATE org_config SET character_photos = ?, updated_at = datetime('now') WHERE org_id = ?")
+        .bind(JSON.stringify(charPhotos), org.id).run();
+      return jsonResponse({ ok: true });
+    }
+
+    // ── Custom coin upload (R2)
+    if (subpath === "/admin/upload-coin" && request.method === "POST") {
+      const formData = await request.formData();
+      const file = formData.get("coin");
+      if (!file) return errorResponse("No file provided");
+      const key = `orgs/${org.slug}/coin.png`;
+      await env.ASSETS.put(key, file.stream(), {
+        httpMetadata: { contentType: file.type || "image/png" },
+      });
+      // Update org_config
+      await env.DB.prepare("UPDATE org_config SET coin_image_key = ?, updated_at = datetime('now') WHERE org_id = ?")
+        .bind(key, org.id).run();
+      orgCache.delete(org.slug);
+      await syncOrgConfigToDO(env, org.id, await getOrgConfig(env.DB, org.id));
+      return jsonResponse({ ok: true, url: `/orgs-assets/${org.slug}/coin.png` });
+    }
+
+    // ── Freeze player (admin-initiated sabotage via DO)
+    if (subpath === "/admin/freeze" && request.method === "POST") {
+      const body = await request.json();
+      const targetName = String(body.playerName || "").trim();
+      const durationMin = Math.max(1, Math.min(360, Number(body.durationMin) || 5));
+      if (!targetName) return errorResponse("playerName required");
+      const doUrl2 = new URL(request.url);
+      doUrl2.pathname = "/freeze";
+      const doReq2 = new Request(doUrl2, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attackerName: "ADMIN", targetName, durationMin }),
+      });
+      const doRes2 = await doStub.fetch(doReq2);
+      const doBody = await doRes2.text();
+      return corsResponse(doBody, { status: doRes2.status, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Forward remaining admin requests to DO
     const doUrl = new URL(request.url);
     doUrl.pathname = subpath;
     const doReq = new Request(doUrl, {
@@ -1135,6 +1384,106 @@ async function handlePlatformRoutes(url, request, env) {
     ).bind(crypto.randomUUID(), claims.orgId, normalizedEmail, body.role || "admin", token, expiresAt).run();
 
     return jsonResponse({ ok: true, token, expiresAt });
+  }
+
+  // ═══ PLATFORM SUPERADMIN ROUTES ═══════════════════════════════════════════
+
+  // ── Platform admin login
+  if (path === "/superadmin/login" && request.method === "POST") {
+    const { email, password } = await request.json();
+    if (!email || !password) return errorResponse("email and password required");
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const admin = await env.DB.prepare(
+      "SELECT * FROM platform_admins WHERE lower(email) = lower(?)"
+    ).bind(normalizedEmail).first();
+    if (!admin) return errorResponse("Invalid credentials", 401);
+    if (!(await verifyPassword(password, admin.password_hash))) return errorResponse("Invalid credentials", 401);
+    const token = await createToken({ platformAdminId: admin.id, email: admin.email, role: admin.role, isPlatformAdmin: true }, env.JWT_SECRET);
+    return jsonResponse({ token, admin: { id: admin.id, email: admin.email, role: admin.role } });
+  }
+
+  // ── Platform admin: register first superadmin (only works if no platform admins exist)
+  if (path === "/superadmin/bootstrap" && request.method === "POST") {
+    const existing = await env.DB.prepare("SELECT COUNT(*) as count FROM platform_admins").first();
+    if (existing && existing.count > 0) return errorResponse("Platform admin already exists. Use /superadmin/login.", 409);
+    const { email, password } = await request.json();
+    if (!email || !password || password.length < 8) return errorResponse("email and password (8+ chars) required");
+    const passwordHash = await hashPassword(password);
+    const id = crypto.randomUUID();
+    await env.DB.prepare("INSERT INTO platform_admins (id, email, password_hash, role) VALUES (?, ?, ?, 'superadmin')").bind(id, String(email).trim().toLowerCase(), passwordHash).run();
+    const token = await createToken({ platformAdminId: id, email: String(email).trim().toLowerCase(), role: "superadmin", isPlatformAdmin: true }, env.JWT_SECRET);
+    return jsonResponse({ token, admin: { id, email: String(email).trim().toLowerCase(), role: "superadmin" } }, 201);
+  }
+
+  // ── Platform admin: list all orgs with stats
+  if (path === "/superadmin/orgs" && request.method === "GET") {
+    const claims = await requirePlatformAdmin(request, env);
+    if (!claims) return errorResponse("Forbidden", 403);
+    const orgs = await env.DB.prepare(`
+      SELECT o.*, oc.primary_color, oc.currency_name,
+        (SELECT COUNT(*) FROM org_admins WHERE org_id = o.id) as admin_count,
+        sa.stripe_account_id, sa.charges_enabled
+      FROM orgs o
+      LEFT JOIN org_config oc ON oc.org_id = o.id
+      LEFT JOIN stripe_accounts sa ON sa.org_id = o.id
+      ORDER BY o.created_at DESC
+    `).all();
+    return jsonResponse({ orgs: orgs.results });
+  }
+
+  // ── Platform admin: get detailed org info
+  if (path.match(/^\/superadmin\/orgs\/[a-z0-9-]+$/) && request.method === "GET") {
+    const claims = await requirePlatformAdmin(request, env);
+    if (!claims) return errorResponse("Forbidden", 403);
+    const orgSlug = path.replace("/superadmin/orgs/", "");
+    const org = await env.DB.prepare("SELECT * FROM orgs WHERE slug = ?").bind(orgSlug).first();
+    if (!org) return errorResponse("Org not found", 404);
+    const [config, stripe, admins, txSummary] = await Promise.all([
+      getOrgConfig(env.DB, org.id),
+      getOrgStripeAccount(env.DB, org.id),
+      env.DB.prepare("SELECT id, email, role, created_at FROM org_admins WHERE org_id = ?").bind(org.id).all(),
+      env.DB.prepare("SELECT COUNT(*) as count, SUM(amount_cents) as gross, SUM(platform_fee_cents) as fees FROM transactions WHERE org_id = ?").bind(org.id).first(),
+    ]);
+    return jsonResponse({ org, config, stripe: stripe ? { chargesEnabled: !!stripe.charges_enabled, accountId: stripe.stripe_account_id } : null, admins: admins.results, revenue: txSummary });
+  }
+
+  // ── Platform admin: suspend/unsuspend org
+  if (path === "/superadmin/org-status" && request.method === "PUT") {
+    const claims = await requirePlatformAdmin(request, env);
+    if (!claims) return errorResponse("Forbidden", 403);
+    const body = await request.json();
+    if (!body.orgId || !body.status) return errorResponse("orgId and status required");
+    const validStatuses = ["active", "suspended", "review"];
+    if (!validStatuses.includes(body.status)) return errorResponse("Invalid status");
+    await env.DB.prepare("UPDATE orgs SET status = ?, updated_at = datetime('now') WHERE id = ?").bind(body.status, body.orgId).run();
+    return jsonResponse({ ok: true });
+  }
+
+  // ── Platform admin: expanded platform stats
+  if (path === "/superadmin/stats" && request.method === "GET") {
+    const claims = await requirePlatformAdmin(request, env);
+    if (!claims) return errorResponse("Forbidden", 403);
+    const days = parseInt(url.searchParams.get("days") || "30", 10);
+    const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const [orgCount, playerCount, txSummary, recentTx, dailyStats, topOrgs] = await Promise.all([
+      env.DB.prepare("SELECT COUNT(*) as count FROM orgs").first(),
+      env.DB.prepare("SELECT COUNT(*) as count FROM players").first(),
+      env.DB.prepare("SELECT COUNT(*) as count, SUM(amount_cents) as gross, SUM(platform_fee_cents) as fees, SUM(net_cents) as net FROM transactions WHERE created_at >= ?").bind(since).first(),
+      env.DB.prepare("SELECT t.*, o.name as org_name, o.slug as org_slug FROM transactions t JOIN orgs o ON o.id = t.org_id ORDER BY t.created_at DESC LIMIT 30").all(),
+      env.DB.prepare("SELECT date, SUM(active_players) as players, SUM(gross_revenue_cents) as revenue, SUM(total_clicks) as clicks FROM daily_stats WHERE date >= ? GROUP BY date ORDER BY date").bind(since).all(),
+      env.DB.prepare("SELECT o.name, o.slug, COUNT(t.id) as tx_count, SUM(t.amount_cents) as gross, SUM(t.platform_fee_cents) as fees FROM orgs o LEFT JOIN transactions t ON t.org_id = o.id GROUP BY o.id ORDER BY gross DESC LIMIT 20").all(),
+    ]);
+    return jsonResponse({
+      orgs: orgCount?.count || 0,
+      players: playerCount?.count || 0,
+      transactions: txSummary?.count || 0,
+      grossRevenue: txSummary?.gross || 0,
+      platformFees: txSummary?.fees || 0,
+      netToOrgs: txSummary?.net || 0,
+      recentTransactions: recentTx.results,
+      dailyStats: dailyStats.results,
+      topOrgs: topOrgs.results,
+    });
   }
 
   return errorResponse("Not found", 404);

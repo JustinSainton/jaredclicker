@@ -23,7 +23,7 @@ binding = "ASSETS"
 
 [vars]
 ADMIN_URL = "https://admin.fundclicker.com"
-STRIPE_CLIENT_ID = "" # Stripe Connect platform client ID
+STRIPE_CLIENT_ID = "ca_UCgJpBpThlAEE6INN700CGsfIAB34InP"
 
 # Secrets (set via `wrangler secret put`):
 # JWT_SECRET

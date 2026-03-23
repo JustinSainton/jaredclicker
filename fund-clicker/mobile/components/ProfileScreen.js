@@ -173,7 +173,7 @@ export default function ProfileScreen({ onClose }) {
               <Text style={[styles.achievementIcon, !earned && { opacity: 0.3 }]}>
                 {earned ? "\uD83C\uDFC6" : "\uD83D\uDD12"}
               </Text>
-              <Text style={[styles.achievementName, !earned && { color: "#555" }]}>
+              <Text style={[styles.achievementName, !earned && { color: "#999" }]}>
                 {ach.name}
               </Text>
               {earned && <Text style={[styles.achievementCheck, { color: theme.primary }]}>{"\u2713"}</Text>}
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   rankPercent: { fontSize: 14, fontWeight: "700" },
   rankBar: { height: 8, backgroundColor: "#222", borderRadius: 4, overflow: "hidden" },
   rankFill: { height: "100%", borderRadius: 4 },
-  rankNext: { fontSize: 11, color: "#666", marginTop: 8 },
+  rankNext: { fontSize: 11, color: "#aaa", marginTop: 8 },
 
   // Stats grid
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },

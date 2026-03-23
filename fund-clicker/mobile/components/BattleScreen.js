@@ -36,6 +36,7 @@ export default function BattleScreen() {
   const { theme } = useOrg();
   const [selectedGame, setSelectedGame] = useState(null);
   const [wager, setWager] = useState("500");
+  const myScore = (leaderboard.find(e => e.name.toLowerCase() === player?.name?.toLowerCase())?.score) || 0;
   const [subTab, setSubTab] = useState("battle");
   const [spectatingGame, setSpectatingGame] = useState(null);
 
@@ -137,54 +138,72 @@ export default function BattleScreen() {
             onPress={() => setSelectedGame(game.key)}
           >
             <Text style={styles.gameIcon}>{game.icon}</Text>
-            <Text style={[styles.gameName, selectedGame === game.key && { color: theme.primary }]}>
+            <Text style={[styles.gameName, bodyStyle(theme), selectedGame === game.key && { color: theme.primary }]}>
               {t(game.labelKey)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Wager input */}
-      <View style={styles.wagerRow}>
-        <Text style={styles.wagerLabel}>{t("wager")}:</Text>
-        <TextInput
-          style={styles.wagerInput}
-          value={wager}
-          onChangeText={setWager}
-          keyboardType="number-pad"
-          placeholderTextColor="#666"
-        />
-        <Text style={styles.wagerCurrency}>{theme.currencyName}</Text>
+      {/* Wager presets */}
+      <View style={styles.wagerSection}>
+        <View style={styles.wagerHeader}>
+          <Text style={styles.wagerLabel}>{t("wager")}:</Text>
+          <Text style={[styles.wagerAmount, { color: theme.primary }]}>{fmtNum(Number(wager) || 100)} {theme.currencyName}</Text>
+        </View>
+        <View style={styles.wagerPresets}>
+          {[100, 1000, 10000, 100000, 1000000, 10000000].filter(v => v <= Math.max(100, myScore)).map(v => (
+            <TouchableOpacity key={v} style={[styles.presetBtn, Number(wager) === v && { borderColor: theme.primary, backgroundColor: theme.primary + "22" }]} onPress={() => { Haptics.selectionAsync(); setWager(String(v)); }}>
+              <Text style={[styles.presetText, Number(wager) === v && { color: theme.primary }]}>{v >= 1000000 ? (v / 1000000) + "M" : v >= 1000 ? (v / 1000) + "K" : v}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Online players */}
-      <Text style={styles.sectionTitle}>{t("onlinePlayers")} ({eligiblePlayers.length})</Text>
+      {eligiblePlayers.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>{"\u2B24"} Online Now ({eligiblePlayers.length})</Text>
+          {eligiblePlayers.map(item => {
+            const entry = leaderboard.find(e => e.name.toLowerCase() === item.toLowerCase());
+            return (
+              <TouchableOpacity key={item} style={styles.playerRow} onPress={() => handleChallenge(item)}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4ade80" }} />
+                  <View>
+                    <Text style={styles.playerName}>{item}</Text>
+                    <Text style={styles.playerScore}>{entry ? fmtNum(entry.score) + ` ${theme.currencyName}` : ""}</Text>
+                  </View>
+                </View>
+                <Text style={[styles.challengeBtn, { color: theme.primary }]}>{"\u2694\uFE0F"} Fight</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </>
+      )}
+
+      {/* All players from leaderboard */}
+      <Text style={styles.sectionTitle}>Pick Opponent ({leaderboard.filter(e => e.name.toLowerCase() !== player?.name?.toLowerCase()).length})</Text>
       <FlatList
-        data={eligiblePlayers}
-        keyExtractor={(item) => item}
+        data={leaderboard.filter(e => e.name.toLowerCase() !== player?.name?.toLowerCase()).slice(0, 20)}
+        keyExtractor={(item) => item.name}
         style={styles.playerList}
         renderItem={({ item }) => {
-          const entry = leaderboard.find((e) => e.name.toLowerCase() === item.toLowerCase());
+          const isOnline = online.includes(item.name);
           return (
-            <TouchableOpacity
-              style={styles.playerRow}
-              onPress={() => handleChallenge(item)}
-            >
-              <View>
-                <Text style={styles.playerName}>{item}</Text>
-                <Text style={styles.playerScore}>
-                  {entry ? formatNumber(entry.score) + ` ${theme.currencyName}` : ""}
-                </Text>
+            <TouchableOpacity style={styles.playerRow} onPress={() => handleChallenge(item.name)}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {isOnline && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4ade80" }} />}
+                <View>
+                  <Text style={styles.playerName}>{item.name}</Text>
+                  <Text style={styles.playerScore}>{fmtNum(item.score)} {theme.currencyName}</Text>
+                </View>
               </View>
-              <Text style={[styles.challengeBtn, { color: theme.primary }]}>
-                {"\u2694\uFE0F"} {t("fight")}
-              </Text>
+              <Text style={[styles.challengeBtn, { color: theme.primary }]}>{"\u2694\uFE0F"} Fight</Text>
             </TouchableOpacity>
           );
         }}
-        ListEmptyComponent={
-          <Text style={styles.empty}>{t("noPlayersOnline")}</Text>
-        }
+        ListEmptyComponent={<Text style={styles.empty}>No players yet</Text>}
       />
 
       {/* Spectatable games */}
@@ -228,15 +247,16 @@ const styles = StyleSheet.create({
     alignItems: "center", borderWidth: 1, borderColor: "#333",
   },
   gameIcon: { fontSize: 24 },
-  gameName: { fontSize: 11, color: "#aaa", fontWeight: "600", marginTop: 4, textAlign: "center" },
-  wagerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
-  wagerLabel: { color: "#ccc", fontWeight: "600" },
-  wagerInput: {
-    backgroundColor: "#16213e", borderRadius: 8, padding: 8, color: "#fff",
-    fontSize: 16, fontWeight: "700", width: 80, textAlign: "center",
-    borderWidth: 1, borderColor: "#333",
-  },
-  wagerCurrency: { color: "#888", fontSize: 14 },
+  gameName: { fontSize: 11, color: "#ccc", fontWeight: "700", marginTop: 4, textAlign: "center" },
+  wagerSection: { marginBottom: 16 },
+  wagerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  wagerLabel: { color: "#ccc", fontWeight: "600", fontSize: 14 },
+  wagerAmount: { fontSize: 18, fontWeight: "800" },
+  sliderTrack: { height: 6, backgroundColor: "#222", borderRadius: 3, overflow: "hidden", marginBottom: 12 },
+  sliderFill: { height: "100%", borderRadius: 3 },
+  wagerPresets: { flexDirection: "row", gap: 6 },
+  presetBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: "#16213e", borderWidth: 1, borderColor: "#333", alignItems: "center" },
+  presetText: { fontSize: 12, fontWeight: "700", color: "#888" },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#ccc", marginBottom: 8 },
   playerList: { flex: 1 },
   playerRow: {
@@ -246,7 +266,7 @@ const styles = StyleSheet.create({
   playerName: { fontSize: 16, color: "#fff", fontWeight: "600" },
   playerScore: { fontSize: 12, color: "#888", marginTop: 2 },
   challengeBtn: { fontSize: 14, fontWeight: "700" },
-  empty: { color: "#666", textAlign: "center", marginTop: 24 },
+  empty: { color: "#aaa", textAlign: "center", marginTop: 24 },
   activeBar: {
     backgroundColor: "#16213e", borderRadius: 10, padding: 10,
     alignItems: "center", marginTop: 8,

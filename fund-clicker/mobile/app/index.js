@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   codeRow: { flexDirection: "row", gap: 12 },
   codeInput: {
     flex: 1, backgroundColor: "#16213e", borderRadius: 12, padding: 16,
-    fontSize: 24, color: "#fff", textAlign: "center", letterSpacing: 8,
+    fontSize: 24, color: "#fff", textAlign: "center", letterSpacing: 4,
     fontWeight: "700", borderWidth: 1, borderColor: "#333",
   },
   joinButton: {
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   error: { color: "#e94560", marginTop: 8, fontSize: 14 },
   divider: { flexDirection: "row", alignItems: "center", marginVertical: 24 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "#333" },
-  dividerText: { color: "#666", marginHorizontal: 16, fontSize: 14 },
+  dividerText: { color: "#aaa", marginHorizontal: 16, fontSize: 14 },
   searchInput: {
     backgroundColor: "#16213e", borderRadius: 12, padding: 16,
     fontSize: 16, color: "#fff", borderWidth: 1, borderColor: "#333",
@@ -189,5 +189,5 @@ const styles = StyleSheet.create({
   },
   resultName: { fontSize: 18, fontWeight: "700", color: "#fff" },
   resultDesc: { fontSize: 14, color: "#aaa", marginTop: 4 },
-  emptyText: { color: "#666", textAlign: "center", marginTop: 24 },
+  emptyText: { color: "#aaa", textAlign: "center", marginTop: 24 },
 });

@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   scoreBlock: { alignItems: "center", flex: 1 },
   scoreName: { fontSize: 13, color: "#aaa", fontWeight: "600" },
   scoreNum: { fontSize: 28, fontWeight: "900", color: "#fff", marginTop: 4 },
-  scoreDivider: { fontSize: 14, color: "#666", fontWeight: "700" },
+  scoreDivider: { fontSize: 14, color: "#aaa", fontWeight: "700" },
   result: {
     marginTop: 24, padding: 20, borderRadius: 16,
     borderWidth: 2, alignItems: "center", width: "100%",

@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   gridWrap: { marginTop: 4 },
   gridTitle: { fontSize: 13, fontWeight: "600", color: "#aaa", textAlign: "center", marginBottom: 4 },
   labelRow: { flexDirection: "row", marginBottom: 2 },
-  label: { fontSize: 10, color: "#555", textAlign: "center", fontWeight: "600" },
+  label: { fontSize: 10, color: "#999", textAlign: "center", fontWeight: "600" },
   gridRow: { flexDirection: "row" },
   gridCell: {
     justifyContent: "center", alignItems: "center",

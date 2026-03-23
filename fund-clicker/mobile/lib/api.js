@@ -1,13 +1,9 @@
 // Fund Clicker API client
 // Communicates with the Cloudflare Worker backend
 
-const API_BASE = __DEV__
-  ? "http://localhost:8787/api/v1"
-  : "https://api.fundclicker.com/api/v1";
+const API_BASE = "https://api.fundclicker.com/api/v1";
 
-const WS_BASE = __DEV__
-  ? "ws://localhost:8787/api/v1"
-  : "wss://api.fundclicker.com/api/v1";
+const WS_BASE = "wss://api.fundclicker.com/api/v1";
 
 class FundClickerAPI {
   constructor() {

@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   spectatorPlayer: { alignItems: "center", flex: 1 },
   spectatorName: { fontSize: 18, fontWeight: "700" },
   spectatorScore: { fontSize: 36, fontWeight: "900", color: "#fff", marginTop: 8 },
-  spectatorVs: { fontSize: 16, fontWeight: "800", color: "#666" },
+  spectatorVs: { fontSize: 16, fontWeight: "800", color: "#aaa" },
   spectatorWager: { alignItems: "center", marginTop: 20 },
   spectatorWagerText: { fontSize: 16, fontWeight: "700" },
   spectatorResult: {

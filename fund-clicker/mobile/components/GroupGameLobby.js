@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   gameTypeEmoji: { fontSize: 28 },
   gameTypeName: { fontSize: 14, fontWeight: "700", color: "#ccc" },
   gameTypeDesc: { fontSize: 11, color: "#888", marginTop: 2 },
-  gameTypePlayers: { fontSize: 10, color: "#666", marginTop: 2 },
+  gameTypePlayers: { fontSize: 10, color: "#aaa", marginTop: 2 },
   wagerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, marginBottom: 12 },
   wagerLabel: { fontSize: 13, color: "#aaa" },
   wagerInput: {
@@ -256,8 +256,8 @@ const styles = StyleSheet.create({
   // Empty state
   emptyWrap: { alignItems: "center", paddingTop: 60 },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: "#666", fontWeight: "600" },
-  emptyHint: { fontSize: 13, color: "#444", marginTop: 4 },
+  emptyText: { fontSize: 16, color: "#aaa", fontWeight: "600" },
+  emptyHint: { fontSize: 13, color: "#888", marginTop: 4 },
 
   // Lobby list
   lobbyList: { padding: 16, paddingTop: 8 },
@@ -274,8 +274,8 @@ const styles = StyleSheet.create({
   },
   playerChipText: { fontSize: 12, color: "#ccc", fontWeight: "500" },
   playerChipEmpty: { borderStyle: "dashed" },
-  playerChipEmptyText: { fontSize: 12, color: "#555" },
-  lobbyCount: { fontSize: 11, color: "#666", marginBottom: 10 },
+  playerChipEmptyText: { fontSize: 12, color: "#999" },
+  lobbyCount: { fontSize: 11, color: "#aaa", marginBottom: 10 },
   lobbyBtn: { borderRadius: 10, padding: 12, alignItems: "center" },
   lobbyBtnText: { fontSize: 14, fontWeight: "700", color: "#aaa" },
 });

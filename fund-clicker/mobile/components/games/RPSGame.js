@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   revealMove: { alignItems: "center" },
   revealEmoji: { fontSize: 50 },
   revealName: { fontSize: 12, color: "#aaa", marginTop: 6 },
-  revealVs: { fontSize: 18, fontWeight: "800", color: "#666" },
+  revealVs: { fontSize: 18, fontWeight: "800", color: "#aaa" },
   result: {
     marginTop: 24, padding: 20, borderRadius: 16,
     borderWidth: 2, alignItems: "center", width: "100%",

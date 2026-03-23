@@ -27,13 +27,22 @@ export function OrgProvider({ children }) {
   const [org, setOrg] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load saved org on mount
+  // Load saved org on mount, then refresh from server
   React.useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((data) => {
+    AsyncStorage.getItem(STORAGE_KEY).then(async (data) => {
+      let cached = null;
       if (data) {
-        try { setOrg(JSON.parse(data)); } catch {}
+        try { cached = JSON.parse(data); setOrg(cached); } catch {}
       }
       setLoading(false);
+      // Always refresh from server to pick up config changes
+      if (cached?.slug) {
+        try {
+          const fresh = await api.getOrgInfo(cached.slug);
+          setOrg(fresh);
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+        } catch {}
+      }
     });
   }, []);
 
@@ -77,7 +86,15 @@ export function OrgProvider({ children }) {
     let customTrivia = [];
     let priceOverrides = {};
 
-    try { characterPhotos = typeof config.character_photos === "string" ? JSON.parse(config.character_photos) : (config.character_photos || []); } catch {}
+    try {
+      const rawPhotos = typeof config.character_photos === "string" ? JSON.parse(config.character_photos) : (config.character_photos || []);
+      characterPhotos = rawPhotos.map(p => {
+        if (typeof p === "string") return { url: p, name: null };
+        if (p.url) return { url: p.url, name: p.displayName || p.name || null };
+        if (p.key) return { url: `https://api.fundclicker.com/orgs-assets/${slug}/photos/${p.key}`, name: p.displayName || p.name || null };
+        return null;
+      }).filter(Boolean);
+    } catch {}
     try { upgradeNames = typeof config.upgrade_names === "string" ? JSON.parse(config.upgrade_names) : (config.upgrade_names || {}); } catch {}
     try { customTrivia = typeof config.custom_trivia === "string" ? JSON.parse(config.custom_trivia) : (config.custom_trivia || []); } catch {}
     try { priceOverrides = typeof config.price_overrides === "string" ? JSON.parse(config.price_overrides) : (config.price_overrides || {}); } catch {}

@@ -13,16 +13,106 @@ import { hashPassword, verifyPassword, needsPasswordRehash } from "./auth.js";
 // ─── TRIVIA BANK (default — orgs can override via org_config.custom_trivia) ──
 
 const DEFAULT_TRIVIA_BANK = [
-  { q: "What is the capital of France?", a: ["Paris", "London", "Berlin", "Madrid"], c: 0 },
-  { q: "Which planet is closest to the Sun?", a: ["Mercury", "Venus", "Earth", "Mars"], c: 0 },
-  { q: "What year did World War II end?", a: ["1945", "1944", "1946", "1943"], c: 0 },
-  { q: "What is the largest ocean?", a: ["Pacific", "Atlantic", "Indian", "Arctic"], c: 0 },
-  { q: "How many continents are there?", a: ["7", "5", "6", "8"], c: 0 },
-  { q: "What gas do plants absorb?", a: ["Carbon dioxide", "Oxygen", "Nitrogen", "Helium"], c: 0 },
-  { q: "Who painted the Mona Lisa?", a: ["Da Vinci", "Picasso", "Van Gogh", "Monet"], c: 0 },
-  { q: "What is the speed of light?", a: ["186,000 mi/s", "100,000 mi/s", "200,000 mi/s", "150,000 mi/s"], c: 0 },
-  { q: "Which element has symbol 'O'?", a: ["Oxygen", "Gold", "Osmium", "Oganesson"], c: 0 },
-  { q: "How many bones in the human body?", a: ["206", "208", "204", "210"], c: 0 },
+  {q:"How many hearts does an octopus have?",a:["Three","Two","Five","One"],c:0},
+  {q:"What is a group of flamingos called?",a:["A flamboyance","A flock","A bloom","A colony"],c:0},
+  {q:"Which animal can sleep for 3 years?",a:["Snail","Sloth","Koala","Cat"],c:0},
+  {q:"What animal has the longest pregnancy?",a:["Elephant","Blue whale","Giraffe","Rhino"],c:0},
+  {q:"How many noses does a slug have?",a:["Four","Two","One","Three"],c:0},
+  {q:"What is the only mammal that can truly fly?",a:["Bat","Flying squirrel","Sugar glider","Colugo"],c:0},
+  {q:"Which bird can fly backwards?",a:["Hummingbird","Kingfisher","Swift","Sparrow"],c:0},
+  {q:"What color is a hippo's sweat?",a:["Red","Clear","Yellow","Brown"],c:0},
+  {q:"How many brains does a leech have?",a:["32","2","1","10"],c:0},
+  {q:"What animal has the largest eye?",a:["Colossal squid","Blue whale","Ostrich","Horse"],c:0},
+  {q:"What country has the most islands?",a:["Sweden","Indonesia","Philippines","Canada"],c:0},
+  {q:"What is the driest continent on Earth?",a:["Antarctica","Africa","Australia","Asia"],c:0},
+  {q:"What is the smallest country in the world?",a:["Vatican City","Monaco","Nauru","San Marino"],c:0},
+  {q:"What country has more pyramids than Egypt?",a:["Sudan","Mexico","Peru","Iraq"],c:0},
+  {q:"What capital city is the highest above sea level?",a:["La Paz","Quito","Bogota","Addis Ababa"],c:0},
+  {q:"What is the only continent with no active volcanoes?",a:["Australia","Antarctica","Europe","Africa"],c:0},
+  {q:"What country has a flag that is not rectangular?",a:["Nepal","Switzerland","Tonga","Bhutan"],c:0},
+  {q:"What ocean is the Bermuda Triangle in?",a:["Atlantic","Pacific","Indian","Arctic"],c:0},
+  {q:"What was the shortest war in history?",a:["Anglo-Zanzibar War","Six-Day War","Falklands War","Gulf War"],c:0},
+  {q:"Who was the first woman to win a Nobel Prize?",a:["Marie Curie","Mother Teresa","Dorothy Hodgkin","Bertha von Suttner"],c:0},
+  {q:"What ancient wonder was in Alexandria?",a:["Lighthouse","Library","Colossus","Hanging Gardens"],c:0},
+  {q:"How long did the Hundred Years' War last?",a:["116 years","100 years","99 years","120 years"],c:0},
+  {q:"What was invented first: lighter or match?",a:["Lighter","Match","Same year","Neither"],c:0},
+  {q:"Who painted the ceiling of the Sistine Chapel?",a:["Michelangelo","Leonardo da Vinci","Raphael","Donatello"],c:0},
+  {q:"What year did the Titanic sink?",a:["1912","1905","1915","1920"],c:0},
+  {q:"Which ancient civilization invented paper?",a:["Chinese","Egyptian","Roman","Greek"],c:0},
+  {q:"What was the first toy advertised on TV?",a:["Mr. Potato Head","Barbie","Slinky","Etch A Sketch"],c:0},
+  {q:"What is the hardest natural substance?",a:["Diamond","Titanium","Quartz","Sapphire"],c:0},
+  {q:"How many bones does a shark have?",a:["Zero","206","100","50"],c:0},
+  {q:"What planet rains diamonds?",a:["Neptune","Jupiter","Saturn","Venus"],c:0},
+  {q:"What percentage of the ocean is unexplored?",a:["Over 80%","About 50%","About 30%","Over 95%"],c:0},
+  {q:"How long is one day on Venus?",a:["243 Earth days","365 Earth days","30 Earth days","1 Earth day"],c:0},
+  {q:"What is the most abundant gas in Earth's atmosphere?",a:["Nitrogen","Oxygen","Carbon dioxide","Argon"],c:0},
+  {q:"What temperature are Celsius and Fahrenheit equal?",a:["-40","0","-32","32"],c:0},
+  {q:"What color does gold turn when nano-sized?",a:["Red","Blue","Green","Purple"],c:0},
+  {q:"What nut is used to make marzipan?",a:["Almond","Walnut","Cashew","Pistachio"],c:0},
+  {q:"What is the most stolen food in the world?",a:["Cheese","Chocolate","Meat","Bread"],c:0},
+  {q:"What fruit floats in water?",a:["Apple","Grape","Banana","Mango"],c:0},
+  {q:"What spice is the most expensive by weight?",a:["Saffron","Vanilla","Cardamom","Cinnamon"],c:0},
+  {q:"What food never spoils?",a:["Honey","Rice","Salt","Sugar"],c:0},
+  {q:"What country invented ice cream?",a:["China","Italy","France","Turkey"],c:0},
+  {q:"What vegetable was first grown in space?",a:["Potato","Lettuce","Tomato","Carrot"],c:0},
+  {q:"What is the fear of long words called?",a:["Hippopotomonstrosesquippedaliophobia","Logophobia","Verbophobia","Sesquiphobia"],c:0},
+  {q:"How many dimples does a golf ball have?",a:["336","200","400","500"],c:0},
+  {q:"What is the dot over the letter 'i' called?",a:["Tittle","Dot","Iota","Serif"],c:0},
+  {q:"How long is the longest hiccuping spree?",a:["68 years","10 years","30 years","1 year"],c:0},
+  {q:"What is the national animal of Scotland?",a:["Unicorn","Lion","Stag","Eagle"],c:0},
+  {q:"What was the first message sent over the internet?",a:["LO","Hello","Test","Hi"],c:0},
+  {q:"How many muscles does a cat have in each ear?",a:["32","12","8","20"],c:0},
+  {q:"What is the only letter not in any US state name?",a:["Q","X","Z","J"],c:0},
+  {q:"How long does sunlight take to reach Earth?",a:["8 minutes","1 second","1 minute","30 minutes"],c:0},
+  {q:"What planet has the most moons?",a:["Saturn","Jupiter","Uranus","Neptune"],c:0},
+  {q:"What is the hottest planet in our solar system?",a:["Venus","Mercury","Mars","Jupiter"],c:0},
+  {q:"How old is the universe?",a:["13.8 billion years","10 billion years","4.5 billion years","20 billion years"],c:0},
+  {q:"What planet spins on its side?",a:["Uranus","Neptune","Pluto","Saturn"],c:0},
+  {q:"How many bones does an adult human have?",a:["206","300","180","250"],c:0},
+  {q:"What is the smallest bone in the body?",a:["Stapes","Hammer","Anvil","Phalanx"],c:0},
+  {q:"What organ uses 20% of your oxygen?",a:["Brain","Heart","Liver","Lungs"],c:0},
+  {q:"How many times does the heart beat per day?",a:["100,000","50,000","200,000","75,000"],c:0},
+  {q:"What is the most spoken language in the world?",a:["Mandarin","English","Spanish","Hindi"],c:0},
+  {q:"What is the longest English word with no vowels?",a:["Rhythms","Myths","Gym","Lynx"],c:0},
+  {q:"How many official languages does South Africa have?",a:["11","2","5","8"],c:0},
+  {q:"What is the oldest known written language?",a:["Sumerian","Egyptian","Chinese","Sanskrit"],c:0},
+  {q:"How long is an Olympic swimming pool?",a:["50 meters","100 meters","25 meters","75 meters"],c:0},
+  {q:"What sport was first played on the moon?",a:["Golf","Tennis","Baseball","Frisbee"],c:0},
+  {q:"What country invented chess?",a:["India","China","Persia","Egypt"],c:0},
+  {q:"How wide is an NBA basketball hoop in inches?",a:["18","16","20","24"],c:0},
+  {q:"What instrument has 47 strings?",a:["Harp","Piano","Guitar","Sitar"],c:0},
+  {q:"How many keys does a standard piano have?",a:["88","76","92","64"],c:0},
+  {q:"What note is a standard tuning fork?",a:["A","C","E","G"],c:0},
+  {q:"What year was the first iPhone released?",a:["2007","2005","2008","2006"],c:0},
+  {q:"What was the first computer virus called?",a:["Creeper","Worm","Bug","Trojan"],c:0},
+  {q:"How many bits in a byte?",a:["8","4","16","2"],c:0},
+  {q:"What company created the first hard drive?",a:["IBM","Apple","Microsoft","Intel"],c:0},
+  {q:"What is the only even prime number?",a:["2","4","0","6"],c:0},
+  {q:"What is a googol?",a:["10^100","10^10","10^1000","10^50"],c:0},
+  {q:"What number is considered unlucky in Japan?",a:["4","13","7","9"],c:0},
+  {q:"What is the Mona Lisa's real name?",a:["La Gioconda","La Bella","La Donna","La Signora"],c:0},
+  {q:"What artist cut off his own ear?",a:["Van Gogh","Picasso","Monet","Dali"],c:0},
+  {q:"What color do you get mixing all colors of light?",a:["White","Black","Brown","Gray"],c:0},
+  {q:"What is the most visited museum in the world?",a:["Louvre","British Museum","Met","Smithsonian"],c:0},
+  {q:"How many Rubik's Cube combinations are there?",a:["43 quintillion","1 billion","1 million","1 trillion"],c:0},
+  {q:"What is the speed of light in km/s?",a:["300,000","150,000","1,000,000","30,000"],c:0},
+  {q:"What element has the chemical symbol 'Au'?",a:["Gold","Silver","Aluminum","Argon"],c:0},
+  {q:"Which planet has the Great Red Spot?",a:["Jupiter","Mars","Saturn","Neptune"],c:0},
+  {q:"What blood type is the universal donor?",a:["O negative","AB positive","A positive","B negative"],c:0},
+  {q:"How many teeth does an adult human have?",a:["32","28","36","30"],c:0},
+  {q:"What is the largest organ in the human body?",a:["Skin","Liver","Brain","Lungs"],c:0},
+  {q:"What is the rarest blood type?",a:["AB negative","O negative","B negative","A negative"],c:0},
+  {q:"How many time zones does Russia span?",a:["11","9","7","13"],c:0},
+  {q:"What is the deepest point in the ocean?",a:["Mariana Trench","Tonga Trench","Java Trench","Puerto Rico Trench"],c:0},
+  {q:"How many cards are in a standard deck?",a:["52","48","54","56"],c:0},
+  {q:"What is the only letter that doesn't appear in the periodic table?",a:["J","Q","X","Z"],c:0},
+  {q:"How many rings are on the Olympic flag?",a:["5","4","6","7"],c:0},
+  {q:"What is the longest bone in the human body?",a:["Femur","Tibia","Humerus","Spine"],c:0},
+  {q:"What gas makes soda fizzy?",a:["Carbon dioxide","Nitrogen","Oxygen","Helium"],c:0},
+  {q:"What is the only metal that is liquid at room temperature?",a:["Mercury","Gallium","Cesium","Lead"],c:0},
+  {q:"How many sides does a dodecagon have?",a:["12","10","8","14"],c:0},
+  {q:"What country gifted the Statue of Liberty to the US?",a:["France","England","Germany","Spain"],c:0},
+  {q:"What is the largest desert in the world?",a:["Antarctica","Sahara","Arabian","Gobi"],c:0},
 ];
 
 const HANGMAN_WORDS = [
@@ -565,8 +655,15 @@ export class OrgGameInstance {
         }
       }
     }
+    // Send push notifications for podium changes
+    if (podiumChange && podiumChange.oldName && podiumChange.newName !== podiumChange.oldName) {
+      const pos = ["1st", "2nd", "3rd"][podiumChange.position - 1];
+      this.sendPushToPlayer(podiumChange.oldName, "You've been passed!", podiumChange.newName + " took " + pos + " place!", "podium");
+      this.sendPushToPlayer(podiumChange.newName, "You're " + pos + "!", "You moved up to " + pos + " place on the leaderboard!", "podium");
+    }
     this.lastPodium = currentPodium;
 
+    const resetSched = this.resetSchedule || {};
     const payload = JSON.stringify({
       type: "update",
       visitors: this.connections.size,
@@ -580,6 +677,7 @@ export class OrgGameInstance {
       hallOfFame: hof,
       scoreEpoch: epoch,
       podiumChange,
+      nextResetAt: resetSched.enabled ? resetSched.nextResetAt : null,
     });
 
     for (const [ws] of this.connections) {
@@ -857,7 +955,7 @@ export class OrgGameInstance {
     return sanitized;
   }
 
-  sanitizeGroupGame(game, forPlayer) { return this.sanitizeGame(game, forPlayer); }
+  // sanitizeGroupGame is now defined in the group game section below
 
   randomShipPlacement(gridSize) {
     const sizes = [5, 4, 3, 3, 2];
@@ -937,30 +1035,230 @@ export class OrgGameInstance {
     return lobby;
   }
 
+  // ─── GROUP GAME TAP RATE DETECTION ────────────────────────────────────
+  checkGameTapRate(playerName, gameId) {
+    const key = playerName.toLowerCase() + ":" + gameId;
+    if (!this._gameTapTracker) this._gameTapTracker = {};
+    if (!this._gameTapTracker[key]) this._gameTapTracker[key] = { taps: [], flagged: false };
+    const tracker = this._gameTapTracker[key];
+    tracker.taps.push(Date.now());
+    if (tracker.taps.length < 10) return false;
+    if (tracker.taps.length > 20) tracker.taps = tracker.taps.slice(-20);
+    const intervals = [];
+    for (let i = 1; i < tracker.taps.length; i++) intervals.push(tracker.taps[i] - tracker.taps[i - 1]);
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    if (avgInterval < 40) { tracker.flagged = true; return true; }
+    const variance = intervals.reduce((sum, v) => sum + (v - avgInterval) ** 2, 0) / intervals.length;
+    const cv = avgInterval > 0 ? Math.sqrt(variance) / avgInterval : 0;
+    if (cv < 0.05 && avgInterval < 150) { tracker.flagged = true; return true; }
+    return false;
+  }
+
+  cleanupGameTapTracker(gameId) {
+    if (!this._gameTapTracker) return;
+    for (const key of Object.keys(this._gameTapTracker)) {
+      if (key.includes(":" + gameId)) delete this._gameTapTracker[key];
+    }
+  }
+
+  // ─── GROUP GAME CORE ────────────────────────────────────────────────
   broadcastGroupGame(game) {
     for (const p of game.players || []) {
       this.sendToPlayer(p, { type: "groupGameUpdate", game: this.sanitizeGroupGame(game, p) });
     }
+    if (game.spectators) {
+      for (const s of game.spectators) {
+        this.sendToPlayer(s, { type: "groupGameUpdate", game: this.sanitizeGroupGame(game, null) });
+      }
+    }
   }
 
+  sanitizeGroupGame(game, forPlayer) {
+    const g = { ...game };
+    if (game.type === "auction" && !game.revealed) {
+      g.bids = {};
+      if (forPlayer && game.bids?.[forPlayer] !== undefined) g.bids[forPlayer] = game.bids[forPlayer];
+      g.bidCount = Object.keys(game.bids || {}).length;
+    }
+    if (game.type === "triviaroyale") {
+      g.currentQ = game.questions?.[game.currentQuestion] || null;
+      if (g.currentQ) g.currentQ = { q: g.currentQ.q, a: g.currentQ.a };
+      g.questions = undefined;
+      if (forPlayer) { g.myAnswer = game.answers?.[forPlayer] || null; g.answeredCount = Object.keys(game.answers || {}).length; }
+      g.answers = undefined;
+    }
+    return g;
+  }
+
+  // ─── LAST CLICK STANDING ────────────────────────────────────────────
+  startLastClickRound(game) {
+    if (game.winner || game._ended) return;
+    if (game.alive.length <= 1) { this.endGroupGame(game); return; }
+    game.roundNumber++;
+    game.roundClicks = {};
+    for (const p of game.alive) game.roundClicks[p] = 0;
+    game.roundStartAt = Date.now();
+    game.roundEndAt = Date.now() + game.roundDuration;
+    this.broadcastGroupGame(game);
+    const self = this;
+    setTimeout(() => self.endLastClickRound(game), game.roundDuration);
+  }
+
+  endLastClickRound(game) {
+    if (game.winner || game._ended) return;
+    let minClicks = Infinity, minPlayer = null;
+    for (const p of game.alive) {
+      const c = game.roundClicks[p] || 0;
+      if (c < minClicks) { minClicks = c; minPlayer = p; }
+    }
+    if (minPlayer) {
+      game.eliminated.push({ name: minPlayer, round: game.roundNumber, clicks: minClicks });
+      game.alive = game.alive.filter(p => p !== minPlayer);
+    }
+    game.roundStartAt = null;
+    if (game.alive.length <= 1) {
+      game.winner = game.alive.length === 1 ? game.alive[0] : "draw";
+      this.endGroupGame(game);
+    } else {
+      this.broadcastGroupGame(game);
+      const self = this;
+      setTimeout(() => self.startLastClickRound(game), 3000);
+    }
+  }
+
+  // ─── AUCTION HOUSE ──────────────────────────────────────────────────
+  async resolveAuction(game) {
+    if (game.winner || game._ended || game.revealed) return;
+    game.revealed = true;
+    let highBid = 0, highBidder = null;
+    for (const p in game.bids) {
+      if (game.bids[p] > highBid) { highBid = game.bids[p]; highBidder = p; }
+    }
+    if (highBidder) {
+      game.winner = highBidder;
+      game.winningBid = highBid;
+      await this.awardWinnings(highBidder, game.prizeAmount);
+      for (const p of game.players) {
+        if (p !== highBidder) await this.awardWinnings(p, game.wagerCoins);
+      }
+    } else {
+      game.winner = "draw";
+      for (const p of game.players) await this.awardWinnings(p, game.wagerCoins);
+    }
+    this.broadcastGroupGame(game);
+    await this.endGroupGame(game);
+  }
+
+  // ─── TRIVIA ROYALE ─────────────────────────────────────────────────
+  startTriviaRoyaleRound(game) {
+    if (game.winner || game._ended) return;
+    if (game.alive.length <= 0 || game.currentQuestion >= game.questions.length) {
+      if (game.alive.length === 1) game.winner = game.alive[0];
+      else if (game.alive.length > 1) {
+        let fastest = null, ft = Infinity;
+        for (const p of game.alive) {
+          const t = game.cumulativeTimes[p] || 999999;
+          if (t < ft) { ft = t; fastest = p; }
+        }
+        game.winner = fastest || "draw";
+      } else game.winner = "draw";
+      this.endGroupGame(game);
+      return;
+    }
+    game.answers = {};
+    game.questionStartAt = Date.now();
+    this.broadcastGroupGame(game);
+    const self = this;
+    setTimeout(() => self.endTriviaRoyaleRound(game), 15000);
+  }
+
+  endTriviaRoyaleRound(game) {
+    if (game.winner || game._ended) return;
+    const q = game.questions[game.currentQuestion];
+    const newAlive = [];
+    for (const p of game.alive) {
+      const ans = game.answers[p];
+      if (ans && ans.answer === q.correct) {
+        newAlive.push(p);
+        game.cumulativeTimes[p] = (game.cumulativeTimes[p] || 0) + ans.time;
+      } else {
+        game.eliminated.push({ name: p, round: game.currentQuestion + 1 });
+      }
+    }
+    game.alive = newAlive;
+    game.currentQuestion++;
+    this.broadcastGroupGame(game);
+    const self = this;
+    setTimeout(() => self.startTriviaRoyaleRound(game), 3000);
+  }
+
+  // ─── GROUP MOVE PROCESSING ──────────────────────────────────────────
+  processGroupMove(game, playerName, move) {
+    if (game._ended || game.winner) return;
+    if (game.type === "lastclick") {
+      if (move !== "tap" || !game.roundStartAt || Date.now() > game.roundEndAt || !game.alive.includes(playerName)) return;
+      if (this.checkGameTapRate(playerName, game.id)) return;
+      game.roundClicks[playerName] = (game.roundClicks[playerName] || 0) + 1;
+    } else if (game.type === "auction") {
+      if (game.revealed || !game.players.includes(playerName)) return;
+      const bid = parseInt(move);
+      if (isNaN(bid) || bid < 0) return;
+      game.bids[playerName] = Math.min(bid, game.wagerCoins * 10);
+      this.sendToPlayer(playerName, { type: "groupGameUpdate", game: this.sanitizeGroupGame(game, playerName) });
+    } else if (game.type === "triviaroyale") {
+      if (!game.alive.includes(playerName) || game.answers[playerName]) return;
+      const idx = parseInt(move);
+      if (isNaN(idx) || idx < 0 || idx > 3) return;
+      game.answers[playerName] = { answer: idx, time: Date.now() - game.questionStartAt };
+      if (game.alive.every(p => !!game.answers[p])) this.endTriviaRoyaleRound(game);
+      else this.broadcastGroupGame(game);
+    }
+  }
+
+  // ─── SPECTATOR BETS ─────────────────────────────────────────────────
+  async resolveSpectatorBets(game) {
+    if (!game.spectatorBets || game.spectatorBets.length === 0) return;
+    if (!game.winner || game.winner === "draw") {
+      for (const bet of game.spectatorBets) await this.awardWinnings(bet.name, bet.amount);
+      return;
+    }
+    const winners = game.spectatorBets.filter(b => b.betOn.toLowerCase() === game.winner.toLowerCase());
+    const totalPool = game.spectatorBets.reduce((s, b) => s + b.amount, 0);
+    const winnerPool = winners.reduce((s, b) => s + b.amount, 0);
+    if (winnerPool === 0) {
+      for (const bet of game.spectatorBets) await this.awardWinnings(bet.name, bet.amount);
+      return;
+    }
+    for (const bet of winners) {
+      const payout = Math.floor(totalPool * (bet.amount / winnerPool));
+      if (payout > 0) await this.awardWinnings(bet.name, payout);
+      this.sendToPlayer(bet.name, { type: "spectatorBetResult", won: true, payout, gameId: game.id });
+    }
+    for (const bet of game.spectatorBets.filter(b => b.betOn.toLowerCase() !== game.winner.toLowerCase())) {
+      this.sendToPlayer(bet.name, { type: "spectatorBetResult", won: false, payout: 0, gameId: game.id });
+    }
+  }
+
+  // ─── END GROUP GAME ─────────────────────────────────────────────────
   async endGroupGame(game) {
     if (game._ended) return;
     game._ended = true;
-    if (game.alive && game.alive.length === 1) {
-      game.winner = game.alive[0];
+    if (game.winner && game.winner !== "draw") {
       await this.awardWinnings(game.winner, game.pot);
-      await this.addSystemChat("\uD83C\uDFC6 " + game.winner + " won " + game.pot + " coins!");
-    } else if (game.alive && game.alive.length === 0) {
-      // Refund all
+      const tn = { lastclick: "Last Click Standing", auction: "Auction House", triviaroyale: "Trivia Royale" };
+      await this.addSystemChat("\uD83C\uDFC6 " + game.winner + " wins " + (tn[game.type] || game.type) + "! +" + game.pot + " coins!");
+    } else if (game.winner === "draw") {
       const share = Math.floor(game.pot / game.players.length);
       for (const p of game.players) await this.awardWinnings(p, share);
     }
+    this.broadcastGroupGame(game);
+    await this.resolveSpectatorBets(game);
+    this.cleanupGameTapTracker(game.id);
     for (const p of game.players) {
       this.sendToPlayer(p, { type: "groupGameEnded", game: this.sanitizeGroupGame(game, p) });
     }
     const self = this;
-    setTimeout(() => { self.activeGames.delete(game.id); }, 30000);
-    this.groupLobbies.delete(game.id);
+    setTimeout(() => { self.activeGames.delete(game.id); self.groupLobbies.delete(game.id); }, 60000);
     this.broadcast();
   }
 
@@ -1096,6 +1394,21 @@ export class OrgGameInstance {
       return new Response(JSON.stringify({ error: "Not banned" }), { status: 404, headers: { "Content-Type": "application/json" } });
     }
 
+    // ── Admin: live stats (connections, leaderboard, sabotages)
+    if (url.pathname === "/admin/stats" && request.method === "GET") {
+      const scores = await this.loadScores();
+      const sorted = Object.values(scores).sort((a, b) => b.score - a.score);
+      const sabotages = await this.state.storage.get("sabotages") || [];
+      const activeSabotages = sabotages.filter(s => s.expiresAt > Date.now());
+      return new Response(JSON.stringify({
+        connectedPlayers: this.connections.size,
+        scoreEpoch: await this.loadScoreEpoch(),
+        totalPlayers: sorted.length,
+        topScores: sorted.slice(0, 50).map(s => ({ name: s.name, score: s.score })),
+        activeSabotages: activeSabotages.map(s => ({ type: s.type, target: s.targetName, by: s.buyerName, expiresAt: s.expiresAt })),
+      }), { headers: { "Content-Type": "application/json" } });
+    }
+
     // ── Admin: autoban toggle
     if (url.pathname === "/admin/autoban" && request.method === "GET") {
       if (this.autobanEnabled === null) {
@@ -1129,6 +1442,68 @@ export class OrgGameInstance {
       return new Response(JSON.stringify(sched), { headers: { "Content-Type": "application/json" } });
     }
 
+    // ── Admin: delete score (remove player from leaderboard entirely)
+    if (url.pathname === "/admin/delete-score" && request.method === "POST") {
+      const body = await request.json();
+      const targetName = String(body.playerName || "").trim();
+      if (!targetName) return new Response(JSON.stringify({ error: "playerName required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      const targetKey = targetName.toLowerCase();
+      const scores = await this.loadScores();
+      if (scores[targetKey]) {
+        delete scores[targetKey];
+        this.persistedScores = scores;
+        await this.state.storage.put("scores", scores);
+        await this.addSystemChat("ADMIN removed " + targetName + " from leaderboard.");
+        this.broadcast();
+        return new Response(JSON.stringify({ ok: true, deleted: targetName }), { headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "Player not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+    }
+
+    // ── Admin: list active campaigns
+    if (url.pathname === "/admin/campaigns" && request.method === "GET") {
+      const campaigns = await this.loadCampaigns();
+      const active = Object.entries(campaigns).filter(([, c]) => c.status === "active").map(([id, c]) => ({ id, ...c }));
+      return new Response(JSON.stringify({ campaigns: active }), { headers: { "Content-Type": "application/json" } });
+    }
+
+    // ── Admin: cancel campaign
+    if (url.pathname === "/admin/cancel-campaign" && request.method === "POST") {
+      const body = await request.json();
+      const campaignId = String(body.campaignId || "");
+      if (!campaignId) return new Response(JSON.stringify({ error: "campaignId required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      const campaigns = await this.loadCampaigns();
+      if (campaigns[campaignId] && campaigns[campaignId].status === "active") {
+        campaigns[campaignId].status = "cancelled";
+        campaigns[campaignId].cancelledBy = "ADMIN";
+        this.campaigns = campaigns;
+        await this.saveCampaigns();
+        await this.addSystemChat("ADMIN cancelled campaign against " + (campaigns[campaignId].targetName || "unknown") + ".");
+        const msg = JSON.stringify({ type: "campaignCancelled", campaignId, reason: "admin" });
+        for (const [ws] of this.connections) { try { ws.send(msg); } catch (e) {} }
+        this.broadcast();
+        return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "Campaign not found or not active" }), { status: 404, headers: { "Content-Type": "application/json" } });
+    }
+
+    // ── Admin: hide luke/photos for a player
+    if (url.pathname === "/admin/hide-luke" && request.method === "POST") {
+      const body = await request.json();
+      const playerName = String(body.playerName || "").trim();
+      const durationMs = Math.max(60000, Math.min(86400000, (Number(body.durationMinutes) || 60) * 60000));
+      if (!playerName) return new Response(JSON.stringify({ error: "playerName required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      const key = playerName.toLowerCase();
+      const hiddenUntil = Date.now() + durationMs;
+      // Store in DO state
+      const lukeHidden = (await this.state.storage.get("lukeHidden")) || {};
+      lukeHidden[key] = { playerName, hiddenUntil };
+      await this.state.storage.put("lukeHidden", lukeHidden);
+      // Notify the player via WS
+      this.sendToPlayer(playerName, { type: "lukeHidden", hiddenUntil });
+      return new Response(JSON.stringify({ ok: true, playerName, expiresAt: hiddenUntil }), { headers: { "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/account/me" && request.method === "GET") {
       const auth = await this.authorizePlayerRequest(request);
       if (!auth) return this.jsonError("Unauthorized");
@@ -1136,6 +1511,35 @@ export class OrgGameInstance {
         ok: true,
         displayName: auth.displayName,
       }), { headers: { "Content-Type": "application/json" } });
+    }
+
+    // ── Admin: create test players (for testing battles/games)
+    if (url.pathname === "/admin/test-players" && request.method === "POST") {
+      const body = await request.json();
+      const count = Math.min(Number(body.count) || 3, 10);
+      const names = ["TestBot_Alpha", "TestBot_Beta", "TestBot_Gamma", "TestBot_Delta", "TestBot_Echo", "TestBot_Foxtrot", "TestBot_Golf", "TestBot_Hotel", "TestBot_India", "TestBot_Juliet"];
+      const accounts = await this.loadAccounts();
+      const scores = await this.loadScores();
+      const created = [];
+      for (let i = 0; i < count; i++) {
+        const name = names[i];
+        const key = name.toLowerCase();
+        if (!accounts[key]) {
+          const token = await this.generateToken();
+          accounts[key] = { displayName: name, pinHash: "test", tokens: [token], createdAt: Date.now(), isTestBot: true };
+          const baseScore = Math.floor(1000 + Math.random() * 100000);
+          scores[key] = { name, score: baseScore, stats: { coinsPerClick: 1, coinsPerSecond: Math.floor(Math.random() * 10), totalClicks: Math.floor(baseScore / 3), sightings: Math.floor(Math.random() * 20) }, date: Date.now() };
+          created.push({ name, score: baseScore, token });
+        } else {
+          created.push({ name, score: scores[key]?.score || 0, token: accounts[key].tokens?.[0] || "existing" });
+        }
+      }
+      this.accounts = accounts;
+      await this.saveAccounts();
+      this.persistedScores = scores;
+      await this.state.storage.put("scores", scores);
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true, created }), { headers: { "Content-Type": "application/json" } });
     }
 
     // ── Account: register
@@ -1219,6 +1623,24 @@ export class OrgGameInstance {
         }
       }
       return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+    }
+
+    // ── Admin freeze (sabotage initiated by admin)
+    if (url.pathname === "/freeze" && request.method === "POST") {
+      const body = await request.json();
+      const attackerName = String(body.attackerName || "ADMIN").slice(0, 20);
+      const targetName = String(body.targetName || "").slice(0, 20);
+      const durationMin = Math.max(1, Math.min(360, Number(body.durationMin) || 5));
+      if (!targetName) return new Response(JSON.stringify({ error: "targetName required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      const durationMs = durationMin * 60 * 1000;
+      await this.loadSabotages();
+      const expiresAt = Date.now() + durationMs;
+      this.sabotages.push({ targetName, attackerName, expiresAt, freeze: true });
+      await this.saveSabotages();
+      await this.addSystemChat(attackerName + " froze " + targetName + " for " + durationMin + " minutes!");
+      this.sendToPlayer(targetName, { type: "sabotaged", attackerName, expiresAt });
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true, targetName, durationMin }), { headers: { "Content-Type": "application/json" } });
     }
 
     // ── Sabotage: unsabotage
@@ -1492,6 +1914,8 @@ export class OrgGameInstance {
           this.clearForfeitTimerForPlayer(info.name);
           if (oldName && info.name && oldName !== info.name) this.renameScore(oldName, info.name);
           try { server.send(JSON.stringify({ type: "identityAccepted", name: info.name })); } catch {}
+          // Broadcast so online list updates for everyone
+          this.broadcast();
           return;
         }
 
@@ -1543,19 +1967,54 @@ export class OrgGameInstance {
           }
         }
 
-        if (msg.type === "chat" && msg.message && info.name) {
+        if (msg.type === "chat" && (msg.message || msg.gif) && info.name) {
           if (!info.authenticated) {
             this.sendUnauthorized(server, "identity_required");
             return;
           }
           const cleanMsg = this.filterProfanity(String(msg.message).slice(0, 200));
-          const chatEntry = { type: "chat", name: info.name, message: cleanMsg, timestamp: Date.now() };
+          const chatEntry = {
+            type: "chat", name: info.name, message: cleanMsg, timestamp: Date.now(),
+            id: "m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+          };
+          // Support reply-to
+          if (msg.replyTo) {
+            chatEntry.replyTo = { id: String(msg.replyTo.id || ""), name: String(msg.replyTo.name || ""), message: String(msg.replyTo.message || "").slice(0, 60) };
+          }
+          // Support GIF
+          if (msg.gif) {
+            chatEntry.gif = { url: String(msg.gif.url || ""), width: Number(msg.gif.width) || 200, height: Number(msg.gif.height) || 200 };
+            chatEntry.message = chatEntry.message || ""; // GIF can be sent without text
+          }
           this.loadChat().then(() => {
             this.chatMessages.push(chatEntry);
             if (this.chatMessages.length > 2000) this.chatMessages = this.chatMessages.slice(-2000);
             this.saveChat();
             this.broadcastChat(chatEntry);
           });
+          return;
+        }
+
+        // ── Use sabotage credit (from chat/leaderboard action)
+        if (msg.type === "useSabotageCredit" && info.name && msg.targetName) {
+          if (!info.authenticated) { this.sendUnauthorized(server, "identity_required"); return; }
+          const self = this;
+          (async () => {
+            const result = await self.useCredit(info.name);
+            if (!result.ok) { self.sendToPlayer(info.name, { type: "error", message: result.error }); return; }
+            await self.addSabotage(info.name, String(msg.targetName).slice(0, 20), 15 * 60 * 1000);
+          })();
+          return;
+        }
+
+        // ── Chat reaction (emoji on a message)
+        if (msg.type === "chatReaction" && info.name && msg.messageId && msg.emoji) {
+          if (!info.authenticated) { this.sendUnauthorized(server, "identity_required"); return; }
+          const emoji = String(msg.emoji).slice(0, 4); // Single emoji
+          const messageId = String(msg.messageId);
+          const reaction = { type: "chatReaction", messageId, emoji, name: info.name, timestamp: Date.now() };
+          // Broadcast to all (reactions are ephemeral — not persisted to chat history)
+          for (const [ws2] of this.connections) { try { ws2.send(JSON.stringify(reaction)); } catch (e) {} }
           return;
         }
 
@@ -1708,6 +2167,39 @@ export class OrgGameInstance {
           if (lobby && lobby.hostName === info.name && lobby.status === "waiting" && lobby.players.length >= lobby.minPlayers) {
             this.startGroupGame(lobby);
           }
+          return;
+        }
+
+        if (msg.type === "groupMove" && info.name && msg.gameId) {
+          const game = this.activeGames.get(msg.gameId);
+          if (game && game.players) this.processGroupMove(game, info.name, msg.move);
+          return;
+        }
+
+        if (msg.type === "stopWatching" && msg.gameId && info.name) {
+          const swGame = this.activeGames.get(msg.gameId);
+          if (swGame && swGame.spectators) {
+            swGame.spectators = swGame.spectators.filter(s => s.toLowerCase() !== info.name.toLowerCase());
+          }
+          return;
+        }
+
+        if (msg.type === "spectatorBet" && msg.gameId && info.name && typeof msg.amount === "number" && msg.betOn) {
+          const self = this;
+          (async () => {
+            const bGame = self.activeGames.get(msg.gameId);
+            if (!bGame || bGame.winner) return;
+            const betAmount = Math.floor(msg.amount);
+            if (betAmount < 100 || betAmount > 1000000) return;
+            if (bGame.players && bGame.players.includes(info.name)) return;
+            if (!bGame.spectatorBets) bGame.spectatorBets = [];
+            if (bGame.spectatorBets.some(b => b.name.toLowerCase() === info.name.toLowerCase())) return;
+            const ok = await self.deductWager(info.name, betAmount);
+            if (!ok) return;
+            bGame.spectatorBets.push({ name: info.name, betOn: msg.betOn, amount: betAmount });
+            self.sendToPlayer(info.name, { type: "spectatorBetPlaced", gameId: msg.gameId, betOn: msg.betOn, amount: betAmount });
+            self.broadcastGroupGame(bGame);
+          })();
           return;
         }
 
@@ -1871,7 +2363,6 @@ export class OrgGameInstance {
     return null;
   }
 
-  // Placeholder for startGroupGame — full implementation carries over from LiveVisitors
   async startGroupGame(lobby) {
     lobby.status = "playing";
     const game = {
@@ -1882,9 +2373,49 @@ export class OrgGameInstance {
     };
     for (const p of game.players) await this.deductWager(p, game.wagerCoins);
     game.pot = game.wagerCoins * game.players.length;
-    game.alive = game.players.slice();
+
+    if (lobby.type === "lastclick") {
+      game.roundDuration = 10000;
+      game.roundNumber = 0;
+      game.roundClicks = {};
+      game.roundStartAt = null;
+      game.alive = game.players.slice();
+      const self = this;
+      setTimeout(() => self.startLastClickRound(game), 3000);
+    } else if (lobby.type === "auction") {
+      game.prizeAmount = Math.floor(game.pot * (0.5 + Math.random() * 1.5));
+      game.bids = {};
+      game.bidDeadline = Date.now() + 30000;
+      game.revealed = false;
+      const self = this;
+      setTimeout(() => self.resolveAuction(game), 30000);
+    } else if (lobby.type === "triviaroyale") {
+      game.questions = [];
+      for (let qi = 0; qi < 5; qi++) {
+        const q = DEFAULT_TRIVIA_BANK[Math.floor(Math.random() * DEFAULT_TRIVIA_BANK.length)];
+        const ca = q.a[q.c];
+        const sh = q.a.slice();
+        for (let si = sh.length - 1; si > 0; si--) {
+          const sj = Math.floor(Math.random() * (si + 1));
+          [sh[si], sh[sj]] = [sh[sj], sh[si]];
+        }
+        game.questions.push({ q: q.q, a: sh, correct: sh.indexOf(ca) });
+      }
+      game.currentQuestion = 0;
+      game.alive = game.players.slice();
+      game.answers = {};
+      game.questionStartAt = null;
+      game.cumulativeTimes = {};
+      for (const p of game.players) game.cumulativeTimes[p] = 0;
+      const self = this;
+      setTimeout(() => self.startTriviaRoyaleRound(game), 3000);
+    } else {
+      game.alive = game.players.slice();
+    }
+
     this.activeGames.set(game.id, game);
-    await this.addSystemChat("\uD83C\uDFAE Group game with " + game.players.length + " players for " + game.pot + " coins!");
+    const tn = { lastclick: "Last Click Standing", auction: "Auction House", triviaroyale: "Trivia Royale" };
+    await this.addSystemChat("\uD83C\uDFAE " + (tn[game.type] || game.type) + " with " + game.players.length + " players for " + game.pot + " coins!");
     for (const p of game.players) {
       this.sendToPlayer(p, { type: "groupGameStarted", game: this.sanitizeGroupGame(game, p) });
     }

@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#16213e", alignItems: "center",
   },
   turnText: { fontSize: 15, fontWeight: "700", color: "#aaa" },
-  turnSymbol: { fontSize: 12, color: "#666", marginTop: 2 },
+  turnSymbol: { fontSize: 12, color: "#aaa", marginTop: 2 },
   board: {
     width: 270, flexDirection: "row", flexWrap: "wrap", marginTop: 24,
     borderRadius: 8, overflow: "hidden",

@@ -158,8 +158,8 @@ const styles = StyleSheet.create({
   list: { padding: 16, gap: 12 },
   emptyWrap: { alignItems: "center", paddingTop: 60 },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: "#666", fontWeight: "600" },
-  emptyHint: { fontSize: 13, color: "#444", marginTop: 4, textAlign: "center", paddingHorizontal: 40 },
+  emptyText: { fontSize: 16, color: "#aaa", fontWeight: "600" },
+  emptyHint: { fontSize: 13, color: "#888", marginTop: 4, textAlign: "center", paddingHorizontal: 40 },
   campaignCard: {
     backgroundColor: "#16213e", borderRadius: 16, padding: 16,
     borderWidth: 1, borderColor: "#1e2a45",
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   progressBar: { flex: 1, height: 8, backgroundColor: "#222", borderRadius: 4, overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 4 },
   progressPercent: { fontSize: 12, fontWeight: "700", color: "#aaa", width: 36, textAlign: "right" },
-  progressLabel: { fontSize: 11, color: "#666", marginTop: 6 },
+  progressLabel: { fontSize: 11, color: "#aaa", marginTop: 6 },
   contribRow: { flexDirection: "row", gap: 8, marginTop: 12 },
   contribBtn: {
     flex: 1, paddingVertical: 10, borderRadius: 10,

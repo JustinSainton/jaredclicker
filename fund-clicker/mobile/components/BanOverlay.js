@@ -85,6 +85,6 @@ const styles = StyleSheet.create({
   },
   timerLabel: { fontSize: 12, color: "#888", textTransform: "uppercase", letterSpacing: 1 },
   timerValue: { fontSize: 36, fontWeight: "900", marginTop: 4, fontVariant: ["tabular-nums"] },
-  info: { fontSize: 13, color: "#666", marginTop: 20, textAlign: "center", lineHeight: 20 },
-  hint: { fontSize: 12, color: "#555", marginTop: 12, textAlign: "center", fontStyle: "italic" },
+  info: { fontSize: 13, color: "#aaa", marginTop: 20, textAlign: "center", lineHeight: 20 },
+  hint: { fontSize: 12, color: "#999", marginTop: 12, textAlign: "center", fontStyle: "italic" },
 });

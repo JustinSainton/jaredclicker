@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   turnText: { fontSize: 14, fontWeight: "600", color: "#888" },
   dropRow: { flexDirection: "row", marginTop: 16, gap: 2 },
   dropBtn: { width: 42, height: 24, justifyContent: "center", alignItems: "center", opacity: 0.3 },
-  dropArrow: { fontSize: 14, color: "#444" },
+  dropArrow: { fontSize: 14, color: "#888" },
   board: {
     backgroundColor: "#0a1628", borderRadius: 12, padding: 4,
     borderWidth: 2, marginTop: 4,

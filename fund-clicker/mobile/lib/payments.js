@@ -225,6 +225,32 @@ export async function buyRematch(stripe, orgSlug, { gameId, playerName, playerTo
   });
 }
 
+/**
+ * Buy a coin pack
+ */
+export async function buyCoinPack(stripe, orgSlug, { playerName, packId, priceCents, coins, playerToken }) {
+  return processPayment(stripe, orgSlug, {
+    amountCents: priceCents,
+    type: "coin_pack",
+    description: `Coin Pack: ${coins.toLocaleString()} coins`,
+    metadata: { playerName, packId },
+    authToken: playerToken,
+  });
+}
+
+/**
+ * Hide photo events (Luke) for 1 hour
+ */
+export async function buyHideLuke(stripe, orgSlug, { playerName, playerToken }) {
+  return processPayment(stripe, orgSlug, {
+    amountCents: 199,
+    type: "hide_luke",
+    description: "Hide Photo Events — 1 Hour",
+    metadata: { playerName },
+    authToken: playerToken,
+  });
+}
+
 // ─── PRICE FORMATTING ────────────────────────────────────────────────────────
 
 export function formatPrice(cents) {

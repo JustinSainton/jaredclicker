@@ -16,7 +16,7 @@ if (Platform.OS !== "web") {
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
         const data = notification.request.content.data;
-        const alwaysShow = ["challenge", "sabotage", "coincut", "battle_win", "battle_loss", "campaign"];
+        const alwaysShow = ["challenge", "sabotage", "coincut", "battle_win", "battle_loss", "campaign", "podium"];
         const shouldShow = alwaysShow.includes(data?.category);
         return {
           shouldShowAlert: shouldShow,

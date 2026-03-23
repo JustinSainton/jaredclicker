@@ -142,6 +142,15 @@ export async function requireAdmin(request, env) {
   return claims; // { orgId, adminId, email, role }
 }
 
+// Middleware: verify platform admin JWT
+export async function requirePlatformAdmin(request, env) {
+  const token = extractBearer(request);
+  if (!token) return null;
+  const claims = await verifyToken(token, env.JWT_SECRET);
+  if (!claims || !claims.isPlatformAdmin) return null;
+  return claims; // { platformAdminId, email, role, isPlatformAdmin }
+}
+
 // Generate a 6-character alphanumeric join code (uppercase, no confusing chars)
 export function generateJoinCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I/O/0/1

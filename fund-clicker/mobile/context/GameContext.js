@@ -44,6 +44,7 @@ export function GameProvider({ children, orgSlug }) {
   const [banInfo, setBanInfo] = useState(null);
   const [totalRaised, setTotalRaised] = useState(null);
   const [podiumChange, setPodiumChange] = useState(null);
+  const [nextResetAt, setNextResetAt] = useState(null);
 
   // ─── REFS ─────────────────────────────────────────────────────────
   const wsRef = useRef(null);
@@ -156,6 +157,7 @@ export function GameProvider({ children, orgSlug }) {
         setVisitors(msg.visitors || 0);
         if (msg.credits) setCredits(msg.credits);
         if (msg.groupLobbies) setGroupLobbies(msg.groupLobbies);
+        if (msg.nextResetAt) setNextResetAt(msg.nextResetAt);
         if (msg.podiumChange) {
           setPodiumChange(msg.podiumChange);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -168,6 +170,22 @@ export function GameProvider({ children, orgSlug }) {
         break;
       case "chatMessage":
         setChatMessages((prev) => [...prev.slice(-1999), msg]);
+        break;
+      case "chatReaction":
+        // Emit reaction event — ChatScreen handles display
+        setChatMessages((prev) => {
+          const idx = prev.findIndex(m => m.id === msg.messageId);
+          if (idx === -1) return prev;
+          const updated = [...prev];
+          const target = { ...updated[idx] };
+          if (!target.reactions) target.reactions = {};
+          if (!target.reactions[msg.emoji]) target.reactions[msg.emoji] = [];
+          if (!target.reactions[msg.emoji].includes(msg.name)) {
+            target.reactions[msg.emoji] = [...target.reactions[msg.emoji], msg.name];
+          }
+          updated[idx] = target;
+          return updated;
+        });
         break;
 
       // ── Org config
@@ -371,9 +389,22 @@ export function GameProvider({ children, orgSlug }) {
     });
   }, [player, scoreEpoch, sendWS]);
 
-  const sendChat = useCallback((message) => {
-    sendWS({ type: "chat", message });
+  const sendChat = useCallback((message, opts = {}) => {
+    const payload = { type: "chat", message };
+    if (opts.replyTo) payload.replyTo = opts.replyTo;
+    if (opts.gif) payload.gif = opts.gif;
+    sendWS(payload);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [sendWS]);
+
+  const sendReaction = useCallback((messageId, emoji) => {
+    sendWS({ type: "chatReaction", messageId, emoji });
+    Haptics.selectionAsync();
+  }, [sendWS]);
+
+  const useSabotageCredit = useCallback((targetName) => {
+    sendWS({ type: "useSabotageCredit", targetName });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [sendWS]);
 
   const challenge = useCallback((targetName, gameType, wagerCoins) => {
@@ -422,9 +453,9 @@ export function GameProvider({ children, orgSlug }) {
         // Connection
         connected, visitors,
         // Server state
-        leaderboard, online, chatMessages, orgConfig, sabotages,
+        leaderboard, online, chatMessages, sendReaction, useSabotageCredit, orgConfig, sabotages,
         campaigns, activeGames, hallOfFame, scoreEpoch, credits,
-        groupLobbies, totalRaised, podiumChange,
+        groupLobbies, totalRaised, podiumChange, nextResetAt,
         // Battle
         pendingChallenge, currentGame, gameResult, challengeSentTo,
         challenge, acceptChallenge, declineChallenge, sendGameMove,
