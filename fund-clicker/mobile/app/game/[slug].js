@@ -6,6 +6,7 @@ import {
   View,
   Text,
   TextInput,
+  Image,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
@@ -234,12 +235,16 @@ function GameTabs() {
 
   const tabs = [
     { key: "click", label: t("tabClick"), icon: "\uD83E\uDE99" },
-    { key: "board", label: t("tabBoard"), icon: "\uD83C\uDFC6" },
-    { key: "battle", label: t("tabBattle"), icon: "\u2694\uFE0F" },
-    { key: "shop", label: t("tabShop"), icon: "\uD83D\uDED2" },
-    { key: "skins", label: t("skins"), icon: "\uD83C\uDFA8" },
+    { key: "board", label: t("tabBoard"), icon: "\uD83C\uDFC6", iconKey: "tab_board" },
+    { key: "battle", label: t("tabBattle"), icon: "\u2694\uFE0F", iconKey: "tab_battle" },
+    { key: "shop", label: t("tabShop"), icon: "\uD83D\uDED2", iconKey: "tab_shop" },
+    { key: "skins", label: t("skins"), icon: "\uD83C\uDFA8", iconKey: "tab_skins" },
     { key: "chat", label: t("tabChat"), icon: "\uD83D\uDCAC", badge: unreadChat },
   ];
+
+  // Build tab icon URLs from R2 for the current vibe
+  const vibeId = theme.vibeId || "retro-arcade";
+  const tabIconBaseUrl = `https://api.fundclicker.com/vibes/${vibeId}/`;
 
   const renderScreen = () => {
     switch (activeTab) {
@@ -307,7 +312,14 @@ function GameTabs() {
                 style={[styles.sidebarItem, isActive && { backgroundColor: theme.primary + "15" }]}
                 onPress={() => handleTabPress(tab.key)}
               >
-                <Text style={styles.sidebarIcon}>{tab.icon}</Text>
+                {tab.iconKey ? (
+                  <Image
+                    source={{ uri: tabIconBaseUrl + tab.iconKey + ".png" }}
+                    style={[styles.sidebarIconImage, !isActive && { opacity: 0.5 }]}
+                  />
+                ) : (
+                  <Text style={styles.sidebarIcon}>{tab.icon}</Text>
+                )}
                 {layout.isDesktop && (
                   <Text style={[styles.sidebarLabel, isActive && { color: theme.primary }]}>
                     {tab.label}
@@ -355,9 +367,20 @@ function GameTabs() {
                 activeOpacity={0.7}
               >
                 <View style={styles.tabInner}>
-                  <Text style={[styles.tabIcon, isActive && { transform: [{ scale: 1.15 }] }]}>
-                    {tab.icon}
-                  </Text>
+                  {tab.iconKey ? (
+                    <Image
+                      source={{ uri: tabIconBaseUrl + tab.iconKey + ".png" }}
+                      style={[
+                        styles.tabIconImage,
+                        !isActive && { opacity: 0.5 },
+                        isActive && { transform: [{ scale: 1.1 }] },
+                      ]}
+                    />
+                  ) : (
+                    <Text style={[styles.tabIcon, isActive && { transform: [{ scale: 1.15 }] }]}>
+                      {tab.icon}
+                    </Text>
+                  )}
                   {/* Unread badge */}
                   {tab.badge > 0 && (
                     <View style={[styles.tabBadge, { backgroundColor: theme.accent || "#ef4444" }]}>
@@ -520,6 +543,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   sidebarIcon: { fontSize: 20, width: 28, textAlign: "center" },
+  sidebarIconImage: { width: 28, height: 28, borderRadius: 6 },
   sidebarLabel: { fontSize: 13, color: "#888", fontWeight: "600" },
   sidebarBadge: {
     minWidth: 18, height: 18, borderRadius: 9,
@@ -542,6 +566,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, alignItems: "center", paddingVertical: 4, position: "relative" },
   tabInner: { position: "relative" },
   tabIcon: { fontSize: 20, textAlign: "center" },
+  tabIconImage: { width: 28, height: 28, borderRadius: 6 },
   tabLabel: { fontSize: 10, color: "#666", marginTop: 2, fontWeight: "500" },
   tabIndicator: {
     position: "absolute", top: -7, left: "30%", right: "30%",

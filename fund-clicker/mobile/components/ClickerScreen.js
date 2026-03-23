@@ -400,17 +400,25 @@ export default function ClickerScreen() {
               style={[
                 styles.coinButton,
                 {
-                  backgroundColor: theme.primary,
                   width: theme.coinSize,
                   height: theme.coinSize,
                   borderRadius: theme.coinSize / 2,
                   shadowColor: theme.primary,
                   shadowRadius: theme.glowRadius,
+                  overflow: "hidden",
                 },
-                isSabotaged && { backgroundColor: "#ef4444" },
+                isSabotaged && { borderWidth: 3, borderColor: "#ef4444" },
               ]}
             >
-              <Text style={[styles.coinEmoji, { fontSize: theme.coinSize * 0.45 }]}>{theme.coinEmoji}</Text>
+              <Image
+                source={{ uri: `https://api.fundclicker.com/vibes/${theme.vibeId || "retro-arcade"}/coin.png` }}
+                style={{
+                  width: theme.coinSize,
+                  height: theme.coinSize,
+                  borderRadius: theme.coinSize / 2,
+                }}
+                resizeMode="cover"
+              />
             </View>
           </Animated.View>
         </Pressable>

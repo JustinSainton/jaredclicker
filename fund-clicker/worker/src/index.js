@@ -534,6 +534,23 @@ export default {
       return jsonResponse({ status: "ok", version: "1.0.0" });
     }
 
+    // ── Serve vibe assets from R2 (coin images, backgrounds, tab icons, etc.)
+    if (url.pathname.startsWith("/vibes/") && request.method === "GET") {
+      const key = url.pathname.slice(1); // "vibes/retro-arcade/coin.png"
+      try {
+        const obj = await env.ASSETS.get(key);
+        if (!obj) return corsResponse("Not found", { status: 404 });
+        const headers = {
+          ...corsHeaders,
+          "Content-Type": obj.httpMetadata?.contentType || "image/png",
+          "Cache-Control": "public, max-age=604800, immutable",
+        };
+        return new Response(obj.body, { headers });
+      } catch {
+        return corsResponse("Asset error", { status: 500 });
+      }
+    }
+
     // ── Platform endpoints (/api/v1/platform/*)
     if (url.pathname.startsWith("/api/v1/platform/")) {
       return handlePlatformRoutes(url, request, env);
