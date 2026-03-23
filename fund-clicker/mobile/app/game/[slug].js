@@ -21,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import t from "../../lib/i18n";
 import { hashPin } from "../../lib/crypto";
 import { headingStyle } from "../../lib/theme-styles";
+import { useLayout } from "../../hooks/useLayout";
 import { useOrg } from "../../context/OrgContext";
 import { GameProvider, useGame } from "../../context/GameContext";
 import ClickerScreen from "../../components/ClickerScreen";
@@ -207,6 +208,7 @@ function GameTabs() {
   const { org, theme } = useOrg();
   const { connected, chatMessages, player } = useGame();
   const router = useRouter();
+  const layout = useLayout();
   const [activeTab, setActiveTab] = useState("click");
   const [showProfile, setShowProfile] = useState(false);
   const [lastSeenChatCount, setLastSeenChatCount] = useState(0);
@@ -251,6 +253,8 @@ function GameTabs() {
     }
   };
 
+  const useSidebar = layout.isWide;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.secondary }]}>
       {/* Top bar with org name, connection status, and settings */}
@@ -277,7 +281,6 @@ function GameTabs() {
             </View>
           </View>
           <View style={styles.topBarRight}>
-            {/* Player name badge — tappable to open profile */}
             <TouchableOpacity
               style={[styles.playerBadge, { borderColor: theme.primary + "44" }]}
               onPress={() => { Haptics.selectionAsync(); setShowProfile(true); }}
@@ -290,8 +293,39 @@ function GameTabs() {
         </View>
       </SafeAreaView>
 
-      {/* Content area — all tabs rendered but only active one visible (preserves state) */}
-      <View style={styles.content}>
+      {/* Main area: sidebar + content on wide screens, content only on phone */}
+      <View style={[styles.mainArea, useSidebar && { flexDirection: "row" }]}>
+
+      {/* Sidebar navigation (tablet/desktop) */}
+      {useSidebar && (
+        <View style={[styles.sidebar, { width: layout.sidebarWidth, borderRightColor: theme.primary + "22" }]}>
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.sidebarItem, isActive && { backgroundColor: theme.primary + "15" }]}
+                onPress={() => handleTabPress(tab.key)}
+              >
+                <Text style={styles.sidebarIcon}>{tab.icon}</Text>
+                {layout.isDesktop && (
+                  <Text style={[styles.sidebarLabel, isActive && { color: theme.primary }]}>
+                    {tab.label}
+                  </Text>
+                )}
+                {tab.badge > 0 && (
+                  <View style={[styles.sidebarBadge, { backgroundColor: theme.accent || "#ef4444" }]}>
+                    <Text style={styles.sidebarBadgeText}>{tab.badge > 99 ? "99+" : tab.badge}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Content area — capped width on desktop */}
+      <View style={[styles.content, useSidebar && { maxWidth: layout.contentMaxWidth, alignSelf: "center", flex: 1 }]}>
         {showProfile ? (
           <ProfileScreen onClose={() => setShowProfile(false)} />
         ) : (
@@ -306,8 +340,10 @@ function GameTabs() {
         )}
       </View>
 
-      {/* Tab bar */}
-      <SafeAreaView edges={["bottom"]} style={styles.tabBarSafe}>
+      </View>{/* end mainArea */}
+
+      {/* Bottom tab bar (phone only — hidden on tablet/desktop where sidebar is used) */}
+      {!useSidebar && <SafeAreaView edges={["bottom"]} style={styles.tabBarSafe}>
         <View style={[styles.tabBar, { borderTopColor: theme.primary + "22" }]}>
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -339,7 +375,7 @@ function GameTabs() {
             );
           })}
         </View>
-      </SafeAreaView>
+      </SafeAreaView>}
 
       {/* Active game overlay (challenges, battle UIs) */}
       <ActiveGameModal />
@@ -463,6 +499,34 @@ const styles = StyleSheet.create({
     borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4,
   },
   playerBadgeText: { fontSize: 11, fontWeight: "700" },
+
+  // Main area (holds sidebar + content on wide screens)
+  mainArea: { flex: 1 },
+
+  // Sidebar (tablet/desktop)
+  sidebar: {
+    paddingTop: 12,
+    borderRightWidth: 1,
+    backgroundColor: "#0a0a14",
+  },
+  sidebarItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginHorizontal: 8,
+    marginBottom: 2,
+  },
+  sidebarIcon: { fontSize: 20, width: 28, textAlign: "center" },
+  sidebarLabel: { fontSize: 13, color: "#888", fontWeight: "600" },
+  sidebarBadge: {
+    minWidth: 18, height: 18, borderRadius: 9,
+    justifyContent: "center", alignItems: "center",
+    paddingHorizontal: 4, marginLeft: "auto",
+  },
+  sidebarBadgeText: { fontSize: 9, fontWeight: "800", color: "#fff" },
 
   // Content
   content: { flex: 1 },
