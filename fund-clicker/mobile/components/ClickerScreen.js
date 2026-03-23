@@ -36,7 +36,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // ─── FLOATING NUMBER COMPONENT ────────────────────────────────────────────────
 
-function FloatingNumber({ x, y, text, onDone }) {
+function FloatingNumber({ x, y, text, onDone, theme }) {
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -47,6 +47,12 @@ function FloatingNumber({ x, y, text, onDone }) {
     <Animated.Text
       style={[
         styles.floatingNumber,
+        theme?.scoreFont && { fontFamily: theme.scoreFont },
+        theme?.textShadow && {
+          textShadowColor: theme.textShadow.color,
+          textShadowOffset: { width: theme.textShadow.width, height: theme.textShadow.height },
+          textShadowRadius: theme.textShadow.radius,
+        },
         {
           left: x - 30,
           top: y - 20,
@@ -348,10 +354,22 @@ export default function ClickerScreen() {
 
       {/* Score display */}
       <View style={styles.scoreSection}>
-        <Text style={[styles.score, { color: theme.primary }]}>
+        <Text style={[
+          styles.score,
+          { color: theme.primary },
+          theme.scoreFont && { fontFamily: theme.scoreFont },
+          theme.scoreTextShadow && {
+            textShadowColor: theme.scoreTextShadow.color,
+            textShadowOffset: { width: theme.scoreTextShadow.width, height: theme.scoreTextShadow.height },
+            textShadowRadius: theme.scoreTextShadow.radius,
+          },
+        ]}>
           {formatNumber(gameState.coins)}
         </Text>
-        <Text style={styles.currencyLabel}>{theme.currencyName}</Text>
+        <Text style={[
+          styles.currencyLabel,
+          theme.labelFont && { fontFamily: theme.labelFont },
+        ]}>{theme.currencyName}</Text>
         <View style={styles.statsRow}>
           <Text style={styles.stat}>
             {formatNumber(gameState.coinsPerClick)}/tap
@@ -381,17 +399,29 @@ export default function ClickerScreen() {
                   borderColor: theme.primary,
                   opacity: glowOpacity,
                   shadowColor: theme.primary,
+                  width: theme.coinSize + 40,
+                  height: theme.coinSize + 40,
+                  borderRadius: (theme.coinSize + 40) / 2,
+                  shadowRadius: theme.glowRadius,
+                  borderWidth: theme.borderWidth,
                 },
               ]}
             />
             <View
               style={[
                 styles.coinButton,
-                { backgroundColor: theme.primary },
+                {
+                  backgroundColor: theme.primary,
+                  width: theme.coinSize,
+                  height: theme.coinSize,
+                  borderRadius: theme.coinSize / 2,
+                  shadowColor: theme.primary,
+                  shadowRadius: theme.glowRadius,
+                },
                 isSabotaged && { backgroundColor: "#ef4444" },
               ]}
             >
-              <Text style={styles.coinEmoji}>{"\uD83E\uDE99"}</Text>
+              <Text style={[styles.coinEmoji, { fontSize: theme.coinSize * 0.45 }]}>{theme.coinEmoji}</Text>
             </View>
           </Animated.View>
         </Pressable>
@@ -404,7 +434,7 @@ export default function ClickerScreen() {
       <View style={styles.quickStats}>
         <View style={styles.quickStat}>
           <Text style={styles.qsLabel}>{t("sightings")}</Text>
-          <Text style={[styles.qsValue, { color: theme.primary }]}>{gameState.sightings}</Text>
+          <Text style={[styles.qsValue, { color: theme.primary }, theme.scoreFont && { fontFamily: theme.scoreFont }]}>{gameState.sightings}</Text>
         </View>
         <View style={styles.quickStat}>
           <Text style={styles.qsLabel}>{t("upgrades")}</Text>
@@ -430,7 +460,7 @@ export default function ClickerScreen() {
 
       {/* Floating numbers */}
       {floaters.map((f) => (
-        <FloatingNumber key={f.id} x={f.x} y={f.y} text={f.text} onDone={() => removeFloater(f.id)} />
+        <FloatingNumber key={f.id} x={f.x} y={f.y} text={f.text} theme={theme} onDone={() => removeFloater(f.id)} />
       ))}
 
       {/* Photo event modal */}
