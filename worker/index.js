@@ -2786,16 +2786,16 @@ export class LiveVisitors {
           });
 
           // Check epoch BEFORE accepting the score into memory
-          // Use cached epoch (loaded by broadcast on connection open) to avoid async
           var clientEpoch = typeof msg.scoreEpoch === "number" ? msg.scoreEpoch : undefined;
           var svrEpoch = this.scoreEpoch || 0;
 
-          // Only reject if client explicitly sends a stale epoch number
-          // Clients without epoch support (old versions) are allowed through
-          if (svrEpoch > 0 && typeof clientEpoch === "number" && clientEpoch < svrEpoch) {
-            info.score = 0;
-            try { server.send(JSON.stringify({ type: "resetAll", scoreEpoch: svrEpoch })); } catch(e) {}
-            return;
+          // Reject scores from clients with stale or missing epoch after a reset
+          if (svrEpoch > 0) {
+            if (typeof clientEpoch !== "number" || clientEpoch < svrEpoch) {
+              info.score = 0;
+              try { server.send(JSON.stringify({ type: "resetAll", scoreEpoch: svrEpoch })); } catch(e) {}
+              return;
+            }
           }
           info.score = Math.floor(msg.score);
           info.stats = {
