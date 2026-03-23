@@ -36,7 +36,7 @@ import {
   isPaymentsEnabled,
 } from "../lib/payments";
 import { playUpgrade } from "../lib/sounds";
-import { headingStyle, scoreStyle, bodyStyle, cardBorderStyle } from "../lib/theme-styles";
+import { headingStyle, scoreStyle, bodyStyle, labelStyle, cardStyle, cardActiveStyle, glowStyle } from "../lib/theme-styles";
 import t from "../lib/i18n";
 
 // ─── TARGET PICKER MODAL ──────────────────────────────────────────────────────

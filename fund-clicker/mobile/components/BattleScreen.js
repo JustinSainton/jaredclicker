@@ -17,7 +17,7 @@ import CampaignsList from "./CampaignsList";
 import GroupGameLobby from "./GroupGameLobby";
 import { formatNumber as fmtNum } from "../lib/gameEngine";
 import t from "../lib/i18n";
-import { headingStyle, scoreStyle } from "../lib/theme-styles";
+import { headingStyle, scoreStyle, bodyStyle, cardStyle } from "../lib/theme-styles";
 
 const GAME_TYPES = [
   { key: "coinflip", labelKey: "coinFlip", icon: "\uD83E\uDE99" },

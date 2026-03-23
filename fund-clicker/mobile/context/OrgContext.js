@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../lib/api";
 import { VIBES, getVibeTheme } from "../lib/vibes";
+import { DESIGN_TOKENS, getDesignTokens } from "../lib/design-tokens";
 
 const OrgContext = createContext(null);
 const STORAGE_KEY = "@fundclicker_org";
@@ -90,46 +91,84 @@ export function OrgProvider({ children }) {
       }
     }
 
-    // Get base vibe theme, then override with org-specific colors
+    // Get base vibe theme + full design tokens
     const vibeTheme = getVibeTheme(vibeId, config);
+    const tokens = getDesignTokens(vibeId);
 
     return {
       // Colors (org config overrides vibe defaults)
       primary: config.primary_color || vibeTheme.primary,
       secondary: config.secondary_color || vibeTheme.secondary,
       accent: config.accent_color || vibeTheme.accent,
-      surface: vibeTheme.surface || "#16213e",
-      text: vibeTheme.text || "#ffffff",
-      textMuted: vibeTheme.textMuted || "#8888aa",
-      success: vibeTheme.success || "#4ade80",
-      danger: vibeTheme.danger || "#ef4444",
+      surface: tokens.colors.surface,
+      surfaceLight: tokens.colors.surfaceLight,
+      surfaceDark: tokens.colors.surfaceDark,
+      text: tokens.colors.text,
+      textSecondary: tokens.colors.textSecondary,
+      textMuted: tokens.colors.textMuted,
+      textDim: tokens.colors.textDim,
+      success: tokens.colors.success,
+      successDark: tokens.colors.successDark,
+      danger: tokens.colors.danger,
+      dangerDark: tokens.colors.dangerDark,
+      premium: tokens.colors.premium,
+      premiumDark: tokens.colors.premiumDark,
+      primaryDark: tokens.colors.primaryDark,
+      primaryLight: tokens.colors.primaryLight,
 
-      // Typography (from vibe)
-      headingFont: vibeTheme.headingFont || null,
-      bodyFont: vibeTheme.bodyFont || null,
-      scoreFont: vibeTheme.scoreFont || null,
-      labelFont: vibeTheme.labelFont || null,
+      // Typography (from design tokens)
+      headingFont: tokens.fonts.heading,
+      bodyFont: tokens.fonts.body,
+      scoreFont: tokens.fonts.score,
+      labelFont: tokens.fonts.label,
+      scoreSize: tokens.fonts.scoreSize,
+      headingSize: tokens.fonts.headingSize,
+      bodySize: tokens.fonts.bodySize,
+      labelSize: tokens.fonts.labelSize,
+      floatNumberSize: tokens.fonts.floatNumberSize,
 
-      // Visual effects (from vibe)
-      textShadow: vibeTheme.textShadow || null,
-      scoreTextShadow: vibeTheme.scoreTextShadow || null,
-      glowRadius: vibeTheme.glowRadius || 10,
-      glowColor: vibeTheme.glowColor || "rgba(255,215,0,0.3)",
-      glowColorSubtle: vibeTheme.glowColorSubtle || "rgba(255,215,0,0.08)",
-      borderWidth: vibeTheme.borderWidth || 1,
-      backgroundGradient: vibeTheme.backgroundGradient || null,
+      // Text shadows (from design tokens — per-category)
+      textShadow: tokens.shadows.gold,
+      scoreTextShadow: tokens.shadows.goldHeavy,
+      greenShadow: tokens.shadows.green,
+      redShadow: tokens.shadows.red,
 
-      // Sizing + animation
-      coinSize: vibeTheme.coinSize || 180,
-      animationStyle: vibeTheme.animationStyle || "smooth",
-      animationDuration: vibeTheme.animationDuration || 300,
+      // Glow effects (from design tokens)
+      glow: tokens.glow,
+      glowRadius: tokens.glow.primary.radius,
+      glowColor: tokens.glow.primary.color,
+      glowColorSubtle: tokens.glow.primarySubtle.color,
+
+      // Borders (from design tokens)
+      borderWidth: tokens.borders.width,
+      borderWidthThin: tokens.borders.widthThin,
+      borderRadius: tokens.borders.radius,
+      borderRadiusLarge: tokens.borders.radiusLarge,
+      borderColor: tokens.borders.color,
+      borderColorMuted: tokens.borders.colorMuted,
+
+      // Gradients (from design tokens)
+      gradients: tokens.gradients,
+      backgroundGradient: tokens.gradients.background,
+
+      // Sizing (from design tokens)
+      coinSize: tokens.sizing.coinButton,
+      coinGlowSize: tokens.sizing.coinGlow,
+      tabIconSize: tokens.sizing.tabIcon,
+
+      // Animation (from design tokens)
+      animation: tokens.animation,
+      animationStyle: tokens.animation.style,
+      animationDuration: tokens.animation.coinPressDuration,
 
       // Branding
       currencyName: config.currency_name || "coins",
       coinEmoji: vibeTheme.coinEmoji || "\uD83E\uDE99",
       coinImageKey: config.coin_image_key || null,
-      borderRadius: vibeTheme.borderRadius || 12,
       vibeId,
+
+      // Full token set (for advanced component usage)
+      tokens,
 
       // Content (parsed from JSON)
       characterPhotos,

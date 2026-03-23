@@ -8,7 +8,7 @@ import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
 import { useGameState } from "../hooks/useGameState";
 import { formatNumber } from "../lib/gameEngine";
-import { headingStyle, scoreStyle, cardBorderStyle } from "../lib/theme-styles";
+import { headingStyle, scoreStyle, bodyStyle, labelStyle, cardStyle, successTextStyle } from "../lib/theme-styles";
 import t from "../lib/i18n";
 
 export default function LeaderboardScreen() {

@@ -31,6 +31,7 @@ import {
   ACHIEVEMENTS,
 } from "../lib/gameEngine";
 import { useGameState } from "../hooks/useGameState";
+import { scoreStyle, headingStyle, floatNumberStyle, labelStyle, glowStyle, springConfig } from "../lib/theme-styles";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -47,12 +48,7 @@ function FloatingNumber({ x, y, text, onDone, theme }) {
     <Animated.Text
       style={[
         styles.floatingNumber,
-        theme?.scoreFont && { fontFamily: theme.scoreFont },
-        theme?.textShadow && {
-          textShadowColor: theme.textShadow.color,
-          textShadowOffset: { width: theme.textShadow.width, height: theme.textShadow.height },
-          textShadowRadius: theme.textShadow.radius,
-        },
+        theme && floatNumberStyle(theme),
         {
           left: x - 30,
           top: y - 20,
@@ -306,10 +302,11 @@ export default function ClickerScreen() {
       return achResult.state;
     });
 
-    // Bounce
+    // Bounce (uses vibe-specific spring physics)
+    const spring = springConfig(theme);
     Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 0.88, duration: 40, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 3, tension: 200, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 0.88, duration: theme.animation?.coinPressDuration || 40, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: spring.friction, tension: spring.tension, useNativeDriver: true }),
     ]).start();
   }, [scaleAnim]);
 
@@ -356,20 +353,12 @@ export default function ClickerScreen() {
       <View style={styles.scoreSection}>
         <Text style={[
           styles.score,
+          scoreStyle(theme),
           { color: theme.primary },
-          theme.scoreFont && { fontFamily: theme.scoreFont },
-          theme.scoreTextShadow && {
-            textShadowColor: theme.scoreTextShadow.color,
-            textShadowOffset: { width: theme.scoreTextShadow.width, height: theme.scoreTextShadow.height },
-            textShadowRadius: theme.scoreTextShadow.radius,
-          },
         ]}>
           {formatNumber(gameState.coins)}
         </Text>
-        <Text style={[
-          styles.currencyLabel,
-          theme.labelFont && { fontFamily: theme.labelFont },
-        ]}>{theme.currencyName}</Text>
+        <Text style={[styles.currencyLabel, labelStyle(theme)]}>{theme.currencyName}</Text>
         <View style={styles.statsRow}>
           <Text style={styles.stat}>
             {formatNumber(gameState.coinsPerClick)}/tap
@@ -434,7 +423,7 @@ export default function ClickerScreen() {
       <View style={styles.quickStats}>
         <View style={styles.quickStat}>
           <Text style={styles.qsLabel}>{t("sightings")}</Text>
-          <Text style={[styles.qsValue, { color: theme.primary }, theme.scoreFont && { fontFamily: theme.scoreFont }]}>{gameState.sightings}</Text>
+          <Text style={[styles.qsValue, scoreStyle(theme), { color: theme.primary }]}>{gameState.sightings}</Text>
         </View>
         <View style={styles.quickStat}>
           <Text style={styles.qsLabel}>{t("upgrades")}</Text>
