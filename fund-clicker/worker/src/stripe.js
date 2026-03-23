@@ -50,9 +50,22 @@ export async function exchangeOAuthCode(code, env) {
   };
 }
 
+// Calculate total application fee including platform % + AI generation costs
+// apiCostCents: estimated API cost (e.g., Gemini skin generation)
+// Adds 10% buffer on API costs to ensure we never lose money
+export function calculateTotalFee(amount, apiCostCents = 0) {
+  const platformFee = calculatePlatformFee(amount);
+  if (!apiCostCents || apiCostCents <= 0) return platformFee;
+  // Add API cost + 10% buffer (round up to nearest cent)
+  const bufferedApiCost = Math.ceil(apiCostCents * 1.1);
+  return platformFee + bufferedApiCost;
+}
+
 // Create a PaymentIntent with application fee routed to the org's connected account
-export async function createPaymentIntent(env, { amount, currency = "usd", description, metadata = {}, orgStripeAccountId }) {
-  const feeAmount = calculatePlatformFee(amount);
+// apiCostCents: if this payment involves AI generation, pass the estimated cost
+// The platform fee = 3% of amount + API cost + 10% buffer on API cost
+export async function createPaymentIntent(env, { amount, currency = "usd", description, metadata = {}, orgStripeAccountId, apiCostCents = 0 }) {
+  const feeAmount = calculateTotalFee(amount, apiCostCents);
 
   const params = new URLSearchParams({
     amount: String(amount),

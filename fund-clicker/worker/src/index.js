@@ -3,7 +3,7 @@
 // All game logic lives in OrgGameInstance (extracted from LiveVisitors)
 
 import { createToken, verifyToken, hashPassword, verifyPassword, needsPasswordRehash, extractBearer, requireAdmin, generateJoinCode, isValidSlug, slugify } from "./auth.js";
-import { getConnectOAuthURL, exchangeOAuthCode, createPaymentIntent, getAccountStatus, createAccountLink, verifyWebhookSignature, getPaymentIntent, calculatePlatformFee } from "./stripe.js";
+import { getConnectOAuthURL, exchangeOAuthCode, createPaymentIntent, getAccountStatus, createAccountLink, verifyWebhookSignature, getPaymentIntent, calculatePlatformFee, calculateTotalFee } from "./stripe.js";
 
 export { OrgGameInstance } from "./org-game.js";
 
@@ -580,11 +580,21 @@ async function handleOrgRoutes(slug, subpath, url, request, env) {
 
       await resolveFundId(env.DB, org.id, metadata.fundId || null);
       const amount = resolveExpectedAmount(purchaseType, metadata);
+
+      // Estimate AI generation cost for types that involve Gemini API calls
+      // Custom skins: ~$0.50-0.80 in Gemini tokens for a full 6-asset skin pack
+      // The 10% buffer in calculateTotalFee protects against cost variance
+      const AI_COST_ESTIMATES = {
+        custom_skin: 80, // 80 cents estimated for full skin generation
+      };
+      const apiCostCents = AI_COST_ESTIMATES[purchaseType] || 0;
+
       const intent = await createPaymentIntent(env, {
         amount,
         description: body.description || `Fund Clicker - ${org.name}`,
-        metadata: { orgId: org.id, orgSlug: org.slug, type: purchaseType, ...metadata },
+        metadata: { orgId: org.id, orgSlug: org.slug, type: purchaseType, apiCostCents: String(apiCostCents), ...metadata },
         orgStripeAccountId: stripe.stripe_account_id,
+        apiCostCents,
       });
 
       return jsonResponse({ clientSecret: intent.client_secret, id: intent.id, amount });
