@@ -3653,7 +3653,7 @@ export default {
             status: 400, headers: { "Content-Type": "application/json" },
           });
         }
-        return corsResponse(JSON.stringify({ clientSecret: intent.client_secret, coins: pack.coins }), {
+        return corsResponse(JSON.stringify({ clientSecret: intent.client_secret, coins: coins }), {
           headers: { "Content-Type": "application/json" },
         });
       } catch (e) {
