@@ -3,7 +3,7 @@
 const ALGORITHM = { name: "HMAC", hash: "SHA-256" };
 const TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const PASSWORD_HASH_PREFIX = "pbkdf2_sha256";
-const PASSWORD_HASH_ITERATIONS = 210000;
+const PASSWORD_HASH_ITERATIONS = 100000; // CF Workers limit: max 100K iterations
 const PASSWORD_HASH_BYTES = 32;
 
 // Import a secret string as a CryptoKey for HMAC signing
