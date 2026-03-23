@@ -1,26 +1,48 @@
 // Root layout — wraps entire app with providers
-// Order: StripeProvider → OrgProvider → (screens)
+// StripeProvider is conditional: only rendered with a real publishable key.
+// Without Stripe, payments are disabled but everything else works.
 import { Stack } from "expo-router";
-import { StripeProvider } from "@stripe/stripe-react-native";
 import { OrgProvider } from "../context/OrgContext";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { initSounds } from "../lib/sounds";
 import { forceSave } from "../hooks/useGameState";
 
-// Stripe publishable key — this is the PLATFORM's key (not per-org)
-// Set EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY in EAS env vars for production.
-// Falls back to a placeholder that disables Stripe gracefully.
-const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder";
+// Stripe is optional — only load if publishable key is set
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
+
+// Conditionally import Stripe to avoid crash on web or when key is missing
+let StripeProvider = null;
+if (Platform.OS !== "web" && STRIPE_PUBLISHABLE_KEY && !STRIPE_PUBLISHABLE_KEY.includes("placeholder")) {
+  try {
+    const stripe = require("@stripe/stripe-react-native");
+    StripeProvider = stripe.StripeProvider;
+  } catch {
+    // Stripe SDK not available — payments disabled
+  }
+}
+
+function AppContent() {
+  return (
+    <OrgProvider>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: "#1a1a2e" },
+          animation: "slide_from_right",
+        }}
+      />
+    </OrgProvider>
+  );
+}
 
 export default function RootLayout() {
-  // Initialize sounds on app start
   useEffect(() => {
     initSounds();
   }, []);
 
-  // Save game state when app goes to background
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "background" || state === "inactive") {
@@ -30,22 +52,18 @@ export default function RootLayout() {
     return () => sub?.remove();
   }, []);
 
-  return (
-    <StripeProvider
-      publishableKey={STRIPE_PUBLISHABLE_KEY}
-      merchantIdentifier="merchant.com.fundclicker.app"
-      urlScheme="fundclicker"
-    >
-      <OrgProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: "#1a1a2e" },
-            animation: "slide_from_right",
-          }}
-        />
-      </OrgProvider>
-    </StripeProvider>
-  );
+  // Wrap with StripeProvider only if available and configured
+  if (StripeProvider) {
+    return (
+      <StripeProvider
+        publishableKey={STRIPE_PUBLISHABLE_KEY}
+        merchantIdentifier="merchant.com.fundclicker.app"
+        urlScheme="fundclicker"
+      >
+        <AppContent />
+      </StripeProvider>
+    );
+  }
+
+  return <AppContent />;
 }

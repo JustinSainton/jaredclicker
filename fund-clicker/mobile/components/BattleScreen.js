@@ -12,7 +12,9 @@ import {
 import * as Haptics from "expo-haptics";
 import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
-import { ActiveGamesList } from "./SpectatorView";
+import { ActiveGamesList, SpectatorModal } from "./SpectatorView";
+import CampaignsList from "./CampaignsList";
+import GroupGameLobby from "./GroupGameLobby";
 import { formatNumber as fmtNum } from "../lib/gameEngine";
 import t from "../lib/i18n";
 
@@ -29,11 +31,14 @@ const GAME_TYPES = [
 ];
 
 export default function BattleScreen() {
-  const { online, player, challenge, activeGames, leaderboard, challengeSentTo } = useGame();
+  const { online, player, challenge, activeGames, leaderboard, campaigns, challengeSentTo } = useGame();
   const { theme } = useOrg();
   const [selectedGame, setSelectedGame] = useState(null);
   const [wager, setWager] = useState("500");
-  const spectatingEnabled = false;
+  const [subTab, setSubTab] = useState("battle");
+  const [spectatingGame, setSpectatingGame] = useState(null);
+
+  const activeCampaignCount = campaigns?.filter(c => c.status === "active")?.length || 0;
 
   const eligiblePlayers = online.filter(
     (name) => name.toLowerCase() !== player?.name?.toLowerCase()
@@ -76,6 +81,37 @@ export default function BattleScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Sub-tab toggle */}
+      <View style={styles.subTabRow}>
+        <TouchableOpacity
+          style={[styles.subTab, subTab === "battle" && { borderBottomColor: theme.primary, borderBottomWidth: 2 }]}
+          onPress={() => { Haptics.selectionAsync(); setSubTab("battle"); }}
+        >
+          <Text style={[styles.subTabText, subTab === "battle" && { color: theme.primary }]}>
+            {"\u2694\uFE0F"} {t("battle")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.subTab, subTab === "group" && { borderBottomColor: theme.primary, borderBottomWidth: 2 }]}
+          onPress={() => { Haptics.selectionAsync(); setSubTab("group"); }}
+        >
+          <Text style={[styles.subTabText, subTab === "group" && { color: theme.primary }]}>
+            {"\uD83C\uDFAE"} {t("group")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.subTab, subTab === "campaigns" && { borderBottomColor: theme.primary, borderBottomWidth: 2 }]}
+          onPress={() => { Haptics.selectionAsync(); setSubTab("campaigns"); }}
+        >
+          <Text style={[styles.subTabText, subTab === "campaigns" && { color: theme.primary }]}>
+            {"\uD83D\uDCE2"} {t("campaigns")}{activeCampaignCount > 0 ? ` (${activeCampaignCount})` : ""}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {subTab === "campaigns" ? <CampaignsList /> : null}
+      {subTab === "group" ? <GroupGameLobby /> : null}
+      {subTab !== "battle" ? null : (
       <View style={{ flex: 1, padding: 16 }}>
       <Text style={styles.header}>{t("battle")}</Text>
 
@@ -151,7 +187,7 @@ export default function BattleScreen() {
       />
 
       {/* Spectatable games */}
-      {spectatingEnabled ? <ActiveGamesList onSpectate={() => {}} /> : null}
+      <ActiveGamesList onSpectate={setSpectatingGame} />
 
       {/* Active games count */}
       {activeGames.length > 0 && (
@@ -162,6 +198,12 @@ export default function BattleScreen() {
         </View>
       )}
       </View>
+      )}
+
+      {/* Spectator modal */}
+      {spectatingGame && (
+        <SpectatorModal game={spectatingGame} onClose={() => setSpectatingGame(null)} />
+      )}
     </View>
   );
 }
@@ -170,6 +212,9 @@ function formatNumber(n) { return fmtNum(n); }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  subTabRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#222" },
+  subTab: { flex: 1, paddingVertical: 12, alignItems: "center" },
+  subTabText: { fontSize: 14, fontWeight: "600", color: "#888" },
   waitingCard: {
     backgroundColor: "rgba(255,255,255,0.03)", borderWidth: 1,
     borderRadius: 12, padding: 14, marginBottom: 16, alignItems: "center",

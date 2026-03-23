@@ -15,7 +15,7 @@ import {
   FlatList,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { useStripe } from "@stripe/stripe-react-native";
+import { useStripeSafe } from "../lib/stripe-safe";
 import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
 import { useGameState } from "../hooks/useGameState";
@@ -84,7 +84,7 @@ function TargetPickerModal({ visible, onClose, onSelect, leaderboard, playerName
 // ─── MAIN SHOP SCREEN ─────────────────────────────────────────────────────────
 
 export default function ShopScreen() {
-  const stripe = useStripe();
+  const stripe = useStripeSafe();
   const { player, leaderboard, credits, sabotages } = useGame();
   const { org, theme } = useOrg();
   const { gameState, setGameState } = useGameState();

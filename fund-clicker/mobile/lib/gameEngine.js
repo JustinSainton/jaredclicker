@@ -3,6 +3,7 @@
 // smelly levels, photo events, save/load, and anti-autoclicker.
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 // ─── UPGRADES (40 across 8 tiers) ────────────────────────────────────────────
 // In multi-tenant mode, names/emojis can be overridden via org config.
@@ -288,15 +289,21 @@ export async function loadGameState(orgSlug) {
   }
 }
 
-// ─── ANTI-AUTOCLICKER (CLIENT-SIDE) ──────────────────────────────────────────
+// ─── ANTI-AUTOCLICKER (WEB ONLY) ─────────────────────────────────────────────
+// On native (iOS/Android), no client-side rate limiting — server handles detection
+// via checkAutoClickerAndBan() with a 50 CPS threshold.
+// On web, rate limit to 12 CPS to prevent mouse macros.
 
 const clickTimes = [];
 const MAX_CPS = 12;
 
 export function isClickAllowed() {
+  // No client-side rate limiting on native — fast thumb tapping is legitimate
+  if (Platform.OS !== "web") return true;
+
+  // Web only: rate limit to prevent mouse macros
   const now = Date.now();
   clickTimes.push(now);
-  // Keep only last second
   while (clickTimes.length > 0 && clickTimes[0] < now - 1000) {
     clickTimes.shift();
   }

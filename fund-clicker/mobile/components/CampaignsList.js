@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { useStripe } from "@stripe/stripe-react-native";
+import { useStripeSafe } from "../lib/stripe-safe";
 import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
 import { contributeToCampaign, formatPrice, isPaymentsEnabled } from "../lib/payments";
@@ -20,7 +20,7 @@ import t from "../lib/i18n";
 const CONTRIBUTION_AMOUNTS = [100, 250, 500, 1000]; // cents
 
 export default function CampaignsList() {
-  const stripe = useStripe();
+  const stripe = useStripeSafe();
   const { campaigns, player } = useGame();
   const { org, theme } = useOrg();
   const [contributing, setContributing] = useState(null);
