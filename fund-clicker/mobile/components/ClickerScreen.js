@@ -10,6 +10,7 @@ import {
   Dimensions,
   Modal,
   Image,
+  ImageBackground,
 } from "react-native";
 import * as Haptics from "../lib/haptics";
 import { useGame } from "../context/GameContext";
@@ -334,8 +335,19 @@ export default function ClickerScreen() {
     outputRange: [0.3, 0.7],
   });
 
+  const bgUri = `https://api.fundclicker.com/vibes/${theme.vibeId || "retro-arcade"}/background.png`;
+  // Use org's custom coin image if set, otherwise fall back to vibe default
+  const coinUri = theme.coinImageKey
+    ? `https://api.fundclicker.com/orgs-assets/${theme.coinImageKey.replace("orgs/", "")}`
+    : `https://api.fundclicker.com/vibes/${theme.vibeId || "retro-arcade"}/coin.png`;
+
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={{ uri: bgUri }}
+      style={styles.container}
+      imageStyle={{ opacity: 0.4 }}
+      resizeMode="cover"
+    >
       {/* Sabotage banner */}
       <SabotageBanner state={gameState} theme={theme} />
 
@@ -411,7 +423,7 @@ export default function ClickerScreen() {
               ]}
             >
               <Image
-                source={{ uri: `https://api.fundclicker.com/vibes/${theme.vibeId || "retro-arcade"}/coin.png` }}
+                source={{ uri: coinUri }}
                 style={{
                   width: theme.coinSize,
                   height: theme.coinSize,
@@ -479,7 +491,7 @@ export default function ClickerScreen() {
           onDone={dismissAchievement}
         />
       )}
-    </View>
+    </ImageBackground>
   );
 }
 

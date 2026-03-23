@@ -1400,6 +1400,15 @@ export class OrgGameInstance {
       }), { headers: { "Content-Type": "application/json" } });
     }
 
+    // ── Import score (migration endpoint)
+    if (url.pathname === "/import-score" && request.method === "POST") {
+      const body = await request.json();
+      if (body.name && body.score) {
+        await this.saveScore(String(body.name).slice(0, 20), Math.floor(body.score));
+      }
+      return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+    }
+
     // ── Debug state
     if (url.pathname === "/debug-state") {
       if (!internalRequest) return this.jsonError("Unauthorized");

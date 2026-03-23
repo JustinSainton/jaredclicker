@@ -534,15 +534,23 @@ export default {
       return jsonResponse({ status: "ok", version: "1.0.0" });
     }
 
-    // ── Serve vibe assets from R2 (coin images, backgrounds, tab icons, etc.)
-    if (url.pathname.startsWith("/vibes/") && request.method === "GET") {
-      const key = url.pathname.slice(1); // "vibes/retro-arcade/coin.png"
+    // ── Serve assets from R2 (vibe assets, org-specific assets like coins/photos/skins)
+    if ((url.pathname.startsWith("/vibes/") || url.pathname.startsWith("/orgs-assets/")) && request.method === "GET") {
+      // Map URL paths to R2 keys:
+      //   /vibes/retro-arcade/coin.png → vibes/retro-arcade/coin.png
+      //   /orgs-assets/jared-clicker/coin.png → orgs/jared-clicker/coin.png
+      let key = url.pathname.slice(1);
+      if (key.startsWith("orgs-assets/")) {
+        key = "orgs/" + key.slice("orgs-assets/".length);
+      }
       try {
         const obj = await env.ASSETS.get(key);
         if (!obj) return corsResponse("Not found", { status: 404 });
+        const contentType = obj.httpMetadata?.contentType
+          || (key.endsWith(".json") ? "application/json" : key.endsWith(".mp3") ? "audio/mpeg" : key.endsWith(".wav") ? "audio/wav" : "image/png");
         const headers = {
           ...corsHeaders,
-          "Content-Type": obj.httpMetadata?.contentType || "image/png",
+          "Content-Type": contentType,
           "Cache-Control": "public, max-age=604800, immutable",
         };
         return new Response(obj.body, { headers });
