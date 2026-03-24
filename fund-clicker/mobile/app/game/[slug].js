@@ -222,10 +222,10 @@ function GameTabs() {
 
   // Load persisted chat count on mount
   useEffect(() => {
-    AsyncStorage.getItem("@fc_lastSeenChat_" + slug).then(v => {
+    AsyncStorage.getItem("@fc_lastSeenChat_" + (org?.slug || "")).then(v => {
       setLastSeenChatCount(v ? Number(v) : 0);
     });
-  }, [slug]);
+  }, [org?.slug]);
 
   // Track unread chat messages (null = still loading, show 0)
   const unreadChat = lastSeenChatCount === null || activeTab === "chat" ? 0 : Math.max(0, chatMessages.length - lastSeenChatCount);
@@ -235,10 +235,10 @@ function GameTabs() {
     Haptics.selectionAsync();
     if (key === "chat") {
       setLastSeenChatCount(chatMessages.length);
-      AsyncStorage.setItem("@fc_lastSeenChat_" + slug, String(chatMessages.length));
+      AsyncStorage.setItem("@fc_lastSeenChat_" + (org?.slug || ""), String(chatMessages.length));
     }
     setActiveTab(key);
-  }, [chatMessages.length, slug]);
+  }, [chatMessages.length, org?.slug]);
 
   // Update seen count when chat tab is active and new messages arrive
   useEffect(() => {
