@@ -61,22 +61,19 @@ export function GameProvider({ children, orgSlug }) {
     });
   }, [orgSlug]);
 
-  // Keep a ref to the message handler so WS always calls the latest version
-  const handleWSMessageRef = useRef(null);
-  handleWSMessageRef.current = handleWSMessage;
-
   // ─── WEBSOCKET CONNECTION ─────────────────────────────────────────
   useEffect(() => {
     if (!orgSlug) return;
 
+    let intentionalClose = false;
+
     function connect() {
       const wsUrl = api.getWebSocketURL(orgSlug);
-      // WS connecting
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      ws.onopen = () => {
-        // WS connected
+      // Use addEventListener everywhere — ws.onX = doesn't reliably fire in React Native
+      ws.addEventListener("open", () => {
         setConnected(true);
         reconnectAttempts.current = 0;
         if (player?.name && player?.token) {
@@ -86,7 +83,7 @@ export function GameProvider({ children, orgSlug }) {
             authToken: player.token,
           }));
         }
-      };
+      });
 
       ws.addEventListener("message", (event) => {
         try {
@@ -95,30 +92,31 @@ export function GameProvider({ children, orgSlug }) {
         } catch {}
       });
 
-      ws.onclose = () => {
+      ws.addEventListener("close", () => {
         setConnected(false);
         wsRef.current = null;
-        // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-        reconnectAttempts.current++;
-        reconnectTimer.current = setTimeout(connect, delay);
-      };
+        if (!intentionalClose) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+          reconnectAttempts.current++;
+          reconnectTimer.current = setTimeout(connect, delay);
+        }
+      });
 
-      ws.onerror = () => {
+      ws.addEventListener("error", () => {
         ws.close();
-      };
+      });
     }
 
     connect();
 
     return () => {
+      intentionalClose = true;
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       if (wsRef.current) {
-        wsRef.current.onclose = null; // prevent reconnect on intentional close
         wsRef.current.close();
       }
     };
-  }, [orgSlug]); // Don't depend on player — we send setName after connect
+  }, [orgSlug]); // Don't depend on player — we send setIdentity after connect
 
   // Re-send identity when player changes
   useEffect(() => {
@@ -355,6 +353,10 @@ export function GameProvider({ children, orgSlug }) {
         if (__DEV__) console.log("Unhandled WS message:", msg.type);
     }
   };
+
+  // Keep ref updated so WS addEventListener always calls the latest handler
+  const handleWSMessageRef = useRef(null);
+  handleWSMessageRef.current = handleWSMessage;
 
   // ─── WS SEND HELPER ──────────────────────────────────────────────
   const sendWS = useCallback((data) => {
