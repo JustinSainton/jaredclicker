@@ -30,7 +30,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "6760973149"
+        "ascAppId": "6760973149",
+        "appleId": "justinsainton@gmail.com"
       }
     }
   }

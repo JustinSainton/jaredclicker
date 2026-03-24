@@ -8,6 +8,8 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
+import { Alert } from "react-native";
+import { useRouter } from "expo-router";
 import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
 import { useGameState } from "../hooks/useGameState";
@@ -22,7 +24,8 @@ import t from "../lib/i18n";
 
 export default function ProfileScreen({ onClose }) {
   const { player, credits, leaderboard, online } = useGame();
-  const { theme } = useOrg();
+  const { theme, leaveOrg, org } = useOrg();
+  const router = useRouter();
   const { gameState } = useGameState();
 
   const rank = useMemo(() => getRank(gameState.totalCoins), [gameState.totalCoins]);
@@ -182,6 +185,56 @@ export default function ProfileScreen({ onClose }) {
         })}
       </View>
 
+      {/* Switch / Sign Out */}
+      <View style={styles.accountSection}>
+        <TouchableOpacity
+          style={styles.accountBtn}
+          onPress={() => {
+            Alert.alert(
+              "Switch Fundraiser",
+              "Leave " + (org?.name || "this fundraiser") + " and join a different one?",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Switch",
+                  style: "destructive",
+                  onPress: async () => {
+                    await leaveOrg();
+                    onClose?.();
+                    router.replace("/");
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Text style={styles.accountBtnText}>{"\uD83D\uDD04"} Switch Fundraiser</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.accountBtn, styles.signOutBtn]}
+          onPress={() => {
+            Alert.alert(
+              "Sign Out",
+              "Sign out and return to the join screen? Your progress is saved.",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Sign Out",
+                  style: "destructive",
+                  onPress: async () => {
+                    await leaveOrg();
+                    onClose?.();
+                    router.replace("/");
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Text style={[styles.accountBtnText, { color: "#ef4444" }]}>{"\uD83D\uDEAA"} Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={{ height: 40 }} />
     </ScrollView>
   );
@@ -259,4 +312,12 @@ const styles = StyleSheet.create({
   achievementIcon: { fontSize: 18 },
   achievementName: { flex: 1, fontSize: 13, color: "#ccc", fontWeight: "500" },
   achievementCheck: { fontSize: 14, fontWeight: "800" },
+  // Account actions
+  accountSection: { marginTop: 28, gap: 10 },
+  accountBtn: {
+    backgroundColor: "#16213e", borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: "#1e2a45", alignItems: "center",
+  },
+  signOutBtn: { borderColor: "rgba(239,68,68,0.2)", backgroundColor: "rgba(239,68,68,0.05)" },
+  accountBtnText: { fontSize: 15, fontWeight: "600", color: "#ccc" },
 });
