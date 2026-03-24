@@ -565,7 +565,7 @@ export class OrgGameInstance {
   }
 
   broadcastChat(entry) {
-    const msg = JSON.stringify({ type: "chatMessage", ...entry });
+    const msg = JSON.stringify({ ...entry, type: "chatMessage" });
     for (const [ws] of this.connections) {
       try { ws.send(msg); } catch (e) { this.connections.delete(ws); }
     }

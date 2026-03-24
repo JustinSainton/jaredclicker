@@ -71,10 +71,12 @@ export function GameProvider({ children, orgSlug }) {
 
     function connect() {
       const wsUrl = api.getWebSocketURL(orgSlug);
+      // WS connecting
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
+        // WS connected
         setConnected(true);
         reconnectAttempts.current = 0;
         if (player?.name && player?.token) {
@@ -86,12 +88,12 @@ export function GameProvider({ children, orgSlug }) {
         }
       };
 
-      ws.onmessage = (event) => {
+      ws.addEventListener("message", (event) => {
         try {
           const msg = JSON.parse(event.data);
           handleWSMessageRef.current?.(msg);
         } catch {}
-      };
+      });
 
       ws.onclose = () => {
         setConnected(false);
@@ -147,7 +149,9 @@ export function GameProvider({ children, orgSlug }) {
   }, []);
 
   // ─── WS MESSAGE HANDLER (comprehensive) ──────────────────────────
-  const handleWSMessage = useCallback((msg) => {
+  // Not wrapped in useCallback — state setters are stable, and using a ref
+  // ensures the WS always calls the latest version
+  const handleWSMessage = (msg) => {
     switch (msg.type) {
       // ── Broadcast: full game state update
       case "update":
@@ -173,7 +177,12 @@ export function GameProvider({ children, orgSlug }) {
         setChatMessages(msg.messages || []);
         break;
       case "chatMessage":
-        setChatMessages((prev) => [...prev.slice(-1999), msg]);
+        console.warn("CHAT MSG RECEIVED:", msg.name, msg.message?.slice(0, 20));
+        setChatMessages((prev) => {
+          const next = [...prev, msg];
+          console.warn("CHAT STATE:", prev.length, "->", next.length);
+          return next;
+        });
         break;
       case "chatReaction":
         // Emit reaction event — ChatScreen handles display
@@ -345,7 +354,7 @@ export function GameProvider({ children, orgSlug }) {
         // Unknown message type — log for debugging
         if (__DEV__) console.log("Unhandled WS message:", msg.type);
     }
-  }, [player?.name, pendingChallenge, challengeSentTo]);
+  };
 
   // ─── WS SEND HELPER ──────────────────────────────────────────────
   const sendWS = useCallback((data) => {
