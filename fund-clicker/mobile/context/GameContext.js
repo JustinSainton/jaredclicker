@@ -61,6 +61,10 @@ export function GameProvider({ children, orgSlug }) {
     });
   }, [orgSlug]);
 
+  // Keep a ref to the message handler so WS always calls the latest version
+  const handleWSMessageRef = useRef(null);
+  handleWSMessageRef.current = handleWSMessage;
+
   // ─── WEBSOCKET CONNECTION ─────────────────────────────────────────
   useEffect(() => {
     if (!orgSlug) return;
@@ -85,7 +89,7 @@ export function GameProvider({ children, orgSlug }) {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          handleWSMessage(msg);
+          handleWSMessageRef.current?.(msg);
         } catch {}
       };
 
