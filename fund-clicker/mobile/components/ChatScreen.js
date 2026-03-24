@@ -187,7 +187,7 @@ export default function ChatScreen() {
     setMessage("");
     setReplyTo(null);
     setMentionQuery(null);
-    setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 100);
+    setTimeout(() => listRef.current?.scrollToEnd?.({ animated: true }), 150);
   }, [message, sendChat, replyTo]);
 
   const handleReaction = useCallback((messageId, emoji) => {
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
   replyBarText: { fontSize: 13, color: "#aaa", marginTop: 2 },
   replyBarClose: { fontSize: 16, color: "#aaa", paddingLeft: 12 },
   // Input
-  inputRow: { flexDirection: "row", gap: 8, paddingTop: 8, paddingBottom: Platform.OS === "ios" ? 90 : 8 },
+  inputRow: { flexDirection: "row", gap: 8, paddingTop: 8, paddingBottom: 8 },
   input: { flex: 1, backgroundColor: "#16213e", borderRadius: 22, paddingHorizontal: 18, paddingVertical: 11, color: "#fff", fontSize: 15, borderWidth: 1, borderColor: "#2a2a3e", letterSpacing: 0 },
   sendBtn: { width: 42, height: 42, borderRadius: 21, justifyContent: "center", alignItems: "center" },
   sendIcon: { fontSize: 20, fontWeight: "800" },
