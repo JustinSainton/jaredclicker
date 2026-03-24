@@ -34,6 +34,7 @@ import {
 } from "../lib/gameEngine";
 import { useGameState } from "../hooks/useGameState";
 import { scoreStyle, headingStyle, bodyStyle, floatNumberStyle, labelStyle, glowStyle, springConfig, cardStyle } from "../lib/theme-styles";
+import { getVibeAsset } from "../lib/vibe-assets";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -379,15 +380,16 @@ export default function ClickerScreen() {
     outputRange: [0.3, 0.7],
   });
 
-  const bgUri = `https://api.fundclicker.com/vibes/${theme.vibeId || "retro-arcade"}/background.png`;
-  // Use org's custom coin image if set, otherwise fall back to vibe default
-  const coinUri = theme.coinImageKey
-    ? `https://api.fundclicker.com/orgs-assets/${theme.coinImageKey.replace("orgs/", "")}`
-    : `https://api.fundclicker.com/vibes/${theme.vibeId || "retro-arcade"}/coin.png`;
+  const vibeId = theme.vibeId || "retro-arcade";
+  const bgSource = getVibeAsset(vibeId, "background");
+  // Use org's custom coin image if set, otherwise fall back to bundled vibe coin
+  const coinSource = theme.coinImageKey
+    ? { uri: `https://api.fundclicker.com/orgs-assets/${theme.coinImageKey.replace("orgs/", "")}` }
+    : getVibeAsset(vibeId, "coin");
 
   return (
     <ImageBackground
-      source={{ uri: bgUri }}
+      source={bgSource}
       style={styles.container}
       imageStyle={{ opacity: 0.4 }}
       resizeMode="cover"
@@ -478,7 +480,7 @@ export default function ClickerScreen() {
               ]}
             >
               <Image
-                source={{ uri: coinUri }}
+                source={coinSource}
                 style={{
                   width: theme.coinSize,
                   height: theme.coinSize,

@@ -28,6 +28,7 @@ import { GameProvider, useGame } from "../../context/GameContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useGameState } from "../../hooks/useGameState";
 import { formatNumber } from "../../lib/gameEngine";
+import { getVibeAsset } from "../../lib/vibe-assets";
 import ClickerScreen from "../../components/ClickerScreen";
 import LeaderboardScreen from "../../components/LeaderboardScreen";
 import BattleScreen from "../../components/BattleScreen";
@@ -258,7 +259,8 @@ function GameTabs() {
 
   // Build tab icon URLs from R2 for the current vibe
   const vibeId = theme.vibeId || "retro-arcade";
-  const tabIconBaseUrl = `https://api.fundclicker.com/vibes/${vibeId}/`;
+  // Use local bundled assets (instant) with remote fallback
+  const getTabIcon = (iconKey) => getVibeAsset(vibeId, iconKey);
 
   const renderScreen = () => {
     switch (activeTab) {
@@ -330,7 +332,7 @@ function GameTabs() {
               >
                 {tab.iconKey ? (
                   <Image
-                    source={{ uri: tabIconBaseUrl + tab.iconKey + ".png" }}
+                    source={getTabIcon(tab.iconKey)}
                     style={[styles.sidebarIconImage, !isActive && { opacity: 0.5 }]}
                   />
                 ) : (
@@ -381,7 +383,7 @@ function GameTabs() {
                   <TouchableOpacity key={tab.key} style={styles.tab} onPress={() => handleTabPress(tab.key)} activeOpacity={0.7}>
                     <View style={styles.tabInner}>
                       {tab.iconKey ? (
-                        <Image source={{ uri: tabIconBaseUrl + tab.iconKey + ".png" }} style={[styles.tabIconImage, !isActive && { opacity: 0.5 }, isActive && { transform: [{ scale: 1.1 }] }]} />
+                        <Image source={getTabIcon(tab.iconKey)} style={[styles.tabIconImage, !isActive && { opacity: 0.5 }, isActive && { transform: [{ scale: 1.1 }] }]} />
                       ) : (
                         <Text style={[styles.tabIcon, isActive && { transform: [{ scale: 1.15 }] }]}>{tab.icon}</Text>
                       )}
@@ -413,7 +415,7 @@ function GameTabs() {
                 <View style={styles.tabInner}>
                   {tab.iconKey ? (
                     <Image
-                      source={{ uri: tabIconBaseUrl + tab.iconKey + ".png" }}
+                      source={getTabIcon(tab.iconKey)}
                       style={[
                         styles.tabIconImage,
                         !isActive && { opacity: 0.5 },

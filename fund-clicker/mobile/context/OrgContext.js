@@ -97,12 +97,10 @@ export function OrgProvider({ children }) {
       }).filter(Boolean);
     } catch {}
 
-    // Prefetch character photos into native image cache for instant modal display
-    if (characterPhotos.length > 0) {
-      characterPhotos.forEach(p => {
-        if (p.url) Image.prefetch(p.url).catch(() => {});
-      });
-    }
+    // Prefetch character photos (these are org-specific, not bundled)
+    characterPhotos.forEach(p => {
+      if (p.url) Image.prefetch(p.url).catch(() => {});
+    });
 
     try { upgradeNames = typeof config.upgrade_names === "string" ? JSON.parse(config.upgrade_names) : (config.upgrade_names || {}); } catch {}
     try { customTrivia = typeof config.custom_trivia === "string" ? JSON.parse(config.custom_trivia) : (config.custom_trivia || []); } catch {}
