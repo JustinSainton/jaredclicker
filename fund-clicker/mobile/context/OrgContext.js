@@ -1,6 +1,7 @@
 // OrgContext: Manages org selection, full config, theming with vibe support,
 // character photos, custom trivia, upgrade names, and price overrides.
 import React, { createContext, useContext, useState, useCallback } from "react";
+import { Image } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../lib/api";
 import { VIBES, getVibeTheme } from "../lib/vibes";
@@ -95,6 +96,14 @@ export function OrgProvider({ children }) {
         return null;
       }).filter(Boolean);
     } catch {}
+
+    // Prefetch character photos into native image cache for instant modal display
+    if (characterPhotos.length > 0) {
+      characterPhotos.forEach(p => {
+        if (p.url) Image.prefetch(p.url).catch(() => {});
+      });
+    }
+
     try { upgradeNames = typeof config.upgrade_names === "string" ? JSON.parse(config.upgrade_names) : (config.upgrade_names || {}); } catch {}
     try { customTrivia = typeof config.custom_trivia === "string" ? JSON.parse(config.custom_trivia) : (config.custom_trivia || []); } catch {}
     try { priceOverrides = typeof config.price_overrides === "string" ? JSON.parse(config.price_overrides) : (config.price_overrides || {}); } catch {}

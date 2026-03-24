@@ -2,9 +2,10 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, Pressable, FlatList,
-  StyleSheet, KeyboardAvoidingView, Platform, Animated, Image, Modal,
+  StyleSheet, KeyboardAvoidingView, Platform, Animated, Image, Modal, Keyboard,
 } from "react-native";
 import * as Haptics from "../lib/haptics";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGame } from "../context/GameContext";
 import { useOrg } from "../context/OrgContext";
 import { api } from "../lib/api";
@@ -75,6 +76,9 @@ function renderMessageText(text, theme, playerName) {
 export default function ChatScreen() {
   const { chatMessages, sendChat, sendReaction, player, online } = useGame();
   const { theme } = useOrg();
+  const insets = useSafeAreaInsets();
+  // Tab bar is ~50px + bottom safe area. Account for it in the input positioning.
+  const tabBarHeight = 50 + insets.bottom;
   const [message, setMessage] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [mentionQuery, setMentionQuery] = useState(null);
@@ -276,7 +280,7 @@ export default function ChatScreen() {
   }, [player, theme, handleReaction]);
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={100}>
+    <KeyboardAvoidingView style={[styles.container, { marginBottom: tabBarHeight + 12 }]} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={tabBarHeight + 56}>
       {/* Header */}
       <View style={styles.headerRow}>
         <Text style={[styles.header, headingStyle(theme), { color: theme.primary }]}>Chat</Text>
@@ -296,6 +300,14 @@ export default function ChatScreen() {
         contentContainerStyle={styles.listContent}
         onScroll={handleScroll}
         scrollEventThrottle={100}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => {
+          if (isAtBottom) listRef.current?.scrollToEnd?.({ animated: false });
+        }}
+        onLayout={() => {
+          listRef.current?.scrollToEnd?.({ animated: false });
+        }}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Text style={styles.emptyEmoji}>{"\uD83D\uDCAC"}</Text>
@@ -493,7 +505,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 16, color: "#aaa", fontWeight: "600" },
   emptyHint: { fontSize: 13, color: "#888", marginTop: 4 },
   // Scroll FAB
-  scrollFab: { position: "absolute", right: 16, bottom: 140, zIndex: 10 },
+  scrollFab: { position: "absolute", right: 16, bottom: 80, zIndex: 10 },
   scrollFabBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#27272a", borderWidth: 1, borderColor: "#3f3f46", justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
   scrollFabArrow: { fontSize: 18, fontWeight: "800", color: "#fff" },
   unreadBadge: { position: "absolute", top: -6, right: -6, minWidth: 20, height: 20, borderRadius: 10, justifyContent: "center", alignItems: "center", paddingHorizontal: 5 },
