@@ -335,6 +335,7 @@ export function GameProvider({ children, orgSlug }) {
         setTotalRaised({
           totalRaisedCents: msg.totalRaisedCents,
           transactionCount: msg.transactionCount,
+          funds: msg.funds || [],
         });
         break;
 

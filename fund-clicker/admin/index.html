@@ -923,7 +923,13 @@ h1 em,h1 i{font-style:italic;color:var(--accent)}
       </div>
 
       <div class="dash-panels">
-        <div class="dash-panel dash-panel-full">
+        <div class="dash-panel">
+          <div class="dash-panel-title">Revenue by Fund</div>
+          <div id="dashFundRevenue">
+            <div class="empty-state"><div class="empty-state-text">No funds created yet</div></div>
+          </div>
+        </div>
+        <div class="dash-panel">
           <div class="dash-panel-title">Recent Transactions</div>
           <div id="dashTransactions">
             <div class="empty-state"><div class="empty-state-icon">&#x1F4B3;</div><div class="empty-state-text">No transactions yet</div></div>
@@ -1480,6 +1486,9 @@ function renderDashboard(){
   // Campaigns
   renderCampaigns(dashData.campaigns?dashData.campaigns.campaigns:[]);
 
+  // Fund revenue breakdown
+  renderFundRevenue(d?d.funds:[]);
+
   // Transactions
   renderTransactions(d?d.recentTransactions:[]);
 
@@ -1584,6 +1593,29 @@ function renderTransactions(txs){
     html+='<div style="flex:1;color:var(--text-2)">'+esc(tx.player_name||'')+'</div>';
     html+='<div class="tx-amount">$'+((tx.amount_cents||0)/100).toFixed(2)+'</div>';
     html+='<div class="tx-date">'+date+'</div></div>';
+  });
+  el.innerHTML=html;
+}
+
+function renderFundRevenue(funds){
+  var el=document.getElementById('dashFundRevenue');
+  if(!funds||!funds.length){
+    el.innerHTML='<div class="empty-state" style="padding:12px"><div class="empty-state-text">No funds yet. Create one in Settings.</div></div>';
+    return;
+  }
+  var html='';
+  funds.forEach(function(f){
+    var raised=((f.gross_revenue_cents||0)/100).toFixed(2);
+    var goal=f.goal_cents?((f.goal_cents)/100).toFixed(2):null;
+    var pct=goal?Math.min(100,Math.round((f.gross_revenue_cents||0)/f.goal_cents*100)):null;
+    html+='<div class="ban-item"><div style="flex:1">';
+    html+='<div class="ban-name">'+esc(f.name)+'</div>';
+    html+='<div class="ban-reason">Code: '+(f.join_code||'N/A')+' \u2022 '+esc(f.status||'active')+'</div>';
+    html+='</div>';
+    html+='<div style="text-align:right">';
+    html+='<div style="font-size:16px;font-weight:800;color:var(--green)">$'+raised+'</div>';
+    if(goal){html+='<div style="font-size:11px;color:var(--text-3)">of $'+goal+' ('+pct+'%)</div>';}
+    html+='</div></div>';
   });
   el.innerHTML=html;
 }

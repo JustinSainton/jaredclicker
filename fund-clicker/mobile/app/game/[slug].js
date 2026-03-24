@@ -25,6 +25,7 @@ import { headingStyle } from "../../lib/theme-styles";
 import { useLayout } from "../../hooks/useLayout";
 import { useOrg } from "../../context/OrgContext";
 import { GameProvider, useGame } from "../../context/GameContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useGameState } from "../../hooks/useGameState";
 import { formatNumber } from "../../lib/gameEngine";
 import ClickerScreen from "../../components/ClickerScreen";
@@ -217,19 +218,27 @@ function GameTabs() {
   const layout = useLayout();
   const [activeTab, setActiveTab] = useState("click");
   const [showProfile, setShowProfile] = useState(false);
-  const [lastSeenChatCount, setLastSeenChatCount] = useState(0);
+  const [lastSeenChatCount, setLastSeenChatCount] = useState(null);
 
-  // Track unread chat messages
-  const unreadChat = activeTab === "chat" ? 0 : Math.max(0, chatMessages.length - lastSeenChatCount);
+  // Load persisted chat count on mount
+  useEffect(() => {
+    AsyncStorage.getItem("@fc_lastSeenChat_" + slug).then(v => {
+      setLastSeenChatCount(v ? Number(v) : 0);
+    });
+  }, [slug]);
+
+  // Track unread chat messages (null = still loading, show 0)
+  const unreadChat = lastSeenChatCount === null || activeTab === "chat" ? 0 : Math.max(0, chatMessages.length - lastSeenChatCount);
 
   // When switching to chat tab, mark all as read
   const handleTabPress = useCallback((key) => {
     Haptics.selectionAsync();
     if (key === "chat") {
       setLastSeenChatCount(chatMessages.length);
+      AsyncStorage.setItem("@fc_lastSeenChat_" + slug, String(chatMessages.length));
     }
     setActiveTab(key);
-  }, [chatMessages.length]);
+  }, [chatMessages.length, slug]);
 
   // Update seen count when chat tab is active and new messages arrive
   useEffect(() => {

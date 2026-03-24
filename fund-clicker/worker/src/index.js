@@ -195,14 +195,28 @@ async function syncOrgConfigToDO(env, orgId, configRow) {
 }
 
 async function broadcastRaisedTotals(env, orgId) {
-  const totals = await env.DB.prepare(
-    "SELECT COUNT(*) as transactionCount, COALESCE(SUM(amount_cents), 0) as totalRaisedCents FROM transactions WHERE org_id = ? AND status = 'succeeded'"
-  ).bind(orgId).first();
+  const [orgTotals, fundTotals] = await Promise.all([
+    env.DB.prepare(
+      "SELECT COUNT(*) as transactionCount, COALESCE(SUM(amount_cents), 0) as totalRaisedCents FROM transactions WHERE org_id = ? AND status = 'succeeded'"
+    ).bind(orgId).first(),
+    env.DB.prepare(
+      `SELECT f.id, f.name, f.slug, f.goal_cents,
+        COUNT(t.id) as transactionCount, COALESCE(SUM(t.amount_cents), 0) as totalRaisedCents
+       FROM funds f LEFT JOIN transactions t ON t.fund_id = f.id AND t.status = 'succeeded'
+       WHERE f.org_id = ? GROUP BY f.id ORDER BY f.created_at DESC`
+    ).bind(orgId).all(),
+  ]);
 
   await callInternalOrgRoute(env, orgId, "/broadcast-raised", {
     body: {
-      transactionCount: totals?.transactionCount || 0,
-      totalRaisedCents: totals?.totalRaisedCents || 0,
+      transactionCount: orgTotals?.transactionCount || 0,
+      totalRaisedCents: orgTotals?.totalRaisedCents || 0,
+      funds: (fundTotals?.results || []).map(f => ({
+        id: f.id, name: f.name, slug: f.slug,
+        goalCents: f.goal_cents,
+        raisedCents: f.totalRaisedCents || 0,
+        transactionCount: f.transactionCount || 0,
+      })),
     },
   });
 }

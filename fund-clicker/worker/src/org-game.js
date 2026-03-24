@@ -1848,7 +1848,12 @@ export class OrgGameInstance {
     if (url.pathname === "/broadcast-raised" && request.method === "POST") {
       if (!internalRequest) return this.jsonError("Unauthorized");
       const body = await request.json();
-      const msg = JSON.stringify({ type: "totalRaised", totalRaisedCents: body.totalRaisedCents, transactionCount: body.transactionCount });
+      const msg = JSON.stringify({
+        type: "totalRaised",
+        totalRaisedCents: body.totalRaisedCents,
+        transactionCount: body.transactionCount,
+        funds: body.funds || [],
+      });
       for (const [ws] of this.connections) { try { ws.send(msg); } catch (e) { this.connections.delete(ws); } }
       return new Response("ok");
     }
