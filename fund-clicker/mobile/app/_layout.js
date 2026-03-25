@@ -11,7 +11,7 @@ import { forceSave } from "../hooks/useGameState";
 import { StripeProvider, isStripeAvailable } from "../lib/stripe-provider";
 import { useAppFonts } from "../lib/fonts";
 
-const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder";
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "pk_live_51Q3pGoDG6JrQ4B8daIc8yMPdoLWczz9WeFIaWPj4btghvmG7f47HUyn5eP1cIV7mtXpJuJ1TtkEMeUfRwZ09jXLL00OL2v1mpM";
 
 function AppContent() {
   return (
