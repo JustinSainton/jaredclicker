@@ -954,13 +954,17 @@ export class OrgGameInstance {
       sanitized.bsShips = forPlayer ? { own: isP1 ? game.bsShips.p1 : game.bsShips.p2 } : {};
     }
     if (game.type === "hangman") {
-      // Send word length + masked progress per player, never the actual word
       const word = game.hangmanWord || "";
       sanitized.hangmanWordLength = word.length;
-      delete sanitized.hangmanWord;
       // Build masked words for each player
       sanitized.hangmanP1Masked = word.split("").map(l => game.hangmanP1Guesses?.includes(l) ? l : "_").join("");
       sanitized.hangmanP2Masked = word.split("").map(l => game.hangmanP2Guesses?.includes(l) ? l : "_").join("");
+      // Reveal word only when game is over
+      if (game.winner) {
+        sanitized.hangmanWord = word;
+      } else {
+        delete sanitized.hangmanWord;
+      }
     }
     return sanitized;
   }

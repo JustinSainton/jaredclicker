@@ -1048,6 +1048,11 @@ const translations = {
     forfeitWarning: "You'll forfeit and lose your wager!",
     stay: "Stay",
     forfeitAndLeave: "Forfeit & Leave",
+    wantRevenge: "Want revenge?",
+    doubleOrNothing: "Double or Nothing",
+    doubleOrNothingDesc: "Same game, 2x wager",
+    bestOfThree: "Best 2 of 3",
+    bestOfThreeDesc: "Win 2 rounds to claim the pot",
 
     // ── Chat
     chat: "Chat",

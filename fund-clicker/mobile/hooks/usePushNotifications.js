@@ -44,11 +44,6 @@ export default function usePushNotifications(orgSlug, playerName, playerToken = 
 
   // Register for push notifications
   const registerForPush = useCallback(async () => {
-    if (!Constants.isDevice) {
-      // Running in simulator — skip
-      return null;
-    }
-
     // Check existing permissions
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -60,22 +55,22 @@ export default function usePushNotifications(orgSlug, playerName, playerToken = 
     }
 
     if (finalStatus !== "granted") {
+      console.log("[Push] Permission not granted:", finalStatus);
       return null;
     }
 
     // Get the Expo push token
     try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+      const projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
       if (!projectId) {
-        console.warn("Missing EAS projectId for push token registration");
+        console.warn("[Push] Missing EAS projectId — cannot register");
         return null;
       }
-      const tokenData = await Notifications.getExpoPushTokenAsync({
-        projectId,
-      });
+      const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+      console.log("[Push] Got token:", tokenData.data);
       return tokenData.data;
     } catch (e) {
-      console.warn("Failed to get push token:", e);
+      console.warn("[Push] Failed to get token:", e);
       return null;
     }
   }, []);
@@ -84,9 +79,11 @@ export default function usePushNotifications(orgSlug, playerName, playerToken = 
   const subscribeToBackend = useCallback(async (token) => {
     if (!orgSlug || !playerName || !token) return;
     try {
+      console.log("[Push] Subscribing", playerName, "to", orgSlug);
       await api.subscribePush(orgSlug, playerName, token, playerToken);
+      console.log("[Push] Subscribed successfully");
     } catch (e) {
-      console.warn("Failed to subscribe push:", e);
+      console.warn("[Push] Failed to subscribe:", e);
     }
   }, [orgSlug, playerName, playerToken]);
 

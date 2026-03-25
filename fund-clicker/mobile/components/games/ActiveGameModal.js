@@ -1,10 +1,12 @@
 // ActiveGameModal — renders incoming challenges and active battle games
 // Wired into GameContext: pendingChallenge, currentGame, gameResult
-import React from "react";
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import React, { useState } from "react";
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from "react-native";
 import * as Haptics from "../../lib/haptics";
 import { useGame } from "../../context/GameContext";
 import { useOrg } from "../../context/OrgContext";
+import { useStripeSafe } from "../../lib/stripe-safe";
+import { buyDoubleOrNothing, buyRematch, isPaymentsEnabled } from "../../lib/payments";
 import RPSGame from "./RPSGame";
 import ClickerDuelGame from "./ClickerDuelGame";
 import TriviaGame from "./TriviaGame";
@@ -33,8 +35,41 @@ export default function ActiveGameModal() {
     player, pendingChallenge, currentGame, gameResult,
     acceptChallenge, declineChallenge, sendGameMove, dismissGame,
   } = useGame();
-  const { theme } = useOrg();
+  const { org, theme } = useOrg();
+  const stripe = useStripeSafe();
+  const [buying, setBuying] = useState(null);
   const getGameName = (type) => (GAME_NAME_KEYS[type] ? t(GAME_NAME_KEYS[type]) : type);
+  const paymentsEnabled = isPaymentsEnabled(org);
+
+  // Post-loss purchase: did the current player lose a single-round game?
+  const isLoss = currentGame?.winner && currentGame.winner !== "draw" &&
+    currentGame.winner.toLowerCase() !== player?.name?.toLowerCase();
+  const isSingleRound = !currentGame?.maxRounds || currentGame?.maxRounds === 1;
+  const showRematchOptions = isLoss && isSingleRound && paymentsEnabled && !buying;
+
+  const handleDoubleOrNothing = async () => {
+    setBuying("double");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const result = await buyDoubleOrNothing(stripe, org.slug, {
+      gameId: currentGame.id, playerName: player.name, playerToken: player.token,
+    });
+    setBuying(null);
+    if (result.success) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const handleRematch = async () => {
+    setBuying("rematch");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const result = await buyRematch(stripe, org.slug, {
+      gameId: currentGame.id, playerName: player.name, playerToken: player.token,
+    });
+    setBuying(null);
+    if (result.success) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
 
   const renderGame = () => {
     if (!currentGame || !player?.name) return null;
@@ -149,6 +184,41 @@ export default function ActiveGameModal() {
               <Text style={styles.closeBtnText}>{"\u2715"}</Text>
             </TouchableOpacity>
             {renderGame()}
+
+            {/* Post-loss purchase options — Double or Nothing / Best 2 of 3 */}
+            {showRematchOptions && (
+              <View style={styles.rematchWrap}>
+                <Text style={styles.rematchTitle}>{t("wantRevenge")}</Text>
+                <TouchableOpacity
+                  style={[styles.doubleBtn, { shadowColor: "#ef4444" }]}
+                  onPress={handleDoubleOrNothing}
+                  disabled={!!buying}
+                >
+                  {buying === "double" ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Text style={styles.doubleBtnText}>{t("doubleOrNothing")}</Text>
+                      <Text style={styles.doubleBtnSub}>$0.99 — {t("doubleOrNothingDesc")}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.rematchBtn, { borderColor: theme.primary }]}
+                  onPress={handleRematch}
+                  disabled={!!buying}
+                >
+                  {buying === "rematch" ? (
+                    <ActivityIndicator color={theme.primary} size="small" />
+                  ) : (
+                    <>
+                      <Text style={[styles.rematchBtnText, { color: theme.primary }]}>{t("bestOfThree")}</Text>
+                      <Text style={styles.rematchBtnSub}>$1.99 — {t("bestOfThreeDesc")}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -208,4 +278,24 @@ const styles = StyleSheet.create({
   unsupportedEmoji: { fontSize: 72 },
   unsupportedText: { fontSize: 22, color: "#fff", fontWeight: "700", marginTop: 20 },
   unsupportedHint: { fontSize: 14, color: "#888", marginTop: 8 },
+  // Post-loss rematch options
+  rematchWrap: {
+    padding: 20, paddingTop: 12, alignItems: "center", gap: 10,
+    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.08)",
+    marginTop: 8,
+  },
+  rematchTitle: { fontSize: 14, fontWeight: "700", color: "#aaa", marginBottom: 4 },
+  doubleBtn: {
+    width: "100%", maxWidth: 320, padding: 16, borderRadius: 14,
+    alignItems: "center", backgroundColor: "#dc2626",
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 6,
+  },
+  doubleBtnText: { fontSize: 17, fontWeight: "800", color: "#fff" },
+  doubleBtnSub: { fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  rematchBtn: {
+    width: "100%", maxWidth: 320, padding: 16, borderRadius: 14,
+    alignItems: "center", borderWidth: 2, backgroundColor: "rgba(255,255,255,0.03)",
+  },
+  rematchBtnText: { fontSize: 17, fontWeight: "800" },
+  rematchBtnSub: { fontSize: 11, color: "#888", marginTop: 2 },
 });
