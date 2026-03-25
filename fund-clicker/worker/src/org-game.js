@@ -735,6 +735,7 @@ export class OrgGameInstance {
       await this.saveBannedPlayers();
       tracker.suspiciousCount = 0;
       this.sendToPlayer(name, { type: "banned", until: banned[key].until, reason: banned[key].reason });
+      this.sendPushToPlayer(name, "You've been banned", banned[key].reason || "Contact the admin for details", "admin");
       await this.addSystemChat("\u26D4 " + name + " has been temporarily banned for suspected autoclicking.");
       return true;
     }
@@ -1242,9 +1243,11 @@ export class OrgGameInstance {
       const payout = Math.floor(totalPool * (bet.amount / winnerPool));
       if (payout > 0) await this.awardWinnings(bet.name, payout);
       this.sendToPlayer(bet.name, { type: "spectatorBetResult", won: true, payout, gameId: game.id });
+      this.sendPushToPlayer(bet.name, "Bet won!", "+" + payout + " coins from spectator bet!", "battle_win");
     }
     for (const bet of game.spectatorBets.filter(b => b.betOn.toLowerCase() !== game.winner.toLowerCase())) {
       this.sendToPlayer(bet.name, { type: "spectatorBetResult", won: false, payout: 0, gameId: game.id });
+      this.sendPushToPlayer(bet.name, "Bet lost", "Your spectator bet of " + bet.amount + " coins didn't pay out", "battle_loss");
     }
   }
 
@@ -1252,13 +1255,24 @@ export class OrgGameInstance {
   async endGroupGame(game) {
     if (game._ended) return;
     game._ended = true;
+    const tn = { lastclick: "Last Click Standing", auction: "Auction House", triviaroyale: "Trivia Royale" };
+    const gameName = tn[game.type] || game.type;
     if (game.winner && game.winner !== "draw") {
       await this.awardWinnings(game.winner, game.pot);
-      const tn = { lastclick: "Last Click Standing", auction: "Auction House", triviaroyale: "Trivia Royale" };
-      await this.addSystemChat("\uD83C\uDFC6 " + game.winner + " wins " + (tn[game.type] || game.type) + "! +" + game.pot + " coins!");
+      await this.addSystemChat("\uD83C\uDFC6 " + game.winner + " wins " + gameName + "! +" + game.pot + " coins!");
+      // Push: notify winner and losers
+      this.sendPushToPlayer(game.winner, "You won " + gameName + "!", "+" + game.pot + " coins!", "battle_win");
+      for (const p of game.players) {
+        if (p.toLowerCase() !== game.winner.toLowerCase()) {
+          this.sendPushToPlayer(p, gameName + " over", game.winner + " won the pot of " + game.pot + " coins", "battle_loss");
+        }
+      }
     } else if (game.winner === "draw") {
       const share = Math.floor(game.pot / game.players.length);
-      for (const p of game.players) await this.awardWinnings(p, share);
+      for (const p of game.players) {
+        await this.awardWinnings(p, share);
+        this.sendPushToPlayer(p, gameName + " — Draw!", "Pot split: +" + share + " coins each", "battle_win");
+      }
     }
     this.broadcastGroupGame(game);
     await this.resolveSpectatorBets(game);
@@ -2084,6 +2098,18 @@ export class OrgGameInstance {
             if (this.chatMessages.length > 2000) this.chatMessages = this.chatMessages.slice(-2000);
             this.saveChat();
             this.broadcastChat(chatEntry);
+            // Push notification for @mentions
+            if (cleanMsg) {
+              const mentions = cleanMsg.match(/@(\w+)/g);
+              if (mentions) {
+                for (const mention of mentions) {
+                  const mentionedName = mention.slice(1);
+                  if (mentionedName.toLowerCase() !== info.name.toLowerCase()) {
+                    this.sendPushToPlayer(mentionedName, info.name + " mentioned you", cleanMsg.slice(0, 80), "chat_mention");
+                  }
+                }
+              }
+            }
           });
           return;
         }

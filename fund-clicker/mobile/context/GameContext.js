@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "../lib/haptics";
 import { vibrate } from "../lib/haptics";
 import { api } from "../lib/api";
+import { liveActivity } from "../hooks/useLiveActivity";
 
 const GameContext = createContext(null);
 const PLAYER_KEY = "@fundclicker_player";
@@ -259,6 +260,13 @@ export function GameProvider({ children, orgSlug }) {
         setChallengeSentTo(null);
         setPendingChallenge(null);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // Start Live Activity for the battle
+        liveActivity.startBattleActivity({
+          gameType: msg.game.type,
+          player1: msg.game.player1,
+          player2: msg.game.player2,
+          wagerCoins: msg.game.wagerCoins,
+        });
         break;
 
       case "gameUpdate":
@@ -282,6 +290,11 @@ export function GameProvider({ children, orgSlug }) {
         } else if (!isDraw) {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
+        // End Live Activity
+        liveActivity.endBattleActivity({
+          winner: msg.game?.winner || "",
+          finalMessage: isWin ? "You won!" : isDraw ? "Draw!" : "You lost",
+        });
         // Auto-clear game after 10s
         setTimeout(() => {
           setCurrentGame(null);
