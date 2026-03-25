@@ -580,6 +580,9 @@ export default {
       return jsonResponse({ pathname: url.pathname, host: url.host, origin: url.origin });
     }
 
+    // ── Debug: path inspection (keep minimal)
+    // Stripe debug endpoint removed — was temporary diagnostic
+
     // ── Giphy GIF search proxy
     if (url.pathname === "/api/v1/gifs/search" && request.method === "GET") {
       const q = url.searchParams.get("q") || "funny";

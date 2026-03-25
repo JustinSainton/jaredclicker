@@ -150,7 +150,7 @@ const modalStyles = StyleSheet.create({
 // ─── MAIN LEADERBOARD ────────────────────────────────────────────────────────
 
 export default function LeaderboardScreen() {
-  const { leaderboard, online, player, hallOfFame, challenge, sabotages, credits, useSabotageCredit } = useGame();
+  const { leaderboard, online, player, hallOfFame, challenge, sabotages, credits, useSabotageCredit, visitors } = useGame();
   const { theme } = useOrg();
   const { gameState } = useGameState();
   const [tab, setTab] = useState("weekly");
@@ -269,7 +269,7 @@ export default function LeaderboardScreen() {
       {/* Header */}
       <View style={styles.headerStats}>
         <Text style={styles.onlineCount}>
-          <Text style={{ color: "#4ade80" }}>{"\u25CF"}</Text> {online?.length || 0} online
+          <Text style={{ color: "#4ade80" }}>{"\u25CF"}</Text> {visitors || online?.length || 0} online
         </Text>
         {myRank && <Text style={[styles.myRank, { color: theme.primary }]}>Your rank: #{myRank}</Text>}
       </View>

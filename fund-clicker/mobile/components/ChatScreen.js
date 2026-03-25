@@ -74,7 +74,7 @@ function renderMessageText(text, theme, playerName) {
 }
 
 export default function ChatScreen() {
-  const { chatMessages, sendChat, sendReaction, player, online } = useGame();
+  const { chatMessages, sendChat, sendReaction, player, online, visitors } = useGame();
   const { theme } = useOrg();
   const insets = useSafeAreaInsets();
   // Tab bar is ~50px + bottom safe area. Account for it in the input positioning.
@@ -297,7 +297,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
           <View style={styles.onlineBadge}>
             <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>{online?.length || 0} online</Text>
+            <Text style={styles.onlineText}>{visitors || online?.length || 0} online</Text>
           </View>
         </View>
       </View>
