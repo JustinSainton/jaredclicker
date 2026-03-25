@@ -1219,6 +1219,27 @@ var orgData = null;
 var selectedVibe = 'retro-arcade';
 var currentStep = 1;
 
+// Hide wizard immediately if returning from Stripe or restoring a session — prevents flash
+if(window.location.pathname==='/stripe/callback'||localStorage.getItem('fc_token')){
+  document.querySelector('.wizard').style.display='none';
+}
+
+function saveAuth(){
+  if(authToken&&orgData){
+    localStorage.setItem('fc_token',authToken);
+    localStorage.setItem('fc_org',JSON.stringify(orgData));
+  }
+}
+function loadAuth(){
+  var t=localStorage.getItem('fc_token');
+  var o=localStorage.getItem('fc_org');
+  if(t&&o){authToken=t;try{orgData=JSON.parse(o)}catch(e){orgData=null}}
+}
+function clearAuth(){
+  authToken=null;orgData=null;
+  localStorage.removeItem('fc_token');localStorage.removeItem('fc_org');
+}
+
 var VIBES = [
   { id:'retro-arcade', name:'Retro Arcade', desc:'Pixel art nostalgia. Neon glow.', colors:{primary:'#FFD700',secondary:'#1a1a2e',accent:'#e94560'}},
   { id:'modern-minimal', name:'Modern Minimal', desc:'Clean lines. Soft gradients.', colors:{primary:'#6366f1',secondary:'#0f172a',accent:'#f59e0b'}},
@@ -1314,7 +1335,7 @@ async function submitStep1(){
   var sp=document.createElement('div');sp.className='spinner';btn.appendChild(sp);
   try{
     var r=await apiCall('/platform/register',{method:'POST',body:{name:name,email:email,password:pw,description:document.getElementById('orgDesc').value.trim()}});
-    authToken=r.token;orgData=r.org;renderVibeGrid();goStep(2);
+    authToken=r.token;orgData=r.org;saveAuth();renderVibeGrid();goStep(2);
   }catch(e){showError('err1',e.message)}
   btn.disabled=false;btn.textContent=orig;
 }
@@ -1422,7 +1443,15 @@ function orgApiCall(path,options){
   if(authToken) h.Authorization='Bearer '+authToken;
   var fo={method:options.method||'GET',headers:h};
   if(options.body) fo.body=JSON.stringify(options.body);
-  return fetch(API+'/orgs/'+orgData.slug+path,fo).then(function(r){return r.json()});
+  return fetch(API+'/orgs/'+orgData.slug+path,fo).then(function(r){
+    if(!r.ok){
+      return r.json().then(function(body){
+        if(r.status===401){clearAuth();window.location.reload();}
+        throw new Error(body.error||'Request failed ('+r.status+')');
+      });
+    }
+    return r.json();
+  });
 }
 
 function renderDashboard(){
@@ -1762,7 +1791,7 @@ async function saveBranding(){
 }
 
 function logOut(){
-  authToken=null;orgData=null;
+  clearAuth();
   if(window._dashInterval) clearInterval(window._dashInterval);
   document.getElementById('dashboard').classList.remove('active');
   document.querySelector('.wizard').style.display='';
@@ -2024,7 +2053,7 @@ async function submitLogin(){
   var email=document.getElementById('loginEmail').value.trim();
   var pw=document.getElementById('loginPassword').value;
   if(!email||!pw){showError('errLogin','Email and password required');return}
-  try{var r=await apiCall('/platform/login',{method:'POST',body:{email:email,password:pw}});authToken=r.token;orgData={id:r.org.id,slug:r.org.slug,name:r.org.name,joinCode:r.org.joinCode||''};goToDashboard()}
+  try{var r=await apiCall('/platform/login',{method:'POST',body:{email:email,password:pw}});authToken=r.token;orgData={id:r.org.id,slug:r.org.slug,name:r.org.name,joinCode:r.org.joinCode||''};saveAuth();goToDashboard()}
   catch(e){showError('errLogin',e.message)}
 }
 
@@ -2176,6 +2205,46 @@ async function suspendOrg(orgId){
 async function activateOrg(orgId){
   await platformApiPost('/superadmin/org-status',{orgId:orgId,status:'active'});
   showToast('Organization activated');loadPlatformData();
+}
+
+// ─── STRIPE CALLBACK HANDLER ────────────────
+// After Stripe OAuth, the browser lands on /stripe/callback?code=...&state=...
+// We need to POST those to the worker API to complete the exchange.
+(async function handleStripeCallback(){
+  if(window.location.pathname!=='/stripe/callback') return;
+  var params=new URLSearchParams(window.location.search);
+  var code=params.get('code');
+  var state=params.get('state');
+  if(!code||!state) return;
+
+  // Restore auth from localStorage (it was saved before redirect to Stripe)
+  loadAuth();
+  if(!authToken){
+    // Auth lost — send them to login, preserve callback params for retry
+    alert('Session expired. Please log in again, then reconnect Stripe.');
+    window.location.href='/';
+    return;
+  }
+
+  try{
+    var r=await apiCall('/stripe/callback',{method:'POST',body:{code:code,state:state}});
+    // Clean URL and go to dashboard
+    window.history.replaceState(null,'','/');
+    goToDashboard();
+    showToast(r.chargesEnabled?'Stripe connected! Payments are live.':'Stripe connected! Complete onboarding in your Stripe dashboard.');
+  }catch(e){
+    window.history.replaceState(null,'','/');
+    goToDashboard();
+    showToast('Stripe connection failed: '+(e.message||'Unknown error'),true);
+  }
+})();
+
+// ─── RESTORE SESSION ON LOAD ────────────────
+if(!authToken){
+  loadAuth();
+  if(authToken&&orgData&&window.location.pathname==='/'){
+    goToDashboard();
+  }
 }
 
 // Check for #platform on load
