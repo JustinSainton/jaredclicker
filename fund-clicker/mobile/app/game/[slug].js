@@ -354,8 +354,8 @@ function GameTabs() {
         </View>
       )}
 
-      {/* Content area — capped width on desktop */}
-      <View style={[styles.content, useSidebar && { maxWidth: layout.contentMaxWidth, alignSelf: "center", flex: 1 }]}>
+      {/* Content area — full width on desktop to allow 3-column clicker layout */}
+      <View style={[styles.content, useSidebar && { flex: 1 }]}>
         {showProfile ? (
           <ProfileScreen onClose={() => setShowProfile(false)} />
         ) : (

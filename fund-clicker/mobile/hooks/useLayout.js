@@ -21,7 +21,7 @@ export function useLayout() {
     isLandscape,
 
     // Content max-width (caps game area on wide screens)
-    contentMaxWidth: isDesktop ? 560 : isTablet ? 500 : width,
+    contentMaxWidth: isDesktop ? 1100 : isTablet ? 600 : width,
 
     // Grid columns for shop/skins
     gridColumns: isDesktop ? 3 : isTablet ? 2 : 1,

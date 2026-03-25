@@ -29,12 +29,16 @@ import {
   formatNumber,
   getRank,
   getRankProgress,
+  getUpgradeCost,
+  purchaseUpgrade,
   createInitialState,
   ACHIEVEMENTS,
+  DEFAULT_UPGRADES,
 } from "../lib/gameEngine";
 import { useGameState } from "../hooks/useGameState";
 import { scoreStyle, headingStyle, bodyStyle, floatNumberStyle, labelStyle, glowStyle, springConfig, cardStyle } from "../lib/theme-styles";
 import { getVibeAsset } from "../lib/vibe-assets";
+import { useLayout } from "../hooks/useLayout";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -213,8 +217,106 @@ function ResetCountdown({ nextResetAt }) {
 
 // ─── MAIN CLICKER SCREEN ──────────────────────────────────────────────────────
 
+// ─── DESKTOP STATS PANEL (matches jaredclicker.com left column) ──────────────
+
+function DesktopStatsPanel({ gameState, theme, player, connected, credits }) {
+  const statItems = [
+    { label: "Total Coins", value: formatNumber(gameState.totalCoins || gameState.coins) },
+    { label: "Per Click", value: formatNumber(gameState.coinsPerClick) },
+    { label: "Per Second", value: formatNumber(gameState.coinsPerSecond) },
+    { label: "Total Clicks", value: formatNumber(gameState.totalClicks) },
+    { label: t("sightings"), value: String(gameState.sightings || 0) },
+    { label: "Sabotage Credits", value: String((credits && player?.name ? credits[player.name.toLowerCase()] : 0) || 0) },
+  ];
+  const rank = getRank(gameState.totalCoins || gameState.coins);
+  const rankProgress = getRankProgress(gameState.totalCoins || gameState.coins);
+  return (
+    <View style={dStyles.panel}>
+      <Text style={dStyles.panelTitle}>Stats</Text>
+      {statItems.map((s, i) => (
+        <View key={i} style={dStyles.statRow}>
+          <Text style={dStyles.statLabel}>{s.label}</Text>
+          <Text style={dStyles.statValue}>{s.value}</Text>
+        </View>
+      ))}
+      <View style={dStyles.smellySection}>
+        <Text style={dStyles.smellyLabel}>Smelly Level</Text>
+        <Text style={dStyles.smellyValue}>{rank.name}</Text>
+        <View style={dStyles.smellyMeter}>
+          <View style={[dStyles.smellyFill, { width: rankProgress + "%" }]} />
+        </View>
+      </View>
+      <View style={dStyles.connRow}>
+        <View style={[dStyles.connDot, { backgroundColor: connected ? "#4ade80" : "#ef4444" }]} />
+        <Text style={dStyles.connText}>{connected ? t("connected") : t("reconnecting")}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── DESKTOP UPGRADES PANEL (matches jaredclicker.com right column) ──────────
+
+function DesktopUpgradesPanel({ gameState, theme, onBuyUpgrade }) {
+  return (
+    <View style={dStyles.panel}>
+      <Text style={dStyles.panelTitle}>Upgrades</Text>
+      {DEFAULT_UPGRADES.map((upgrade) => {
+        const owned = gameState.upgrades?.[upgrade.id] || 0;
+        const cost = getUpgradeCost(upgrade, owned);
+        const canAfford = gameState.coins >= cost;
+        return (
+          <Pressable
+            key={upgrade.id}
+            style={[dStyles.upgradeBtn, canAfford && dStyles.upgradeBtnAffordable, !canAfford && { opacity: 0.4 }]}
+            onPress={() => canAfford && onBuyUpgrade(upgrade.id)}
+            disabled={!canAfford}
+          >
+            <View style={dStyles.upgradeHeader}>
+              <Text style={dStyles.upgradeName}>{upgrade.emoji} {upgrade.name}</Text>
+              <View style={[dStyles.upgradeTag, upgrade.clickBonus > 0 ? dStyles.upgradeTagClick : dStyles.upgradeTagAuto]}>
+                <Text style={dStyles.upgradeTagText}>{upgrade.clickBonus > 0 ? "CLICK" : "AUTO"}</Text>
+              </View>
+              {owned > 0 && (
+                <View style={dStyles.ownedBadge}>
+                  <Text style={dStyles.ownedBadgeText}>x{owned}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={dStyles.upgradeDesc}>{upgrade.desc}</Text>
+            <Text style={dStyles.upgradeCost}>Cost: {formatNumber(cost)} coins</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── DESKTOP LEADERBOARD PANEL ───────────────────────────────────────────────
+
+function DesktopLeaderboardPanel({ theme }) {
+  const { leaderboard, player } = useGame();
+  const top = (leaderboard || []).slice(0, 15);
+  const medals = ["\uD83E\uDD47", "\uD83E\uDD48", "\uD83E\uDD49"];
+  return (
+    <View style={[dStyles.panel, { marginTop: 0 }]}>
+      <Text style={dStyles.panelTitle}>Leaderboard</Text>
+      {top.map((entry, i) => {
+        const isMe = entry.name?.toLowerCase() === player?.name?.toLowerCase();
+        return (
+          <View key={i} style={[dStyles.lbRow, isMe && { backgroundColor: "rgba(255,215,0,0.1)", borderRadius: 6 }]}>
+            <Text style={dStyles.lbRank}>{i < 3 ? medals[i] : "#" + (i + 1)}</Text>
+            <Text style={[dStyles.lbName, isMe && { color: "#ffd700", fontWeight: "800" }]} numberOfLines={1}>{entry.name}</Text>
+            <Text style={dStyles.lbScore}>{formatNumber(entry.score)}</Text>
+          </View>
+        );
+      })}
+      {top.length === 0 && <Text style={dStyles.lbEmpty}>No players yet</Text>}
+    </View>
+  );
+}
+
 export default function ClickerScreen() {
-  const { player, updateScore, scoreEpoch, sabotages, connected, totalRaised, scoreCorrection, nextResetAt } = useGame();
+  const { player, updateScore, scoreEpoch, sabotages, connected, totalRaised, scoreCorrection, nextResetAt, leaderboard, credits } = useGame();
   const { org, theme } = useOrg();
   const [showResetBanner, setShowResetBanner] = useState(true);
   const [showRaisedBanner, setShowRaisedBanner] = useState(true);
@@ -374,6 +476,7 @@ export default function ClickerScreen() {
   const rank = useMemo(() => getRank(gameState.totalCoins), [gameState.totalCoins]);
   const rankProgress = useMemo(() => getRankProgress(gameState.totalCoins), [gameState.totalCoins]);
   const isSabotaged = gameState.sabotageEndAt > Date.now();
+  const layout = useLayout();
 
   const glowOpacity = glowAnim.interpolate({
     inputRange: [0, 1],
@@ -387,13 +490,7 @@ export default function ClickerScreen() {
     ? { uri: `https://api.fundclicker.com/orgs-assets/${theme.coinImageKey.replace("orgs/", "")}` }
     : getVibeAsset(vibeId, "coin");
 
-  return (
-    <ImageBackground
-      source={bgSource}
-      style={styles.container}
-      imageStyle={{ opacity: 0.4 }}
-      resizeMode="cover"
-    >
+  const coreContent = (
       <ScrollView contentContainerStyle={styles.scrollContent} bounces={false} showsVerticalScrollIndicator={false}>
       {/* Weekly reset countdown (dismissible) */}
       {nextResetAt && showResetBanner && (
@@ -516,15 +613,42 @@ export default function ClickerScreen() {
         </View>
       </View>
 
-      {/* Connection status */}
-      <View style={styles.connectionBar}>
-        <View style={[styles.connectionDot, { backgroundColor: connected ? "#4ade80" : "#ef4444" }]} />
-        <Text style={styles.connectionText}>
-          {connected ? t("connected") : t("reconnecting")}
-        </Text>
-      </View>
+      {/* Connection status — hide on desktop (shown in stats panel) */}
+      {!layout.isDesktop && (
+        <View style={styles.connectionBar}>
+          <View style={[styles.connectionDot, { backgroundColor: connected ? "#4ade80" : "#ef4444" }]} />
+          <Text style={styles.connectionText}>
+            {connected ? t("connected") : t("reconnecting")}
+          </Text>
+        </View>
+      )}
 
       </ScrollView>
+  );
+
+  return (
+    <ImageBackground
+      source={bgSource}
+      style={styles.container}
+      imageStyle={{ opacity: 0.4 }}
+      resizeMode="cover"
+    >
+      {layout.isDesktop ? (
+        <View style={dStyles.desktopRow}>
+          <ScrollView style={dStyles.sidePanelLeft} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <DesktopStatsPanel gameState={gameState} theme={theme} player={player} connected={connected} credits={credits} />
+          </ScrollView>
+          <View style={dStyles.centerCol}>
+            {coreContent}
+          </View>
+          <ScrollView style={dStyles.sidePanelRight} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <DesktopUpgradesPanel gameState={gameState} theme={theme} onBuyUpgrade={(id) => {
+              setGameState((prev) => purchaseUpgrade(prev, id) || prev);
+            }} />
+            <DesktopLeaderboardPanel theme={theme} />
+          </ScrollView>
+        </View>
+      ) : coreContent}
 
       {/* Floating numbers */}
       {floaters.map((f) => (
@@ -672,4 +796,65 @@ const styles = StyleSheet.create({
   achievementEmoji: { fontSize: 36 },
   achievementLabel: { fontSize: 10, color: "#4ade80", fontWeight: "800", textTransform: "uppercase", letterSpacing: 2 },
   achievementName: { fontSize: 14, color: "#fff", fontWeight: "600", marginTop: 2 },
+});
+
+// ─── DESKTOP LAYOUT STYLES (matches jaredclicker.com) ────────────────────────
+const dStyles = StyleSheet.create({
+  desktopRow: { flex: 1, flexDirection: "row", gap: 20, paddingHorizontal: 8 },
+  sidePanelLeft: { width: 300, maxWidth: 350 },
+  sidePanelRight: { width: 360, maxWidth: 420 },
+  centerCol: { flex: 1 },
+  // Panel base — gold bordered card like jaredclicker.com
+  panel: {
+    margin: 8, padding: 16, borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.5)", borderWidth: 2, borderColor: "#ffd700",
+  },
+  panelTitle: {
+    fontSize: 24, fontWeight: "800", marginBottom: 14, textAlign: "center",
+    color: "#ffd700", textShadowColor: "#b8860b", textShadowOffset: { width: 2, height: 2 }, textShadowRadius: 0,
+  },
+  // Stats
+  statRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "rgba(255,215,0,0.1)",
+  },
+  statLabel: { fontSize: 13, color: "#daa520", fontWeight: "600" },
+  statValue: { fontSize: 12, fontWeight: "800", color: "#ffd700", fontVariant: ["tabular-nums"], fontFamily: "monospace" },
+  // Smelly level meter (like jaredclicker.com)
+  smellySection: { marginTop: 8, alignItems: "center" },
+  smellyLabel: { fontSize: 11, color: "#daa520", fontWeight: "600" },
+  smellyValue: { fontSize: 14, fontWeight: "800", color: "#ffd700", fontFamily: "monospace", marginTop: 2 },
+  smellyMeter: {
+    width: "100%", height: 18, backgroundColor: "rgba(0,0,0,0.5)",
+    borderWidth: 2, borderColor: "#ffd700", borderRadius: 9, overflow: "hidden", marginTop: 6,
+  },
+  smellyFill: { height: "100%", borderRadius: 7, backgroundColor: "#4ade80" },
+  connRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, justifyContent: "center" },
+  connDot: { width: 7, height: 7, borderRadius: 4 },
+  connText: { fontSize: 11, color: "#aaa" },
+  // Upgrades (matches jaredclicker.com right panel)
+  upgradeBtn: {
+    backgroundColor: "rgba(42,42,74,0.6)", borderWidth: 2, borderColor: "#555",
+    borderRadius: 12, padding: 14, marginBottom: 10,
+  },
+  upgradeBtnAffordable: { borderColor: "#ffd700" },
+  upgradeHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  upgradeName: { fontSize: 16, fontWeight: "700", color: "#ffd700", flex: 1 },
+  upgradeTag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+  upgradeTagClick: { borderColor: "#ffd700", backgroundColor: "rgba(255,215,0,0.15)" },
+  upgradeTagAuto: { borderColor: "#4ade80", backgroundColor: "rgba(74,222,128,0.15)" },
+  upgradeTagText: { fontSize: 9, fontWeight: "800", color: "#ffd700", fontFamily: "monospace", letterSpacing: 1 },
+  upgradeDesc: { fontSize: 12, color: "#aaa", marginTop: 4 },
+  upgradeCost: { fontSize: 11, color: "#daa520", fontFamily: "monospace", marginTop: 6 },
+  ownedBadge: {
+    backgroundColor: "rgba(255,215,0,0.2)", borderWidth: 1, borderColor: "#ffd700",
+    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 1,
+  },
+  ownedBadgeText: { fontSize: 12, fontWeight: "800", color: "#ffd700" },
+  // Leaderboard
+  lbRow: { flexDirection: "row", alignItems: "center", paddingVertical: 5, paddingHorizontal: 4, gap: 8, borderBottomWidth: 1, borderBottomColor: "rgba(255,215,0,0.1)" },
+  lbRank: { width: 28, fontSize: 11, color: "#ffd700", fontWeight: "700", textAlign: "center", fontFamily: "monospace" },
+  lbName: { flex: 1, fontSize: 13, color: "#daa520", fontWeight: "600" },
+  lbScore: { fontSize: 11, fontWeight: "800", color: "#ffd700", fontVariant: ["tabular-nums"], fontFamily: "monospace" },
+  lbEmpty: { fontSize: 13, color: "#666", textAlign: "center", padding: 20 },
 });
