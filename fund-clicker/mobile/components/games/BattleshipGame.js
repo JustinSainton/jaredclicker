@@ -9,13 +9,46 @@ import t from "../../lib/i18n";
 const GRID_SIZE = 8;
 const CELL_SIZE = 38;
 
-function GridCell({ x, y, state, isMyGrid, onPress, theme, isLastShot }) {
+const SHIP_COLORS = ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ec4899"];
+const SHIP_ICONS = ["\uD83D\uDEA2", "\u26F4\uFE0F", "\uD83D\uDEA4", "\u26F5", "\uD83D\uDEE5\uFE0F"];
+
+function GridCell({ x, y, state, isMyGrid, onPress, theme, isLastShot, shipInfo }) {
   // state: null (unknown), "miss", "hit", "ship" (own ship, no hit), "sunk"
   let bg = "#0a1628";
   let border = "#1e2a45";
   let content = null;
+  let extraStyle = null;
 
-  if (state === "ship") {
+  if (state === "ship" && shipInfo) {
+    bg = shipInfo.color + "33";
+    border = shipInfo.color + "88";
+    // Rounded corners for bow/stern
+    const r = 6;
+    if (shipInfo.isH) {
+      extraStyle = {
+        borderTopLeftRadius: shipInfo.isStart ? r : 0,
+        borderBottomLeftRadius: shipInfo.isStart ? r : 0,
+        borderTopRightRadius: shipInfo.isEnd ? r : 0,
+        borderBottomRightRadius: shipInfo.isEnd ? r : 0,
+        marginLeft: shipInfo.isStart ? 1 : 0,
+        marginRight: shipInfo.isEnd ? 1 : 0,
+      };
+    } else {
+      extraStyle = {
+        borderTopLeftRadius: shipInfo.isStart ? r : 0,
+        borderTopRightRadius: shipInfo.isStart ? r : 0,
+        borderBottomLeftRadius: shipInfo.isEnd ? r : 0,
+        borderBottomRightRadius: shipInfo.isEnd ? r : 0,
+        marginTop: shipInfo.isStart ? 1 : 0,
+        marginBottom: shipInfo.isEnd ? 1 : 0,
+      };
+    }
+    if (shipInfo.showIcon) {
+      content = <Text style={styles.shipIcon}>{shipInfo.icon}</Text>;
+    } else {
+      content = <View style={[styles.shipDot, { backgroundColor: shipInfo.color + "aa" }]} />;
+    }
+  } else if (state === "ship") {
     bg = "#334155";
     border = "#475569";
   } else if (state === "hit") {
@@ -37,7 +70,7 @@ function GridCell({ x, y, state, isMyGrid, onPress, theme, isLastShot }) {
 
   return (
     <TouchableOpacity
-      style={[styles.gridCell, { width: CELL_SIZE, height: CELL_SIZE, backgroundColor: bg, borderColor: border }]}
+      style={[styles.gridCell, { width: CELL_SIZE, height: CELL_SIZE, backgroundColor: bg, borderColor: border }, extraStyle]}
       onPress={onPress}
       disabled={isMyGrid || state === "hit" || state === "miss" || state === "sunk"}
       activeOpacity={isMyGrid ? 1 : 0.7}
@@ -47,7 +80,7 @@ function GridCell({ x, y, state, isMyGrid, onPress, theme, isLastShot }) {
   );
 }
 
-function Grid({ title, cells, isMyGrid, onCellPress, theme, lastShot }) {
+function Grid({ title, cells, isMyGrid, onCellPress, theme, lastShot, shipInfoMap }) {
   const labels = "ABCDEFGH".split("");
   return (
     <View style={styles.gridWrap}>
@@ -77,6 +110,7 @@ function Grid({ title, cells, isMyGrid, onCellPress, theme, lastShot }) {
                 onPress={() => onCellPress(x, y)}
                 theme={theme}
                 isLastShot={isLast}
+                shipInfo={shipInfoMap ? shipInfoMap[y + "," + x] : null}
               />
             );
           })}
@@ -110,17 +144,28 @@ export default function BattleshipGame({ game, playerName, onMove, theme }) {
   }, [myShots]);
 
   // Build defense grid (my waters — shows my ships + opponent's shots)
-  const defenseGrid = useMemo(() => {
+  const { defenseGrid, defenseShipInfo } = useMemo(() => {
     const grid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
-    // Place my ships
+    const info = {};
+    // Place my ships with visual metadata
     const ships = ownShips || myShips || [];
-    for (const ship of ships) {
-      if (ship.cells) {
-        for (const cell of ship.cells) {
-          grid[cell.y][cell.x] = "ship";
-        }
-      }
-    }
+    ships.forEach((ship, idx) => {
+      if (!ship.cells) return;
+      const cells = ship.cells;
+      const isH = cells.length > 1 ? cells[0].y === cells[1].y : true;
+      const color = SHIP_COLORS[idx % SHIP_COLORS.length];
+      const icon = SHIP_ICONS[idx % SHIP_ICONS.length];
+      const mid = Math.floor(cells.length / 2);
+      cells.forEach((cell, pos) => {
+        grid[cell.y][cell.x] = "ship";
+        info[cell.y + "," + cell.x] = {
+          color, icon, isH,
+          isStart: pos === 0,
+          isEnd: pos === cells.length - 1,
+          showIcon: pos === mid,
+        };
+      });
+    });
     // Overlay opponent's shots
     for (const shot of opponentShots) {
       if (grid[shot.y][shot.x] === "ship") {
@@ -129,7 +174,7 @@ export default function BattleshipGame({ game, playerName, onMove, theme }) {
         grid[shot.y][shot.x] = "miss";
       }
     }
-    return grid;
+    return { defenseGrid: grid, defenseShipInfo: info };
   }, [ownShips, myShips, opponentShots]);
 
   // Last shot for highlight
@@ -211,6 +256,7 @@ export default function BattleshipGame({ game, playerName, onMove, theme }) {
           onCellPress={() => {}}
           theme={theme}
           lastShot={lastOpponentShot}
+          shipInfoMap={defenseShipInfo}
         />
       )}
 
@@ -259,6 +305,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 3, margin: 1,
   },
   cellIcon: { fontSize: 16 },
+  shipIcon: { fontSize: 14 },
+  shipDot: { width: 8, height: 8, borderRadius: 4 },
   missDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#64748b" },
   result: {
     marginTop: 20, padding: 20, borderRadius: 16,

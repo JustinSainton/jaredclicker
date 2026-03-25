@@ -31,7 +31,6 @@ h1.d em,h2.d em{font-style:italic;color:var(--gold)}
 
 /* ─── NAV ─── */
 nav{position:fixed;top:0;left:0;right:0;z-index:9000;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;background:rgba(7,7,11,0.65);backdrop-filter:blur(30px) saturate(1.4);-webkit-backdrop-filter:blur(30px) saturate(1.4);border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.4s}
-/* Pure typographic logo */
 .logo{display:flex;align-items:baseline;gap:0;text-decoration:none;color:var(--t1)}
 .logo-text{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;letter-spacing:-0.5px}
 .logo-text b{font-weight:700;font-style:italic;color:var(--gold)}
@@ -40,39 +39,118 @@ nav{position:fixed;top:0;left:0;right:0;z-index:9000;padding:0 32px;height:64px;
 
 /* ─── HERO ─── */
 .hero{min-height:100lvh;display:flex;align-items:center;padding:100px 0 80px;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;width:min(1000px,120vw);height:1000px;border-radius:50%;background:radial-gradient(circle,var(--gg) 0%,transparent 55%);top:50%;left:50%;transform:translate(-50%,-55%);pointer-events:none}
-.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;position:relative;z-index:1}
+.hero::before{content:'';position:absolute;width:min(1200px,140vw);height:1200px;border-radius:50%;background:radial-gradient(circle,var(--gg) 0%,transparent 55%);top:50%;left:30%;transform:translate(-50%,-55%);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;position:relative;z-index:1}
 .hero-left{max-width:540px}
 .hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--gold);border:1px solid rgba(212,168,38,0.2);background:rgba(212,168,38,0.05);padding:6px 18px 6px 10px;border-radius:100px;margin-bottom:28px}
 .hero-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold);animation:blink 2s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-.hero-body{margin:24px 0 36px}
+.hero-body{margin:24px 0 32px}
+.hero-feats{display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap}
+.hero-feat{display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;border:1px solid var(--b1);background:rgba(255,255,255,0.02);font-size:13px;font-weight:600;color:var(--t3);cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden;font-family:inherit}
+.hero-feat:hover{border-color:var(--b2);color:var(--t2)}
+.hero-feat.on{border-color:rgba(212,168,38,0.3);background:rgba(212,168,38,0.06);color:var(--gold)}
+.hero-feat::after{content:'';position:absolute;bottom:0;left:0;height:2px;width:0;background:var(--gold);border-radius:1px}
+.hero-feat.on::after{animation:pill-fill 4s linear forwards}
+.feat-ico{font-size:14px;line-height:1}
 .hero-actions{display:flex;gap:14px;flex-wrap:wrap}
 .btn-g{display:inline-flex;align-items:center;gap:8px;padding:15px 32px;border-radius:12px;border:none;font-family:inherit;font-size:16px;font-weight:700;color:var(--bg);background:var(--gold);cursor:pointer;text-decoration:none;transition:all 0.3s cubic-bezier(0.16,1,0.3,1);box-shadow:0 2px 8px rgba(212,168,38,0.2),inset 0 1px 0 rgba(255,255,255,0.2)}
 .btn-g:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(212,168,38,0.3)}
 .btn-o{display:inline-flex;align-items:center;gap:8px;padding:15px 32px;border-radius:12px;font-family:inherit;font-size:16px;font-weight:600;color:var(--t1);background:rgba(255,255,255,0.04);border:1px solid var(--b1);cursor:pointer;text-decoration:none;transition:all 0.3s}
 .btn-o:hover{background:rgba(255,255,255,0.07);border-color:var(--b2)}
 
-/* ─── PRODUCT MOCKUP (right side of hero) ─── */
-.hero-right{position:relative}
-.mockup{background:var(--card);border:1px solid var(--b1);border-radius:20px;padding:24px;box-shadow:0 20px 80px rgba(0,0,0,0.5),0 0 60px var(--gg);position:relative;overflow:hidden}
-.mockup::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--vi),var(--bl))}
-.mockup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-.mockup-title{font-size:14px;font-weight:700;color:var(--t2)}
-.mockup-badge{font-size:10px;font-weight:700;color:var(--em);background:var(--emd);padding:3px 8px;border-radius:4px}
-/* Fake leaderboard */
-.mockup-lb{display:flex;flex-direction:column;gap:6px}
-.mockup-row{display:flex;align-items:center;gap:10px;background:var(--el);border-radius:10px;padding:10px 14px;transition:all 0.3s}
-.mockup-row:first-child{background:linear-gradient(135deg,rgba(212,168,38,0.1),rgba(212,168,38,0.03));border:1px solid rgba(212,168,38,0.15)}
-.mockup-rank{width:24px;text-align:center;font-size:14px}
-.mockup-name{flex:1;font-size:13px;font-weight:600;color:var(--t1)}
-.mockup-score{font-size:13px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
-.mockup-dot{width:6px;height:6px;border-radius:3px;background:var(--em)}
-/* Fake chat bubbles */
-.mockup-chat{margin-top:16px;display:flex;flex-direction:column;gap:6px}
-.mockup-msg{font-size:11px;color:var(--t2);background:var(--el);padding:8px 12px;border-radius:10px;max-width:80%}
-.mockup-msg.sys{color:var(--rose);font-style:italic;border-left:2px solid var(--rose);background:rgba(240,96,112,0.06);max-width:100%}
-.mockup-msg b{color:var(--gold)}
+/* ─── PHONE MOCKUP ─── */
+.hero-right{position:relative;display:flex;justify-content:center;align-items:center;min-height:600px}
+.phone-wrap{position:relative;animation:phone-hover 5s ease-in-out infinite}
+.phone-wrap::before{content:'';position:absolute;width:380px;height:640px;border-radius:50%;background:radial-gradient(circle,rgba(212,168,38,0.1) 0%,transparent 65%);top:50%;left:50%;transform:translate(-50%,-50%);filter:blur(40px);pointer-events:none;z-index:0}
+.phone{width:280px;height:576px;border-radius:40px;background:#08080f;border:3px solid rgba(255,255,255,0.08);box-shadow:0 40px 100px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.04),0 0 80px rgba(212,168,38,0.06);position:relative;overflow:hidden;z-index:1}
+.phone-notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:90px;height:24px;background:#000;border-radius:14px;z-index:10}
+.phone-screen{position:absolute;inset:0;overflow:hidden}
+
+/* ─── PHONE SCREENS ─── */
+.ph-scr{position:absolute;inset:0;padding:42px 16px 56px;opacity:0;transform:scale(0.96);transition:opacity 0.5s cubic-bezier(0.16,1,0.3,1),transform 0.5s cubic-bezier(0.16,1,0.3,1);display:flex;flex-direction:column}
+.ph-scr.on{opacity:1;transform:scale(1)}
+.ph-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.ph-hdr-t{font-size:12px;font-weight:700;color:var(--t1);display:flex;align-items:center;gap:5px}
+.ph-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:0.3px}
+.ph-badge-em{color:var(--em);background:var(--emd)}
+.ph-badge-gold{color:var(--gold);background:rgba(212,168,38,0.1)}
+
+/* Screen 0: Clicker Game */
+.clicker-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.coin-btn{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#fce588,var(--gold),#a07810);box-shadow:0 0 30px rgba(212,168,38,0.35),0 6px 20px rgba(0,0,0,0.4),inset 0 2px 6px rgba(255,255,255,0.3);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800;color:var(--bg);margin:14px 0;letter-spacing:-1px;text-shadow:0 1px 2px rgba(0,0,0,0.2)}
+.ph-scr.on .coin-btn{animation:coin-pulse 1.5s ease-in-out infinite}
+.clicker-score{font-size:24px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums;letter-spacing:-0.5px}
+.clicker-rate{font-size:11px;color:var(--em);font-weight:700;margin-top:2px;display:flex;align-items:center;gap:4px}
+.clicker-rate::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--em);display:inline-block}
+.fc{position:absolute;font-size:13px;font-weight:800;color:var(--gl);opacity:0;pointer-events:none}
+.ph-scr.on .fc{animation:fc-up 1.6s ease-out infinite}
+.fc1{left:22%;top:36%}.fc2{right:18%;top:40%}.fc3{left:34%;top:28%}
+.clicker-upgrades{display:flex;gap:4px;margin-top:auto;width:100%}
+.clicker-up{flex:1;height:6px;border-radius:3px;background:var(--el)}
+.clicker-up.filled{background:linear-gradient(90deg,var(--gold),var(--gl))}
+
+/* Screen 1: Battles */
+.battle-title{text-align:center;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+.battle-vs{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0}
+.battle-player{text-align:center}
+.battle-avatar{width:42px;height:42px;border-radius:50%;background:var(--el);display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 4px;border:2px solid var(--b1)}
+.battle-avatar.gold{border-color:var(--gold);box-shadow:0 0 12px rgba(212,168,38,0.2)}
+.battle-name{font-size:10px;font-weight:700;color:var(--t1)}
+.battle-bolt{font-size:20px;color:var(--gold);text-shadow:0 0 12px rgba(212,168,38,0.4)}
+.battle-game{text-align:center;margin:10px 0}
+.battle-hands{display:flex;justify-content:center;gap:10px}
+.battle-hand{width:40px;height:40px;border-radius:10px;background:var(--el);border:1px solid var(--b1);display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s}
+.battle-hand.pick{border-color:var(--gold);background:rgba(212,168,38,0.1);box-shadow:0 0 12px rgba(212,168,38,0.15);transform:scale(1.1)}
+.battle-wager{text-align:center;font-size:11px;margin-top:10px}
+.battle-wager span{color:var(--gold);font-weight:800}
+.battle-list{margin-top:auto;display:flex;flex-direction:column;gap:5px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)}
+.battle-list-t{font-size:9px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px}
+.battle-active{font-size:10px;color:var(--t3);display:flex;align-items:center;gap:6px}
+.battle-active::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--em);flex-shrink:0}
+
+/* Screen 2: Chat */
+.chat-msgs{flex:1;display:flex;flex-direction:column;gap:5px;justify-content:flex-end;overflow:hidden}
+.chat-msg{font-size:10px;color:var(--t2);background:var(--el);padding:6px 10px;border-radius:10px;max-width:88%;opacity:0;transform:translateY(8px);line-height:1.5}
+.ph-scr.on .chat-msg{animation:msg-in 0.35s cubic-bezier(0.16,1,0.3,1) forwards}
+.chat-msg b{color:var(--t1);font-weight:700}
+.chat-msg.sys{color:var(--rose);font-style:italic;border-left:2px solid var(--rose);background:rgba(240,96,112,0.06);max-width:100%;font-size:9.5px}
+.chat-msg .react{display:inline-flex;gap:2px;margin-left:4px;font-size:10px;opacity:0.7}
+.chat-input{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--el);border:1px solid rgba(255,255,255,0.04);font-size:10px;color:var(--t4);display:flex;align-items:center;justify-content:space-between}
+.chat-input span{font-size:12px;opacity:0.5}
+
+/* Screen 3: Dashboard */
+.dash-total{text-align:center;margin:8px 0 4px}
+.dash-amount{font-family:'Playfair Display',serif;font-size:42px;font-weight:600;color:var(--gold);letter-spacing:-1px}
+.dash-label{font-size:10px;color:var(--t3);margin-top:0}
+.dash-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:8px 0;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);margin:6px 0}
+.dash-stat{text-align:center}
+.dash-stat-v{font-size:14px;font-weight:800;color:var(--t1)}
+.dash-stat-l{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:0.4px;line-height:1.3}
+.dash-chart{display:flex;align-items:flex-end;gap:3px;height:44px;margin:8px 0 6px}
+.chart-bar{flex:1;border-radius:2px 2px 0 0;height:0;opacity:0.8}
+.chart-bar.g{background:linear-gradient(to top,var(--gold),var(--gl))}
+.chart-bar.v{background:linear-gradient(to top,var(--vi),#a78bfa)}
+.ph-scr.on .chart-bar{animation:bar-grow 0.7s cubic-bezier(0.16,1,0.3,1) forwards}
+.dash-feed{display:flex;flex-direction:column;gap:3px;margin-top:auto}
+.dash-feed-t{font-size:8px;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:1px}
+.dash-item{display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:4px 8px;background:var(--el);border-radius:6px}
+.dash-item-n{color:var(--t2)}.dash-item-a{color:var(--em);font-weight:700}
+
+/* Phone bottom nav */
+.phone-bnav{position:absolute;bottom:0;left:0;right:0;height:50px;display:flex;justify-content:space-around;align-items:center;background:rgba(8,8,15,0.95);border-top:1px solid rgba(255,255,255,0.05);z-index:5;padding:0 8px}
+.phone-tab{font-size:16px;opacity:0.25;transition:opacity 0.3s,transform 0.3s;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:default}
+.phone-tab-l{font-size:7px;font-weight:600;letter-spacing:0.3px}
+.phone-tab.on{opacity:1}
+
+/* ─── FLOATING NOTIFICATIONS ─── */
+.hero-notif{position:absolute;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:12px;background:rgba(14,14,22,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);font-size:11px;font-weight:600;color:var(--t1);white-space:nowrap;z-index:2;opacity:0;transform:translateY(8px) scale(0.95);transition:opacity 0.4s cubic-bezier(0.16,1,0.3,1),transform 0.4s cubic-bezier(0.16,1,0.3,1);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.hero-notif.show{opacity:1;transform:translateY(0) scale(1)}
+.hn-ico{font-size:13px;line-height:1}
+.hn0{top:8%;right:-36px}
+.hn1{bottom:30%;right:-44px}
+.hn2{top:14%;left:-40px}
+.hn3{bottom:18%;left:-24px}
 
 /* ─── PROOF ─── */
 .proof{padding:56px 0;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);background:var(--sf)}
@@ -137,10 +215,45 @@ footer p{font-size:13px;color:var(--t4)}
 footer a{color:var(--t3);text-decoration:none}
 footer a:hover{color:var(--gold)}
 
+/* ─── KEYFRAME ANIMATIONS ─── */
+@keyframes phone-hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes coin-pulse{0%,100%{transform:scale(1);box-shadow:0 0 30px rgba(212,168,38,0.35),0 6px 20px rgba(0,0,0,0.4),inset 0 2px 6px rgba(255,255,255,0.3)}50%{transform:scale(1.08);box-shadow:0 0 50px rgba(212,168,38,0.5),0 6px 20px rgba(0,0,0,0.4),inset 0 2px 6px rgba(255,255,255,0.3)}}
+@keyframes fc-up{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-44px) scale(0.5)}}
+@keyframes msg-in{to{opacity:1;transform:translateY(0)}}
+@keyframes pill-fill{to{width:100%}}
+@keyframes bar-grow{from{height:0}to{height:var(--h)}}
+
 /* ─── RESPONSIVE ─── */
-@media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:40px}.hero-right{order:-1}.steps{grid-template-columns:1fr}.bento{grid-template-columns:1fr}.bc.w2{grid-column:span 1}.pg{grid-template-columns:repeat(2,1fr)}.proof-grid{grid-template-columns:repeat(2,1fr);gap:24px}.sc{padding:100px 0}}
-@media(max-width:600px){.pg{grid-template-columns:1fr}.hero-actions{flex-direction:column}.btn-g,.btn-o{width:100%;justify-content:center}nav{padding:0 16px}.wrap{padding:0 20px}}
-@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}*{transition-duration:0.01ms!important;animation-duration:0.01ms!important}}
+@media(max-width:900px){
+  .hero-grid{grid-template-columns:1fr;gap:32px}
+  .hero-right{order:-1;min-height:460px}
+  .hero-left{max-width:100%;text-align:center}
+  .hero-feats{justify-content:center}
+  .hero-actions{justify-content:center}
+  .hero-eyebrow{margin-left:auto;margin-right:auto}
+  .hero-notif{display:none}
+  .phone{width:240px;height:492px;border-radius:34px}
+  .phone-notch{width:76px;height:20px;top:6px;border-radius:12px}
+  .ph-scr{padding:36px 14px 48px}
+  .coin-btn{width:80px;height:80px;font-size:32px}
+  .clicker-score{font-size:20px}
+  .dash-amount{font-size:34px}
+  .steps{grid-template-columns:1fr}
+  .bento{grid-template-columns:1fr}.bc.w2{grid-column:span 1}
+  .pg{grid-template-columns:repeat(2,1fr)}
+  .proof-grid{grid-template-columns:repeat(2,1fr);gap:24px}
+  .sc{padding:100px 0}
+}
+@media(max-width:600px){
+  .pg{grid-template-columns:1fr}
+  .hero-actions{flex-direction:column}
+  .btn-g,.btn-o{width:100%;justify-content:center}
+  nav{padding:0 16px}
+  .wrap{padding:0 20px}
+  .hero-feats{gap:6px}
+  .hero-feat{padding:7px 12px;font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}.phone-wrap{animation:none}*{transition-duration:0.01ms!important;animation-duration:0.01ms!important}}
 </style>
 </head>
 <body>
@@ -158,31 +271,144 @@ footer a:hover{color:var(--gold)}
     <div class="hero-grid">
       <div class="hero-left">
         <div class="hero-eyebrow"><div class="hero-dot"></div>Now on iOS &amp; Android</div>
-        <h1 class="d">Fundraising that feels like a game they <em>can't put down</em></h1>
-        <p class="bl hero-body">Your community clicks, competes, battles, and sabotages each other. Every real-money purchase goes directly to your cause. Zero monthly fees.</p>
+        <h1 class="d">Your community competes. <em>Your cause wins.</em></h1>
+        <p class="bl hero-body">Fund Clicker turns fundraising into an addictive mobile game. Battles, sabotage, group competitions, and live chat keep your community playing &mdash; and every in-game purchase is a donation.</p>
+        <div class="hero-feats">
+          <button class="hero-feat on" data-screen="0"><span class="feat-ico">&#x1F3AE;</span> The Game</button>
+          <button class="hero-feat" data-screen="1"><span class="feat-ico">&#x2694;&#xFE0F;</span> Battles</button>
+          <button class="hero-feat" data-screen="2"><span class="feat-ico">&#x1F4AC;</span> Live Chat</button>
+          <button class="hero-feat" data-screen="3"><span class="feat-ico">&#x1F4CA;</span> Your Dashboard</button>
+        </div>
         <div class="hero-actions">
           <a href="https://admin.fundclicker.com" class="btn-g">Launch Your Fundraiser &rarr;</a>
           <a href="#how" class="btn-o">See How It Works</a>
         </div>
       </div>
       <div class="hero-right">
-        <!-- Product mockup: mini leaderboard + chat -->
-        <div class="mockup">
-          <div class="mockup-header">
-            <div class="mockup-title">Live Leaderboard</div>
-            <div class="mockup-badge">12 online</div>
-          </div>
-          <div class="mockup-lb">
-            <div class="mockup-row"><span class="mockup-rank">&#x1F947;</span><div class="mockup-dot"></div><span class="mockup-name">Sarah M.</span><span class="mockup-score">245,891</span></div>
-            <div class="mockup-row"><span class="mockup-rank">&#x1F948;</span><div class="mockup-dot"></div><span class="mockup-name">Pastor Dave</span><span class="mockup-score">189,432</span></div>
-            <div class="mockup-row"><span class="mockup-rank">&#x1F949;</span><span class="mockup-name">Youth Group</span><span class="mockup-score">156,210</span></div>
-            <div class="mockup-row"><span class="mockup-rank">4</span><span class="mockup-name">Mike R.</span><span class="mockup-score">98,744</span></div>
-            <div class="mockup-row"><span class="mockup-rank">5</span><span class="mockup-name">Linda K.</span><span class="mockup-score">67,201</span></div>
-          </div>
-          <div class="mockup-chat">
-            <div class="mockup-msg sys">&#x1F4A3; Sarah M. sabotaged Pastor Dave! Half speed for 15 min!</div>
-            <div class="mockup-msg"><b>Pastor Dave:</b> Oh it's ON now...</div>
-            <div class="mockup-msg"><b>Mike R.:</b> &#x2694;&#xFE0F; challenged Youth Group to Clicker Duel for 5,000 coins!</div>
+        <!-- Floating notifications -->
+        <div class="hero-notif hn0"><span class="hn-ico">&#x1FA99;</span> +127 coins/sec</div>
+        <div class="hero-notif hn1"><span class="hn-ico">&#x2694;&#xFE0F;</span> Sarah beat Mike!</div>
+        <div class="hero-notif hn2"><span class="hn-ico">&#x1F525;</span> 47 players online</div>
+        <div class="hero-notif hn3"><span class="hn-ico">&#x1F4B0;</span> +$12.45 raised</div>
+
+        <div class="phone-wrap">
+          <div class="phone">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+
+              <!-- Screen 0: Clicker Game -->
+              <div class="ph-scr on" data-idx="0">
+                <div class="ph-hdr">
+                  <span class="ph-hdr-t">&#x1F3C6; First Baptist Youth</span>
+                  <span class="ph-badge ph-badge-em">&#x1F7E2; LIVE</span>
+                </div>
+                <div class="clicker-area">
+                  <span class="fc fc1">+5</span>
+                  <span class="fc fc2" style="animation-delay:0.5s">+10</span>
+                  <span class="fc fc3" style="animation-delay:1.1s">+25</span>
+                  <div class="clicker-score">245,891</div>
+                  <div class="coin-btn">$</div>
+                  <div class="clicker-rate">127 coins/sec</div>
+                </div>
+                <div class="clicker-upgrades">
+                  <div class="clicker-up filled"></div>
+                  <div class="clicker-up filled"></div>
+                  <div class="clicker-up filled"></div>
+                  <div class="clicker-up"></div>
+                  <div class="clicker-up"></div>
+                </div>
+              </div>
+
+              <!-- Screen 1: Battles -->
+              <div class="ph-scr" data-idx="1">
+                <div class="ph-hdr">
+                  <span class="ph-hdr-t">&#x2694;&#xFE0F; Battle Arena</span>
+                  <span class="ph-badge ph-badge-gold">3 active</span>
+                </div>
+                <div class="battle-title">Rock Paper Scissors</div>
+                <div class="battle-vs">
+                  <div class="battle-player">
+                    <div class="battle-avatar gold">&#x1F469;</div>
+                    <div class="battle-name">Sarah M.</div>
+                  </div>
+                  <div class="battle-bolt">&#x26A1;</div>
+                  <div class="battle-player">
+                    <div class="battle-avatar">&#x1F468;</div>
+                    <div class="battle-name">Pastor Dave</div>
+                  </div>
+                </div>
+                <div class="battle-game">
+                  <div class="battle-hands">
+                    <div class="battle-hand pick">&#x1FAA8;</div>
+                    <div class="battle-hand">&#x1F4C4;</div>
+                    <div class="battle-hand">&#x2702;&#xFE0F;</div>
+                  </div>
+                </div>
+                <div class="battle-wager">Wager: <span>5,000 coins</span></div>
+                <div class="battle-list">
+                  <div class="battle-list-t">Active Games</div>
+                  <div class="battle-active">Trivia: Mike vs Linda &mdash; 2,000</div>
+                  <div class="battle-active">Connect 4: Dave vs Youth &mdash; 8,000</div>
+                  <div class="battle-active">Clicker Duel: Kim vs Alex &mdash; 15,000</div>
+                </div>
+              </div>
+
+              <!-- Screen 2: Chat -->
+              <div class="ph-scr" data-idx="2">
+                <div class="ph-hdr">
+                  <span class="ph-hdr-t">&#x1F4AC; Live Chat</span>
+                  <span class="ph-badge ph-badge-em">47 online</span>
+                </div>
+                <div class="chat-msgs">
+                  <div class="chat-msg sys" style="animation-delay:0.2s">&#x1F4A3; Sarah M. sabotaged Pastor Dave! Half speed for 15 min</div>
+                  <div class="chat-msg" style="animation-delay:0.7s"><b>Pastor Dave:</b> Oh it's ON now &#x1F624;</div>
+                  <div class="chat-msg" style="animation-delay:1.2s"><b>Mike R.:</b> &#x2694;&#xFE0F; Who wants to battle? 10K wager! <span class="react">&#x1F525;&#x1F525;</span></div>
+                  <div class="chat-msg" style="animation-delay:1.7s"><b>Sarah M.:</b> You're on! Let's gooo &#x1F525;</div>
+                  <div class="chat-msg" style="animation-delay:2.2s"><b>Youth Group:</b> We just hit 500K coins!! &#x1F389;<span class="react">&#x1F389;&#x2764;&#xFE0F;</span></div>
+                </div>
+                <div class="chat-input">Type a message... <span>&#x1F4E4;</span></div>
+              </div>
+
+              <!-- Screen 3: Revenue Dashboard -->
+              <div class="ph-scr" data-idx="3">
+                <div class="ph-hdr">
+                  <span class="ph-hdr-t">&#x1F4CA; Your Dashboard</span>
+                  <span class="ph-badge ph-badge-em">Admin</span>
+                </div>
+                <div class="dash-total">
+                  <div class="dash-amount" id="dash-amount">$0</div>
+                  <div class="dash-label">raised this week</div>
+                </div>
+                <div class="dash-stats">
+                  <div class="dash-stat"><div class="dash-stat-v">47</div><div class="dash-stat-l">Active</div></div>
+                  <div class="dash-stat"><div class="dash-stat-v">23</div><div class="dash-stat-l">Purchases</div></div>
+                  <div class="dash-stat"><div class="dash-stat-v">$18</div><div class="dash-stat-l">Average</div></div>
+                </div>
+                <div class="dash-chart">
+                  <div class="chart-bar g" style="--h:35%;animation-delay:0.1s"></div>
+                  <div class="chart-bar v" style="--h:52%;animation-delay:0.15s"></div>
+                  <div class="chart-bar g" style="--h:68%;animation-delay:0.2s"></div>
+                  <div class="chart-bar v" style="--h:44%;animation-delay:0.25s"></div>
+                  <div class="chart-bar g" style="--h:78%;animation-delay:0.3s"></div>
+                  <div class="chart-bar v" style="--h:60%;animation-delay:0.35s"></div>
+                  <div class="chart-bar g" style="--h:92%;animation-delay:0.4s"></div>
+                </div>
+                <div class="dash-feed">
+                  <div class="dash-feed-t">Recent Activity</div>
+                  <div class="dash-item"><span class="dash-item-n">Sarah M. &mdash; Sabotage</span><span class="dash-item-a">+$3.99</span></div>
+                  <div class="dash-item"><span class="dash-item-n">Mike R. &mdash; Neon Skin</span><span class="dash-item-a">+$5.99</span></div>
+                  <div class="dash-item"><span class="dash-item-n">Youth Group &mdash; Coins</span><span class="dash-item-a">+$9.99</span></div>
+                </div>
+              </div>
+
+            </div>
+            <!-- Phone bottom nav -->
+            <div class="phone-bnav">
+              <div class="phone-tab on" data-tidx="0"><span>&#x1F3AE;</span><span class="phone-tab-l">Game</span></div>
+              <div class="phone-tab" data-tidx="1"><span>&#x2694;&#xFE0F;</span><span class="phone-tab-l">Battle</span></div>
+              <div class="phone-tab" data-tidx="2"><span>&#x1F4AC;</span><span class="phone-tab-l">Chat</span></div>
+              <div class="phone-tab" data-tidx="3"><span>&#x1F4CA;</span><span class="phone-tab-l">Admin</span></div>
+            </div>
           </div>
         </div>
       </div>
@@ -259,14 +485,78 @@ footer a:hover{color:var(--gold)}
 </footer>
 
 <script>
-// Counter
-var c=847293,el=document.getElementById('ctr');
-// Scroll reveal
+// ─── Scroll reveal ───
 var io=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting)x.target.classList.add('in')})},{threshold:0.12,rootMargin:'0px 0px -60px 0px'});
 document.querySelectorAll('.rv').forEach(function(x){io.observe(x)});
-// Nav background
+
+// ─── Nav background ───
 var nav=document.querySelector('nav');
 window.addEventListener('scroll',function(){nav.style.background=window.scrollY>80?'rgba(7,7,11,0.92)':'rgba(7,7,11,0.65)';},{passive:true});
+
+// ─── Phone screen cycling ───
+var screens=document.querySelectorAll('.ph-scr');
+var feats=document.querySelectorAll('.hero-feat');
+var tabs=document.querySelectorAll('.phone-tab');
+var notifs=document.querySelectorAll('.hero-notif');
+var current=0;
+var timer;
+var dashEl=document.getElementById('dash-amount');
+var CYCLE_MS=4000;
+
+function showScreen(idx){
+  screens.forEach(function(s){s.classList.remove('on')});
+  feats.forEach(function(f){f.classList.remove('on')});
+  tabs.forEach(function(t){t.classList.remove('on')});
+  notifs.forEach(function(n){n.classList.remove('show')});
+
+  screens[idx].classList.add('on');
+  feats[idx].classList.add('on');
+  tabs[idx].classList.add('on');
+  current=idx;
+
+  // Show matching notification after a short delay
+  setTimeout(function(){
+    if(notifs[idx])notifs[idx].classList.add('show');
+  },400);
+
+  // Animate dashboard counter when screen 3 is active
+  if(idx===3)animateDash();
+}
+
+function nextScreen(){
+  showScreen((current+1)%4);
+}
+
+function startCycle(){
+  clearInterval(timer);
+  timer=setInterval(nextScreen,CYCLE_MS);
+}
+
+// Feature pill click handlers
+feats.forEach(function(f,i){
+  f.addEventListener('click',function(){
+    showScreen(i);
+    startCycle();
+  });
+});
+
+// Dashboard counter animation
+var dashTarget=847;
+function animateDash(){
+  var dc=0;
+  function step(){
+    dc+=Math.ceil((dashTarget-dc)/15);
+    if(dc>dashTarget)dc=dashTarget;
+    dashEl.textContent='$'+dc.toLocaleString();
+    if(dc<dashTarget)requestAnimationFrame(step);
+  }
+  dashEl.textContent='$0';
+  requestAnimationFrame(step);
+}
+
+// Initialize
+showScreen(0);
+startCycle();
 </script>
 </body>
 </html>

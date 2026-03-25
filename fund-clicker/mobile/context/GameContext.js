@@ -455,10 +455,17 @@ export function GameProvider({ children, orgSlug }) {
     sendWS({ type: "startGroupGame", lobbyId });
   }, [sendWS]);
 
+  const createCampaign = useCallback((targetName, campaignType, percentage) => {
+    sendWS({ type: "createCampaign", targetName, campaignType, percentage });
+  }, [sendWS]);
+
   const dismissGame = useCallback(() => {
+    if (currentGame && !currentGame.winner && !currentGame._ended) {
+      sendWS({ type: "forfeitGame", gameId: currentGame.id });
+    }
     setCurrentGame(null);
     setGameResult(null);
-  }, []);
+  }, [currentGame, sendWS]);
 
   // ─── CONTEXT VALUE ────────────────────────────────────────────────
   return (
@@ -478,6 +485,8 @@ export function GameProvider({ children, orgSlug }) {
         dismissGame,
         // Group games
         createGroupLobby, joinGroupLobby, startGroupGame,
+        // Campaigns
+        createCampaign,
         // Notifications
         scoreCorrection, coinCutEvent, banInfo,
         // Actions

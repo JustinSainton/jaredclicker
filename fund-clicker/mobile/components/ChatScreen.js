@@ -87,6 +87,7 @@ export default function ChatScreen() {
   const [gifSearch, setGifSearch] = useState("");
   const [gifResults, setGifResults] = useState([]);
   const [gifLoading, setGifLoading] = useState(false);
+  const [hideSystem, setHideSystem] = useState(false);
   const listRef = useRef(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -95,12 +96,13 @@ export default function ChatScreen() {
   const inputRef = useRef(null);
 
   const messagesWithKeys = useMemo(() => {
-    return chatMessages.map((msg, i) => ({
+    const filtered = hideSystem ? chatMessages.filter(m => m.type !== "system") : chatMessages;
+    return filtered.map((msg, i) => ({
       ...msg,
       _key: msg.id || "chat_" + (msg.timestamp || 0) + "_" + i,
-      _prevMsg: i > 0 ? chatMessages[i - 1] : null,
+      _prevMsg: i > 0 ? filtered[i - 1] : null,
     }));
-  }, [chatMessages]);
+  }, [chatMessages, hideSystem]);
 
   // Auto-scroll
   useEffect(() => {
@@ -284,9 +286,19 @@ export default function ChatScreen() {
       {/* Header */}
       <View style={styles.headerRow}>
         <Text style={[styles.header, headingStyle(theme), { color: theme.primary }]}>Chat</Text>
-        <View style={styles.onlineBadge}>
-          <View style={styles.onlineDot} />
-          <Text style={styles.onlineText}>{online?.length || 0} online</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => setHideSystem(h => !h)}
+            style={[styles.systemToggle, hideSystem && { borderColor: theme.primary, backgroundColor: theme.primary + "15" }]}
+          >
+            <Text style={[styles.systemToggleText, hideSystem && { color: theme.primary }]}>
+              {hideSystem ? "\uD83D\uDD15 Quiet" : "\uD83D\uDD14 All"}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.onlineBadge}>
+            <View style={styles.onlineDot} />
+            <Text style={styles.onlineText}>{online?.length || 0} online</Text>
+          </View>
         </View>
       </View>
 
@@ -463,6 +475,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   header: { fontSize: 24, fontWeight: "800" },
+  systemToggle: { borderRadius: 10, borderWidth: 1, borderColor: "#333", paddingHorizontal: 10, paddingVertical: 4 },
+  systemToggleText: { fontSize: 11, fontWeight: "700", color: "#888" },
   onlineBadge: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#16213e", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
   onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#4ade80" },
   onlineText: { fontSize: 12, color: "#4ade80", fontWeight: "600" },

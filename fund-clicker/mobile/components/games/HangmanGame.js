@@ -25,29 +25,35 @@ export default function HangmanGame({ game, playerName, onMove, theme }) {
   const myWrong = isP1 ? (game.hangmanP1Wrong || 0) : (game.hangmanP2Wrong || 0);
   const opponentWrong = isP1 ? (game.hangmanP2Wrong || 0) : (game.hangmanP1Wrong || 0);
   const opponent = isP1 ? game.player2 : game.player1;
+  // Server sends masked word (e.g. "H_LL_") and word length, never the raw word
+  const myMasked = isP1 ? (game.hangmanP1Masked || "") : (game.hangmanP2Masked || "");
+  const wordLength = game.hangmanWordLength || myMasked.length;
+  // Fallback: if server still sends hangmanWord (pre-update), use it
   const word = game.hangmanWord || "";
 
-  // Build the display word with blanks
+  // Build the display word with blanks from masked string
   const displayWord = useMemo(() => {
+    if (myMasked) return myMasked.split("").join(" ");
     return word.split("").map(letter => {
       if (letter === " ") return " ";
       return myGuesses.includes(letter.toUpperCase()) ? letter : "_";
     }).join(" ");
-  }, [word, myGuesses]);
+  }, [myMasked, word, myGuesses]);
 
-  // Check if word is fully revealed
+  // Check if word is fully revealed (no underscores left)
   const wordComplete = useMemo(() => {
+    if (myMasked) return myMasked.length > 0 && !myMasked.includes("_");
     return word.split("").every(letter =>
       letter === " " || myGuesses.includes(letter.toUpperCase())
     );
-  }, [word, myGuesses]);
+  }, [myMasked, word, myGuesses]);
 
   const handleGuess = useCallback((letter) => {
     if (myGuesses.includes(letter) || game.winner || myWrong >= MAX_WRONG || wordComplete) return;
-    const isCorrect = word.toUpperCase().includes(letter);
-    Haptics.impactAsync(isCorrect ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Heavy);
+    // Can't check correctness client-side with masked word — haptic based on guess result next update
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onMove(game.id, letter);
-  }, [myGuesses, game.winner, myWrong, wordComplete, word, game.id, onMove]);
+  }, [myGuesses, game.winner, myWrong, wordComplete, game.id, onMove]);
 
   // Hangman figure based on wrong guesses
   const figure = useMemo(() => {
@@ -106,8 +112,10 @@ export default function HangmanGame({ game, playerName, onMove, theme }) {
         <View style={styles.keyboard}>
           {ALPHABET.map((letter) => {
             const guessed = myGuesses.includes(letter);
-            const isCorrect = guessed && word.toUpperCase().includes(letter);
-            const isWrong = guessed && !word.toUpperCase().includes(letter);
+            // Determine correctness from masked word or raw word
+            const inWord = myMasked ? myMasked.toUpperCase().includes(letter) : word.toUpperCase().includes(letter);
+            const isCorrect = guessed && inWord;
+            const isWrong = guessed && !inWord;
             return (
               <TouchableOpacity
                 key={letter}

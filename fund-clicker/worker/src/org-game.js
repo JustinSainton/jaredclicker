@@ -949,8 +949,17 @@ export class OrgGameInstance {
       };
     }
     if (game.type === "battleship") {
-      const isP1 = forPlayer.toLowerCase() === game.player1.toLowerCase();
-      sanitized.bsShips = { own: isP1 ? game.bsShips.p1 : game.bsShips.p2 };
+      const isP1 = forPlayer ? forPlayer.toLowerCase() === game.player1.toLowerCase() : false;
+      sanitized.bsShips = forPlayer ? { own: isP1 ? game.bsShips.p1 : game.bsShips.p2 } : {};
+    }
+    if (game.type === "hangman") {
+      // Send word length + masked progress per player, never the actual word
+      const word = game.hangmanWord || "";
+      sanitized.hangmanWordLength = word.length;
+      delete sanitized.hangmanWord;
+      // Build masked words for each player
+      sanitized.hangmanP1Masked = word.split("").map(l => game.hangmanP1Guesses?.includes(l) ? l : "_").join("");
+      sanitized.hangmanP2Masked = word.split("").map(l => game.hangmanP2Guesses?.includes(l) ? l : "_").join("");
     }
     return sanitized;
   }
@@ -1694,6 +1703,85 @@ export class OrgGameInstance {
       return new Response(JSON.stringify({ ok: true, newScore: scores[targetName.toLowerCase()]?.score || 0 }), { headers: { "Content-Type": "application/json" } });
     }
 
+    // ── Campaign: create a new crowdfunded coin cut campaign
+    if (url.pathname === "/campaign/create" && request.method === "POST") {
+      const body = await request.json();
+      const creatorName = String(body.creatorName || "").slice(0, 20);
+      const targetName = String(body.targetName || "").slice(0, 20);
+      const type = body.type === "wipe" ? "wipe" : "cut";
+      const percentage = type === "cut" ? Math.min(40, Math.max(10, Number(body.percentage) || 20)) : 100;
+      // Pricing: $1 per 10% for cuts, $10 for a total wipe (in cents)
+      const totalPriceCents = type === "wipe" ? 1000 : Math.ceil(percentage / 10) * 100;
+      if (!creatorName || !targetName) return this.jsonError("creatorName and targetName required");
+      const campaigns = await this.loadCampaigns();
+      // Don't allow duplicate active campaigns against same target
+      const existing = Object.values(campaigns).find(c => c.status === "active" && c.targetName.toLowerCase() === targetName.toLowerCase());
+      if (existing) return new Response(JSON.stringify({ error: "Active campaign already exists against this player" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      const campaignId = "camp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+      campaigns[campaignId] = {
+        id: campaignId, type, percentage, targetName, creatorName,
+        totalPriceCents, contributedCents: 0, contributors: [],
+        status: "active", createdAt: Date.now(),
+      };
+      this.campaigns = campaigns;
+      await this.saveCampaigns();
+      await this.addSystemChat("\uD83D\uDCE2 " + creatorName + " started a " + (type === "wipe" ? "Total Wipe" : percentage + "% Coin Cut") + " campaign against " + targetName + "!");
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true, campaignId, campaign: campaigns[campaignId] }), { headers: { "Content-Type": "application/json" } });
+    }
+
+    // ── Campaign: contribute to an existing campaign (called by payment fulfillment)
+    if (url.pathname === "/campaign/contribute" && request.method === "POST") {
+      const body = await request.json();
+      const campaignId = String(body.campaignId || "");
+      const contributorName = String(body.contributorName || "").slice(0, 20);
+      const cents = Math.max(0, Number(body.cents) || 0);
+      const paymentIntentId = String(body.paymentIntentId || "").trim();
+      if (!campaignId || !contributorName || cents <= 0) {
+        return new Response(JSON.stringify({ error: "campaignId, contributorName, and cents required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const campaigns = await this.loadCampaigns();
+      const campaign = campaigns[campaignId];
+      if (!campaign || campaign.status !== "active") {
+        return new Response(JSON.stringify({ error: "Campaign not found or not active" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      }
+      // Record contribution
+      campaign.contributedCents += cents;
+      if (!campaign.contributors.some(c => c.name?.toLowerCase() === contributorName.toLowerCase())) {
+        campaign.contributors.push({ name: contributorName, cents, at: Date.now() });
+      } else {
+        const c = campaign.contributors.find(c => c.name?.toLowerCase() === contributorName.toLowerCase());
+        if (c) c.cents = (c.cents || 0) + cents;
+      }
+      await this.addSystemChat("\uD83D\uDCB0 " + contributorName + " contributed " + (cents / 100).toFixed(2) + " to the campaign against " + campaign.targetName + "! (" + Math.round((campaign.contributedCents / campaign.totalPriceCents) * 100) + "% funded)");
+      // Check if fully funded — execute the campaign
+      if (campaign.contributedCents >= campaign.totalPriceCents) {
+        campaign.status = "completed";
+        const scores = await this.loadScores();
+        const targetKey = campaign.targetName.toLowerCase();
+        if (scores[targetKey]) {
+          const oldScore = scores[targetKey].score;
+          const removed = campaign.type === "wipe" ? oldScore : Math.floor(oldScore * (campaign.percentage / 100));
+          scores[targetKey].score = Math.max(0, oldScore - removed);
+          scores[targetKey].serverCutAt = Date.now();
+          this.persistedScores = scores;
+          await this.state.storage.put("scores", scores);
+          const emoji = campaign.type === "wipe" ? "\uD83D\uDCA5" : "\u2702\uFE0F";
+          await this.addSystemChat(emoji + " Campaign complete! " + campaign.targetName + " lost " + removed.toLocaleString() + " coins" + (campaign.type === "wipe" ? " (TOTAL WIPE)" : " (" + campaign.percentage + "% cut)") + "!");
+          const cutEvent = JSON.stringify({ type: "coinCutEvent", attackerName: "Campaign", targetName: campaign.targetName, percentage: campaign.percentage, removed, newScore: scores[targetKey].score, timestamp: Date.now(), campaign: true });
+          const correctionMsg = JSON.stringify({ type: "scoreCorrection", targetName: campaign.targetName, newScore: scores[targetKey].score, delta: -removed });
+          for (const [ws] of this.connections) {
+            try { ws.send(cutEvent); ws.send(correctionMsg); } catch (e) { this.connections.delete(ws); }
+          }
+          this.sendPushToPlayer(campaign.targetName, "Campaign executed!", (campaign.type === "wipe" ? "Total wipe" : campaign.percentage + "% cut") + " — lost " + removed.toLocaleString() + " coins!", "campaign");
+        }
+      }
+      this.campaigns = campaigns;
+      await this.saveCampaigns();
+      this.broadcast();
+      return new Response(JSON.stringify({ ok: true, campaign }), { headers: { "Content-Type": "application/json" } });
+    }
+
     // ── Push: subscribe (Expo Push tokens)
     if (url.pathname === "/push/subscribe" && request.method === "POST") {
       const body = await request.json();
@@ -2125,6 +2213,48 @@ export class OrgGameInstance {
           return;
         }
 
+        if (msg.type === "createCampaign" && info.name && msg.targetName) {
+          if (!info.authenticated) { this.sendUnauthorized(server, "identity_required"); return; }
+          const self = this;
+          (async () => {
+            const campaigns = await self.loadCampaigns();
+            const targetName = String(msg.targetName).slice(0, 20);
+            const type = msg.campaignType === "wipe" ? "wipe" : "cut";
+            const percentage = type === "cut" ? Math.min(40, Math.max(10, Number(msg.percentage) || 20)) : 100;
+            const totalPriceCents = type === "wipe" ? 1000 : Math.ceil(percentage / 10) * 100;
+            // Check for existing active campaign against this target
+            const existing = Object.values(campaigns).find(c => c.status === "active" && c.targetName.toLowerCase() === targetName.toLowerCase());
+            if (existing) { self.sendToPlayer(info.name, { type: "campaignError", error: "Active campaign already exists against this player" }); return; }
+            const campaignId = "camp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+            campaigns[campaignId] = {
+              id: campaignId, type, percentage, targetName, creatorName: info.name,
+              totalPriceCents, contributedCents: 0, contributors: [],
+              status: "active", createdAt: Date.now(),
+            };
+            self.campaigns = campaigns;
+            await self.saveCampaigns();
+            await self.addSystemChat("\uD83D\uDCE2 " + info.name + " started a " + (type === "wipe" ? "Total Wipe" : percentage + "% Coin Cut") + " campaign against " + targetName + "!");
+            self.sendToPlayer(info.name, { type: "campaignCreated", campaignId, campaign: campaigns[campaignId] });
+            self.sendPushToPlayer(targetName, "Campaign started!", info.name + " started a " + (type === "wipe" ? "Total Wipe" : percentage + "% cut") + " campaign against you!", "campaign");
+            self.broadcast();
+          })();
+          return;
+        }
+
+        if (msg.type === "forfeitGame" && msg.gameId && info.name) {
+          const fGame = this.activeGames.get(msg.gameId);
+          if (fGame && !fGame.winner && !fGame._ended) {
+            const fIsP1 = fGame.player1.toLowerCase() === info.name.toLowerCase();
+            const fIsP2 = fGame.player2.toLowerCase() === info.name.toLowerCase();
+            if (fIsP1 || fIsP2) {
+              fGame.winner = fIsP1 ? fGame.player2 : fGame.player1;
+              const self = this;
+              (async () => { await self.endGame(fGame, "forfeit"); })();
+            }
+          }
+          return;
+        }
+
         if (msg.type === "gameMove" && msg.gameId && msg.move !== undefined) {
           if (!info.authenticated) {
             this.sendUnauthorized(server, "identity_required");
@@ -2181,7 +2311,23 @@ export class OrgGameInstance {
           return;
         }
 
-        if (msg.type === "stopWatching" && msg.gameId && info.name) {
+        if ((msg.type === "spectateGame" || msg.type === "watchGame") && msg.gameId && info.name) {
+          const wGame = this.activeGames.get(msg.gameId);
+          if (wGame) {
+            if (!wGame.spectators) wGame.spectators = [];
+            if (!wGame.spectators.some(s => s.toLowerCase() === info.name.toLowerCase())) {
+              wGame.spectators.push(info.name);
+            }
+            // Send current game state to the new spectator
+            const spectatorView = wGame.players
+              ? this.sanitizeGroupGame(wGame, null)
+              : this.sanitizeGame(wGame, null);
+            this.sendToPlayer(info.name, { type: wGame.players ? "groupGameUpdate" : "gameUpdate", game: spectatorView });
+          }
+          return;
+        }
+
+        if ((msg.type === "stopWatching" || msg.type === "leaveSpectate") && msg.gameId && info.name) {
           const swGame = this.activeGames.get(msg.gameId);
           if (swGame && swGame.spectators) {
             swGame.spectators = swGame.spectators.filter(s => s.toLowerCase() !== info.name.toLowerCase());
@@ -2218,18 +2364,42 @@ export class OrgGameInstance {
       this.connections.delete(server);
       // Start forfeit timer if player was in a game
       if (info && info.name) {
+        const pName = info.name.toLowerCase();
         for (const [gameId, game] of this.activeGames) {
           if (game._ended || game.winner) continue;
-          const isPlayer = game.player1.toLowerCase() === info.name.toLowerCase() || game.player2.toLowerCase() === info.name.toLowerCase();
-          if (isPlayer) {
-            const self = this;
-            const timer = setTimeout(async () => {
-              if (game._ended || game.winner) return;
-              const opponent = game.player1.toLowerCase() === info.name.toLowerCase() ? game.player2 : game.player1;
-              game.winner = opponent;
-              await self.endGame(game, "forfeit");
-            }, 30000);
-            this.forfeitTimers.set(gameId, { timer, playerName: info.name });
+          // 1v1 games
+          if (game.player1 && game.player2) {
+            const isPlayer = game.player1.toLowerCase() === pName || game.player2.toLowerCase() === pName;
+            if (isPlayer) {
+              const self = this;
+              const timer = setTimeout(async () => {
+                if (game._ended || game.winner) return;
+                const opponent = game.player1.toLowerCase() === pName ? game.player2 : game.player1;
+                game.winner = opponent;
+                await self.endGame(game, "forfeit");
+              }, 30000);
+              this.forfeitTimers.set(gameId, { timer, playerName: info.name });
+            }
+          }
+          // Group games
+          if (game.players && game.alive) {
+            const idx = game.alive.findIndex(p => p.toLowerCase() === pName);
+            if (idx !== -1) {
+              // Remove from alive list immediately
+              game.alive.splice(idx, 1);
+              if (!game.eliminated) game.eliminated = [];
+              game.eliminated.push(info.name);
+              this.broadcastGroupGame(game);
+              // If only one alive, they win
+              if (game.alive.length <= 1 && !game._ended) {
+                const self = this;
+                (async () => {
+                  if (game.alive.length === 1) game.winner = game.alive[0];
+                  else game.winner = "draw";
+                  await self.endGroupGame(game, "forfeit");
+                })();
+              }
+            }
           }
         }
       }
@@ -2357,6 +2527,93 @@ export class OrgGameInstance {
         this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
         this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
       }
+    } else if (game.type === "connect4") {
+      const col = parseInt(move);
+      if (isNaN(col) || col < 0 || col > 6) return;
+      if (game.c4CurrentTurn.toLowerCase() !== playerName.toLowerCase()) return;
+      const column = game.c4Board[col];
+      let row = -1;
+      for (let r = 0; r < 6; r++) { if (column[r] === null) { row = r; break; } }
+      if (row === -1) return;
+      const c4sym = isP1 ? game.c4Symbols[game.player1] : game.c4Symbols[game.player2];
+      column[row] = c4sym;
+      const c4win = this.checkC4Winner(game.c4Board, col, row, c4sym);
+      if (c4win) {
+        game.winner = c4win.winner === "draw" ? "draw" : playerName;
+        game.c4WinCells = c4win.winCells || [];
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+        await this.endGame(game, "completed");
+      } else {
+        game.c4CurrentTurn = isP1 ? game.player2 : game.player1;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      }
+    } else if (game.type === "hangman") {
+      const letter = String(move).toUpperCase().charAt(0);
+      if (!/[A-Z]/.test(letter)) return;
+      const guesses = isP1 ? game.hangmanP1Guesses : game.hangmanP2Guesses;
+      if (guesses.includes(letter)) return;
+      guesses.push(letter);
+      if (!game.hangmanWord.includes(letter)) {
+        if (isP1) game.hangmanP1Wrong++;
+        else game.hangmanP2Wrong++;
+      }
+      const wordLetters = game.hangmanWord.split("").filter(function(v, i, a) { return a.indexOf(v) === i; });
+      const p1Done = wordLetters.every(function(l) { return game.hangmanP1Guesses.includes(l); });
+      const p2Done = wordLetters.every(function(l) { return game.hangmanP2Guesses.includes(l); });
+      const p1Dead = game.hangmanP1Wrong >= game.hangmanMaxWrong;
+      const p2Dead = game.hangmanP2Wrong >= game.hangmanMaxWrong;
+      if (p1Done && !p2Done) game.winner = game.player1;
+      else if (p2Done && !p1Done) game.winner = game.player2;
+      else if (p1Done && p2Done) game.winner = "draw";
+      else if (p1Dead && p2Dead) game.winner = "draw";
+      else if (p1Dead) game.winner = game.player2;
+      else if (p2Dead) game.winner = game.player1;
+      if (game.winner) {
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: { ...game } });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: { ...game } });
+        await this.endGame(game, "completed");
+      } else {
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      }
+    } else if (game.type === "battleship") {
+      if (game.bsCurrentTurn.toLowerCase() !== playerName.toLowerCase()) return;
+      let x, y;
+      if (typeof move === "object" && move !== null) { x = move.x; y = move.y; }
+      else { const coords = String(move).split(","); x = parseInt(coords[0]); y = parseInt(coords[1]); }
+      if (isNaN(x) || isNaN(y) || x < 0 || x >= game.bsSize || y < 0 || y >= game.bsSize) return;
+      const myShots = isP1 ? game.bsShots.p1 : game.bsShots.p2;
+      if (myShots.some(function(s) { return s.x === x && s.y === y; })) return;
+      const enemyShips = isP1 ? game.bsShips.p2 : game.bsShips.p1;
+      const hitResult = this.checkBsHit(enemyShips, x, y);
+      myShots.push({ x, y, hit: hitResult.hit });
+      let sunkCount = 0;
+      for (const ship of enemyShips) {
+        if (this.checkBsShipSunk(ship, myShots)) sunkCount++;
+      }
+      if (isP1) game.bsSunk.p1 = sunkCount;
+      else game.bsSunk.p2 = sunkCount;
+      if (sunkCount >= game.bsTotalShips) {
+        game.winner = playerName;
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+        await this.endGame(game, "completed");
+      } else {
+        if (!hitResult.hit) {
+          game.bsCurrentTurn = isP1 ? game.player2 : game.player1;
+        }
+        this.sendToPlayer(game.player1, { type: "gameUpdate", game: this.sanitizeGame(game, game.player1) });
+        this.sendToPlayer(game.player2, { type: "gameUpdate", game: this.sanitizeGame(game, game.player2) });
+      }
+    }
+    // Broadcast to spectators after every move
+    if (game.spectators && game.spectators.length > 0 && !game._ended) {
+      const spectatorView = this.sanitizeGame(game, null);
+      for (const s of game.spectators) {
+        this.sendToPlayer(s, { type: "gameUpdate", game: spectatorView });
+      }
     }
   }
 
@@ -2366,6 +2623,36 @@ export class OrgGameInstance {
       if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
     }
     return null;
+  }
+
+  checkC4Winner(board, lastCol, lastRow, sym) {
+    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+    for (const [dc, dr] of dirs) {
+      const cells = [{ c: lastCol, r: lastRow }];
+      for (let i = 1; i < 4; i++) { const c = lastCol+dc*i, r = lastRow+dr*i; if (c<0||c>6||r<0||r>5||board[c][r]!==sym) break; cells.push({c,r}); }
+      for (let i = 1; i < 4; i++) { const c = lastCol-dc*i, r = lastRow-dr*i; if (c<0||c>6||r<0||r>5||board[c][r]!==sym) break; cells.push({c,r}); }
+      if (cells.length >= 4) return { winner: sym, winCells: cells };
+    }
+    let full = true;
+    for (let c = 0; c < 7; c++) { if (board[c][5] === null) { full = false; break; } }
+    return full ? { winner: "draw", winCells: [] } : null;
+  }
+
+  checkBsHit(ships, x, y) {
+    for (let si = 0; si < ships.length; si++) {
+      const cells = ships[si].cells || ships[si];
+      for (const cell of cells) {
+        if (cell.x === x && cell.y === y) return { hit: true, shipIndex: si };
+      }
+    }
+    return { hit: false };
+  }
+
+  checkBsShipSunk(ship, shots) {
+    const cells = ship.cells || ship;
+    return cells.every(function(cell) {
+      return shots.some(function(s) { return s.x === cell.x && s.y === cell.y && s.hit; });
+    });
   }
 
   async startGroupGame(lobby) {
@@ -2395,9 +2682,11 @@ export class OrgGameInstance {
       const self = this;
       setTimeout(() => self.resolveAuction(game), 30000);
     } else if (lobby.type === "triviaroyale") {
+      let triviaBank = DEFAULT_TRIVIA_BANK;
+      if (this.orgConfig?.customTrivia?.length >= 5) triviaBank = this.orgConfig.customTrivia;
       game.questions = [];
       for (let qi = 0; qi < 5; qi++) {
-        const q = DEFAULT_TRIVIA_BANK[Math.floor(Math.random() * DEFAULT_TRIVIA_BANK.length)];
+        const q = triviaBank[Math.floor(Math.random() * triviaBank.length)];
         const ca = q.a[q.c];
         const sh = q.a.slice();
         for (let si = sh.length - 1; si > 0; si--) {
