@@ -2027,6 +2027,30 @@ export class OrgGameInstance {
           this.clearForfeitTimerForPlayer(info.name);
           if (oldName && info.name && oldName !== info.name) this.renameScore(oldName, info.name);
           try { server.send(JSON.stringify({ type: "identityAccepted", name: info.name })); } catch {}
+
+          // Recover active games — re-send game state if player was in a game
+          const pLower = info.name.toLowerCase();
+          for (const [, game] of this.activeGames) {
+            if (game._ended) continue;
+            // 1v1 games
+            if (game.player1 && game.player2) {
+              if (game.player1.toLowerCase() === pLower || game.player2.toLowerCase() === pLower) {
+                this.sendToPlayer(info.name, { type: game.winner ? "gameEnded" : "gameStarted", game: this.sanitizeGame(game, info.name) });
+              }
+            }
+            // Group games
+            if (game.players && game.players.some(p => p.toLowerCase() === pLower)) {
+              this.sendToPlayer(info.name, { type: game.winner ? "groupGameEnded" : "groupGameStarted", game: this.sanitizeGroupGame(game, info.name) });
+            }
+          }
+
+          // Deliver any pending challenges the player hasn't seen
+          for (const [, challenge] of this.pendingChallenges) {
+            if (challenge.targetName.toLowerCase() === pLower && challenge.expiresAt > Date.now()) {
+              this.sendToPlayer(info.name, { type: "challengeReceived", challenge });
+            }
+          }
+
           // Broadcast so online list updates for everyone
           this.broadcast();
           return;
