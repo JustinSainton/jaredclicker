@@ -17,6 +17,7 @@
       "bundleIdentifier": "com.fundclicker.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true,
         "NSCameraUsageDescription": "Fund Clicker uses the camera to scan payment cards for faster checkout.",
         "NSMicrophoneUsageDescription": "Fund Clicker uses the microphone for audio features.",
         "NSPhotoLibraryUsageDescription": "Fund Clicker uses your photo library to upload custom images for your fundraiser."
@@ -57,7 +58,9 @@
         }
       ],
       "expo-audio",
-      "expo-font"
+      "expo-font",
+      "expo-asset",
+      ["expo-live-activity", { "enablePushNotifications": true }]
     ],
     "extra": {
       "eas": {
