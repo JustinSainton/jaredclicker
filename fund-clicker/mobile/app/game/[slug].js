@@ -29,6 +29,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useGameState } from "../../hooks/useGameState";
 import { formatNumber } from "../../lib/gameEngine";
 import { getVibeAsset } from "../../lib/vibe-assets";
+import usePushNotifications from "../../hooks/usePushNotifications";
 import ClickerScreen from "../../components/ClickerScreen";
 import LeaderboardScreen from "../../components/LeaderboardScreen";
 import BattleScreen from "../../components/BattleScreen";
@@ -220,6 +221,9 @@ function GameTabs() {
   const [activeTab, setActiveTab] = useState("click");
   const [showProfile, setShowProfile] = useState(false);
   const [lastSeenChatCount, setLastSeenChatCount] = useState(null);
+
+  // Register push notifications after login
+  usePushNotifications(org?.slug, player?.name, player?.token);
 
   // Load persisted chat count on mount
   useEffect(() => {
