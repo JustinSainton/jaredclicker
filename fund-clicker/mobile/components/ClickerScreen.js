@@ -37,6 +37,7 @@ import {
 } from "../lib/gameEngine";
 import { useGameState } from "../hooks/useGameState";
 import { scoreStyle, headingStyle, bodyStyle, floatNumberStyle, labelStyle, glowStyle, springConfig, cardStyle } from "../lib/theme-styles";
+import { Image as ExpoImage } from "expo-image";
 import { getVibeAsset } from "../lib/vibe-assets";
 import { useLayout } from "../hooks/useLayout";
 
@@ -160,7 +161,7 @@ function PhotoEventModal({ visible, bonus, onDismiss, theme, characterPhotos, on
           </Text>
           {photoUrl ? (
             <View style={[styles.photoFrame, { borderColor: theme.primary }]}>
-              <Image source={{ uri: photoUrl }} style={styles.photoImage} resizeMode="cover" />
+              <ExpoImage source={{ uri: photoUrl }} style={styles.photoImage} contentFit="cover" autoOrient={true} />
             </View>
           ) : (
             <Text style={styles.photoEmoji}>{"\uD83D\uDE2E"}</Text>

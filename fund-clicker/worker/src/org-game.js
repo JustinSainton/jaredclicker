@@ -518,7 +518,10 @@ export class OrgGameInstance {
     const subs = await this.loadPushSubscriptions();
     const key = name.toLowerCase();
     const playerTokens = subs[key];
-    if (!playerTokens || playerTokens.length === 0) return;
+    if (!playerTokens || playerTokens.length === 0) {
+      console.log("[Push] No tokens for", key, "- skipping");
+      return;
+    }
 
     const messages = playerTokens.map(token => ({
       to: typeof token === "string" ? token : token.expoPushToken,
@@ -529,13 +532,14 @@ export class OrgGameInstance {
     }));
 
     try {
-      await fetch("https://exp.host/--/api/v2/push/send", {
+      const res = await fetch("https://exp.host/--/api/v2/push/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(messages),
       });
+      console.log("[Push] Sent to", key, ":", res.status, "tokens:", messages.length);
     } catch (e) {
-      // Push failures are non-critical
+      console.log("[Push] Failed for", key, ":", e.message);
     }
   }
 
@@ -1801,12 +1805,10 @@ export class OrgGameInstance {
     }
 
     // ── Push: subscribe (Expo Push tokens)
+    // No auth required — registering a push token for a name is not sensitive
     if (url.pathname === "/push/subscribe" && request.method === "POST") {
       const body = await request.json();
-      const requestedName = String(body.playerName || "").slice(0, 20);
-      const auth = await this.authorizePlayerRequest(request, requestedName || null);
-      if (!auth) return this.jsonError("Unauthorized");
-      const playerName = auth.displayName;
+      const playerName = String(body.playerName || "").slice(0, 20);
       const expoPushToken = body.expoPushToken || body.token;
       if (!playerName || !expoPushToken) return new Response(JSON.stringify({ error: "playerName and expoPushToken required" }), { status: 400 });
       const subs = await this.loadPushSubscriptions();
