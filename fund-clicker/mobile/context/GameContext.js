@@ -309,6 +309,11 @@ export function GameProvider({ children, orgSlug }) {
           if (!prev || prev.id !== msg.game?.id) return msg.game;
           return { ...prev, ...msg.game };
         });
+        liveActivity.updateBattleActivity({
+          player1Score: msg.game?.p1Score || 0,
+          player2Score: msg.game?.p2Score || 0,
+          winner: msg.game?.winner,
+        });
         break;
 
       case "gameEnded":

@@ -43,7 +43,7 @@ class LiveActivityManager {
         subtitle: player1 + " vs " + player2 + " \u2022 " + (wagerCoins || 0).toLocaleString() + " coins",
       };
       if (duration) {
-        state.timer = { elapsed: Math.floor(duration / 1000) };
+        state.progressBar = { date: Date.now() + duration };
       }
       const config = {
         backgroundColor: "#1a1a2e",
