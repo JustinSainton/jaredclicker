@@ -74,9 +74,13 @@ export function GameProvider({ children, orgSlug }) {
       wsRef.current = ws;
 
       // Use addEventListener everywhere — ws.onX = doesn't reliably fire in React Native
+      let lastMessageAt = Date.now();
+      let watchdog = null;
+
       ws.addEventListener("open", () => {
         setConnected(true);
         reconnectAttempts.current = 0;
+        lastMessageAt = Date.now();
         if (player?.name && player?.token) {
           ws.send(JSON.stringify({
             type: "setIdentity",
@@ -84,11 +88,24 @@ export function GameProvider({ children, orgSlug }) {
             authToken: player.token,
           }));
         }
+        // Watchdog: if no message from server in 45s, connection is dead
+        if (watchdog) clearInterval(watchdog);
+        watchdog = setInterval(() => {
+          if (Date.now() - lastMessageAt > 45000) {
+            try { ws.close(); } catch {}
+          }
+        }, 15000);
       });
 
       ws.addEventListener("message", (event) => {
+        lastMessageAt = Date.now();
         try {
           const msg = JSON.parse(event.data);
+          // Respond to server pings
+          if (msg.type === "ping") {
+            try { ws.send(JSON.stringify({ type: "pong" })); } catch {}
+            return;
+          }
           handleWSMessageRef.current?.(msg);
         } catch {}
       });
@@ -96,6 +113,7 @@ export function GameProvider({ children, orgSlug }) {
       ws.addEventListener("close", () => {
         setConnected(false);
         wsRef.current = null;
+        if (watchdog) { clearInterval(watchdog); watchdog = null; }
         if (!intentionalClose) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
           reconnectAttempts.current++;
@@ -134,12 +152,11 @@ export function GameProvider({ children, orgSlug }) {
   useEffect(() => {
     const sub = AppState.addEventListener("change", (nextState) => {
       if (appState.current.match(/inactive|background/) && nextState === "active") {
-        // App came to foreground — reconnect if disconnected
-        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-          if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-          reconnectAttempts.current = 0;
-          // Trigger reconnect
-          setConnected(false);
+        // App came to foreground — force reconnect if disconnected or stale
+        if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+        reconnectAttempts.current = 0;
+        if (wsRef.current) {
+          try { wsRef.current.close(); } catch {} // triggers close handler → reconnect
         }
       }
       appState.current = nextState;

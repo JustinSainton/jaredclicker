@@ -201,6 +201,41 @@ export class OrgGameInstance {
     this._broadcastPending = false;
     this._debugCounters = { accepted: 0, rejectedEpoch: 0, lastClientEpoch: null, lastSvrEpoch: null };
     this.lastPodium = [];
+    this._heartbeatInterval = null;
+  }
+
+  // ─── HEARTBEAT ────────────────────────────────────────────────────────────
+  // Detect silently dead connections on mobile networks.
+  // Server pings every 30s; clients must pong within 10s or get closed.
+
+  startHeartbeat() {
+    if (this._heartbeatInterval) return;
+    this._heartbeatInterval = setInterval(() => {
+      if (this.connections.size === 0) {
+        this.stopHeartbeat();
+        return;
+      }
+      const now = Date.now();
+      for (const [ws, info] of this.connections) {
+        // Close connections that missed the last ping
+        if (info._pingSentAt && !info._pongReceived) {
+          try { ws.close(1000, "heartbeat_timeout"); } catch {}
+          this.connections.delete(ws);
+          continue;
+        }
+        // Send new ping
+        info._pingSentAt = now;
+        info._pongReceived = false;
+        try { ws.send(JSON.stringify({ type: "ping" })); } catch { this.connections.delete(ws); }
+      }
+    }, 30000);
+  }
+
+  stopHeartbeat() {
+    if (this._heartbeatInterval) {
+      clearInterval(this._heartbeatInterval);
+      this._heartbeatInterval = null;
+    }
   }
 
   // ─── ORG CONFIG ──────────────────────────────────────────────────────────
@@ -550,7 +585,7 @@ export class OrgGameInstance {
     const lower = name.toLowerCase();
     for (const [ws, info] of this.connections) {
       if (info.name && info.name.toLowerCase() === lower) {
-        try { ws.send(msg); } catch (e) {}
+        try { ws.send(msg); } catch (e) { this.connections.delete(ws); }
       }
     }
   }
@@ -1428,7 +1463,19 @@ export class OrgGameInstance {
     // ── Admin: live stats (connections, leaderboard, sabotages)
     if (url.pathname === "/admin/stats" && request.method === "GET") {
       const scores = await this.loadScores();
-      const sorted = Object.values(scores).sort((a, b) => b.score - a.score);
+      const accounts = await this.loadAccounts();
+      // Merge: show all registered accounts, even with 0 score
+      const playerMap = {};
+      for (const [key, acct] of Object.entries(accounts)) {
+        if (acct.displayName) {
+          playerMap[key] = { name: acct.displayName, score: 0, registered: true };
+        }
+      }
+      for (const [key, val] of Object.entries(scores)) {
+        if (playerMap[key]) { playerMap[key].score = val.score; }
+        else { playerMap[key] = { name: val.name, score: val.score, registered: false }; }
+      }
+      const sorted = Object.values(playerMap).sort((a, b) => b.score - a.score);
       const sabotages = await this.state.storage.get("sabotages") || [];
       const activeSabotages = sabotages.filter(s => s.expiresAt > Date.now());
       return new Response(JSON.stringify({
@@ -1978,7 +2025,8 @@ export class OrgGameInstance {
     const city = request.cf?.city || "";
 
     server.accept();
-    this.connections.set(server, { country, city, joinedAt: Date.now() });
+    this.connections.set(server, { country, city, joinedAt: Date.now(), _pingSentAt: 0, _pongReceived: true });
+    this.startHeartbeat();
 
     // Send recent chat history (last 200) + org config to new connection
     // Full history available via /chat/history?before=<timestamp>&limit=50
@@ -2001,6 +2049,8 @@ export class OrgGameInstance {
         const info = this.connections.get(server);
         if (!info) return;
 
+        if (msg.type === "pong") { info._pongReceived = true; return; }
+
         if (msg.type === "setName" && msg.name) {
           if (!info.authenticated) {
             this.sendUnauthorized(server, "identity_required");
@@ -2022,6 +2072,14 @@ export class OrgGameInstance {
           if (msg.deviceId) info.deviceId = String(msg.deviceId).slice(0, 64);
           info.name = auth.displayName;
           info.authenticated = true;
+
+          // Close stale connections for this player (dedup on reconnect)
+          for (const [existingWs, existingInfo] of this.connections) {
+            if (existingWs !== server && existingInfo.name?.toLowerCase() === auth.displayName.toLowerCase()) {
+              try { existingWs.close(1000, "reconnected"); } catch {}
+              this.connections.delete(existingWs);
+            }
+          }
           info.accountKey = auth.key;
           info.authToken = auth.token;
           this.clearForfeitTimerForPlayer(info.name);
@@ -2463,6 +2521,8 @@ export class OrgGameInstance {
     });
 
     server.addEventListener("error", () => {
+      // Trigger close to handle cleanup (forfeits, lobby removal, broadcast)
+      try { server.close(1000, "error"); } catch {}
       this.connections.delete(server);
     });
 

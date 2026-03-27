@@ -10,6 +10,8 @@ export async function executePayment(stripe, clientSecret, { description, return
   const { error: initError } = await stripe.initPaymentSheet({
     paymentIntentClientSecret: clientSecret,
     merchantDisplayName: "Fund Clicker",
+    applePay: { merchantCountryCode: "US" },
+    googlePay: { merchantCountryCode: "US", testEnv: false },
     style: "alwaysDark",
     appearance: {
       colors: {
