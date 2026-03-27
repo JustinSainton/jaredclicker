@@ -217,15 +217,13 @@ export class OrgGameInstance {
       }
       const now = Date.now();
       for (const [ws, info] of this.connections) {
-        // Close connections that missed the last ping
-        if (info._pingSentAt && !info._pongReceived) {
+        // Close connections with no activity for 90s (3 missed ping cycles)
+        if (info._lastActivity && (now - info._lastActivity) > 90000) {
           try { ws.close(1000, "heartbeat_timeout"); } catch {}
           this.connections.delete(ws);
           continue;
         }
-        // Send new ping
-        info._pingSentAt = now;
-        info._pongReceived = false;
+        // Send ping — clients that support it respond with pong (updating _lastActivity)
         try { ws.send(JSON.stringify({ type: "ping" })); } catch { this.connections.delete(ws); }
       }
     }, 30000);
@@ -2025,7 +2023,7 @@ export class OrgGameInstance {
     const city = request.cf?.city || "";
 
     server.accept();
-    this.connections.set(server, { country, city, joinedAt: Date.now(), _pingSentAt: 0, _pongReceived: true });
+    this.connections.set(server, { country, city, joinedAt: Date.now(), _lastActivity: Date.now() });
     this.startHeartbeat();
 
     // Send recent chat history (last 200) + org config to new connection
@@ -2048,8 +2046,9 @@ export class OrgGameInstance {
         const msg = JSON.parse(event.data);
         const info = this.connections.get(server);
         if (!info) return;
+        info._lastActivity = Date.now();
 
-        if (msg.type === "pong") { info._pongReceived = true; return; }
+        if (msg.type === "pong") return;
 
         if (msg.type === "setName" && msg.name) {
           if (!info.authenticated) {

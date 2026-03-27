@@ -40,6 +40,8 @@ import { scoreStyle, headingStyle, bodyStyle, floatNumberStyle, labelStyle, glow
 import { Image as ExpoImage } from "expo-image";
 import { getVibeAsset } from "../lib/vibe-assets";
 import { useLayout } from "../hooks/useLayout";
+import { useStripeSafe } from "../lib/stripe-safe";
+import { buyHideLuke } from "../lib/payments";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -319,6 +321,7 @@ function DesktopLeaderboardPanel({ theme }) {
 export default function ClickerScreen() {
   const { player, updateScore, scoreEpoch, sabotages, connected, totalRaised, scoreCorrection, nextResetAt, leaderboard, credits } = useGame();
   const { org, theme } = useOrg();
+  const stripe = useStripeSafe();
   const [showResetBanner, setShowResetBanner] = useState(true);
   const [showRaisedBanner, setShowRaisedBanner] = useState(true);
 
@@ -664,9 +667,15 @@ export default function ClickerScreen() {
           onDismiss={dismissPhoto}
           theme={theme}
           characterPhotos={theme.characterPhotos}
-          onHide={() => {
+          onHide={async () => {
             dismissPhoto();
-            // TODO: wire to Stripe payment for "Hide Luke for 1 Hour — $1.99"
+            if (!stripe || !org?.slug || !player?.name) return;
+            const result = await buyHideLuke(stripe, org.slug, { playerName: player.name, playerToken: player.token });
+            if (result.success) {
+              Alert.alert("Photos Hidden!", "Photo events are hidden for 1 hour. Enjoy the peace!");
+            } else if (result.error && !result.cancelled) {
+              Alert.alert(t("purchaseFailed"), result.error);
+            }
           }}
         />
       )}
