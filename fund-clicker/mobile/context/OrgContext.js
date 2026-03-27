@@ -92,7 +92,7 @@ export function OrgProvider({ children }) {
       characterPhotos = rawPhotos.map(p => {
         if (typeof p === "string") return { url: p, name: null };
         if (p.url) return { url: p.url, name: p.displayName || p.name || null };
-        if (p.key) return { url: `https://api.fundclicker.com/orgs-assets/${slug}/photos/${p.key}`, name: p.displayName || p.name || null };
+        if (p.key) return { url: `https://api.fundclicker.com/orgs-assets/${org.slug}/photos/${p.key}`, name: p.displayName || p.name || null };
         return null;
       }).filter(Boolean);
     } catch {}
