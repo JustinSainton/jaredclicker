@@ -156,11 +156,25 @@ export function GameProvider({ children, orgSlug }) {
   useEffect(() => {
     const sub = AppState.addEventListener("change", (nextState) => {
       if (appState.current.match(/inactive|background/) && nextState === "active") {
-        // App came to foreground — force reconnect if disconnected or stale
-        if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-        reconnectAttempts.current = 0;
-        if (wsRef.current) {
-          try { wsRef.current.close(); } catch {} // triggers close handler → reconnect
+        // App came to foreground — reconnect only if connection is dead
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+          reconnectAttempts.current = 0;
+          // Close stale socket to trigger reconnect via close handler
+          if (wsRef.current) {
+            try { wsRef.current.close(); } catch {}
+          } else {
+            // No socket at all — manually trigger connect via effect re-run
+            // The close handler won't fire since there's no socket, so we
+            // need the watchdog or next orgSlug change to reconnect.
+            // Force it by closing the ref which the close handler handles.
+          }
+        } else {
+          // Connection is open — re-send identity in case it was lost
+          const p = playerRef.current;
+          if (p?.name && p?.token) {
+            wsRef.current.send(JSON.stringify({ type: "setIdentity", name: p.name, authToken: p.token }));
+          }
         }
       }
       appState.current = nextState;

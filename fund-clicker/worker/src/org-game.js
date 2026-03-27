@@ -1485,6 +1485,27 @@ export class OrgGameInstance {
       }), { headers: { "Content-Type": "application/json" } });
     }
 
+    // ── Debug: connection state (temporary)
+    if (url.pathname === "/debug/connections" && request.method === "GET") {
+      const conns = [];
+      for (const [ws, info] of this.connections) {
+        conns.push({
+          name: info.name || "(anonymous)",
+          authenticated: !!info.authenticated,
+          joinedAt: info.joinedAt,
+          lastActivity: info._lastActivity,
+          country: info.country,
+        });
+      }
+      return new Response(JSON.stringify({
+        totalConnections: this.connections.size,
+        connections: conns,
+        activeGames: this.activeGames.size,
+        pendingChallenges: this.pendingChallenges.size,
+        heartbeatRunning: !!this._heartbeatInterval,
+      }, null, 2), { headers: { "Content-Type": "application/json" } });
+    }
+
     // ── Admin: autoban toggle
     if (url.pathname === "/admin/autoban" && request.method === "GET") {
       if (this.autobanEnabled === null) {
