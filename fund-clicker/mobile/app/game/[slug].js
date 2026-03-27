@@ -38,7 +38,13 @@ import ChatScreen from "../../components/ChatScreen";
 import ActiveGameModal from "../../components/games/ActiveGameModal";
 import BanOverlay from "../../components/BanOverlay";
 let GlassView;
-try { GlassView = require("expo-glass-effect").GlassView; } catch { GlassView = null; }
+try {
+  // Glass effect (liquid glass) requires iOS 26+
+  const iosVersion = parseInt(Platform.Version, 10);
+  if (Platform.OS === "ios" && iosVersion >= 26) {
+    GlassView = require("expo-glass-effect").GlassView;
+  }
+} catch { GlassView = null; }
 import ProfileScreen from "../../components/ProfileScreen";
 import SkinsScreen from "../../components/SkinsScreen";
 
