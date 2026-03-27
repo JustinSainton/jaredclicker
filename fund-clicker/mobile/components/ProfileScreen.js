@@ -198,10 +198,10 @@ export default function ProfileScreen({ onClose }) {
                 {
                   text: "Switch",
                   style: "destructive",
-                  onPress: async () => {
-                    await leaveOrg();
+                  onPress: () => {
                     onClose?.();
                     router.replace("/");
+                    leaveOrg();
                   },
                 },
               ]
@@ -221,10 +221,10 @@ export default function ProfileScreen({ onClose }) {
                 {
                   text: "Sign Out",
                   style: "destructive",
-                  onPress: async () => {
-                    await leaveOrg();
+                  onPress: () => {
                     onClose?.();
                     router.replace("/");
+                    leaveOrg();
                   },
                 },
               ]
