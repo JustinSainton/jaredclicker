@@ -49,9 +49,11 @@ export function GameProvider({ children, orgSlug }) {
 
   // ─── REFS ─────────────────────────────────────────────────────────
   const wsRef = useRef(null);
+  const playerRef = useRef(player);
   const reconnectTimer = useRef(null);
   const reconnectAttempts = useRef(0);
   const appState = useRef(AppState.currentState);
+  playerRef.current = player; // Always keep ref in sync with latest state
 
   // ─── LOAD SAVED PLAYER ────────────────────────────────────────────
   useEffect(() => {
@@ -81,11 +83,13 @@ export function GameProvider({ children, orgSlug }) {
         setConnected(true);
         reconnectAttempts.current = 0;
         lastMessageAt = Date.now();
-        if (player?.name && player?.token) {
+        // Use ref to get current player (closure captures stale null on first render)
+        const p = playerRef.current;
+        if (p?.name && p?.token) {
           ws.send(JSON.stringify({
             type: "setIdentity",
-            name: player.name,
-            authToken: player.token,
+            name: p.name,
+            authToken: p.token,
           }));
         }
         // Watchdog: if no message from server in 45s, connection is dead
