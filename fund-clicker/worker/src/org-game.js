@@ -2161,8 +2161,8 @@ export class OrgGameInstance {
           }
         }
 
-        if (msg.type === "chat" && (msg.message || msg.gif) && info.name) {
-          if (!info.authenticated) {
+        if (msg.type === "chat" && (msg.message || msg.gif)) {
+          if (!info.name || !info.authenticated) {
             this.sendUnauthorized(server, "identity_required");
             return;
           }
@@ -2225,8 +2225,8 @@ export class OrgGameInstance {
         }
 
         // ── Battle system WS handlers
-        if (msg.type === "challenge" && info.name && msg.targetName && msg.gameType && typeof msg.wagerCoins === "number") {
-          if (!info.authenticated) {
+        if (msg.type === "challenge" && msg.targetName && msg.gameType && typeof msg.wagerCoins === "number") {
+          if (!info.name || !info.authenticated) {
             this.sendUnauthorized(server, "identity_required");
             return;
           }

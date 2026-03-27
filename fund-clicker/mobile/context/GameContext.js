@@ -374,7 +374,21 @@ export function GameProvider({ children, orgSlug }) {
         break;
 
       case "unauthorized":
-        if (__DEV__) console.warn("WS unauthorized:", msg.reason || "unauthorized");
+        if (msg.reason === "invalid_token") {
+          // Token was rejected — clear saved player so they're prompted to re-login
+          setPlayer(null);
+          AsyncStorage.removeItem(`${PLAYER_KEY}_${orgSlug}`).catch(() => {});
+        } else if (msg.reason === "identity_required") {
+          // Server doesn't know who we are — re-send identity
+          const p = playerRef.current;
+          if (p?.name && p?.token && wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: "setIdentity", name: p.name, authToken: p.token }));
+          }
+        }
+        break;
+
+      case "identityAccepted":
+        // Server confirmed our identity — no action needed
         break;
 
       // ── Wallet (for credit-based wagering)
